@@ -233,7 +233,7 @@ export function ViewProcesar({
                         "p-6 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col justify-between group",
                         isSelected
                           ? "bg-gradient-to-br from-emerald-50/40 to-emerald-100/50 dark:from-emerald-950/20 dark:to-black border-emerald-500/50 dark:border-emerald-500/40 ring-1 ring-emerald-500/20 shadow-[0_0_30px_-5px_rgba(16,185,129,0.2)] dark:shadow-[0_0_30px_-5px_rgba(16,185,129,0.15)] scale-[1.02]"
-                          : "bg-zinc-100 dark:bg-black border-zinc-200/90 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-md"
+                          : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-md"
                       )}
                     >
                       <div>
@@ -252,7 +252,7 @@ export function ViewProcesar({
                             style={{ imageRendering: 'auto' }}
                           />
                           {/* ViÃ±eteado oscuro / Gradient Fade */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-zinc-400/40 via-zinc-400/10 to-transparent pointer-events-none" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/20 dark:from-zinc-950/90 dark:via-zinc-950/20 to-transparent pointer-events-none" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold backdrop-blur-xs">
                             <Eye size={13} /> Ampliar
                           </div>
@@ -922,6 +922,10 @@ export function ViewProcesar({
     </div>
   )
 }
+
+
+
+
 
 
 
