@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { FolderOpen, Play, Loader2, RefreshCw, ChevronRight, Eye } from 'lucide-react'
 import { AlertErr } from '../ui/Alerts'
 import { DarkBadge } from '../ui/Badges'
@@ -40,10 +40,10 @@ export function ViewExpedientes({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
-            GalerÃ­a de Expedientes
+            Galería de Expedientes
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Consulte la documentaciÃ³n de cada expediente, verifique requisitos que falten o inicie su tramitaciÃ³n.
+            Consulte la documentación de cada expediente, verifique requisitos que falten o inicie su tramitación.
           </p>
         </div>
 
@@ -65,12 +65,12 @@ export function ViewExpedientes({
       {status === 'loading' && (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-zinc-400">
           <Loader2 size={24} className="animate-spin" />
-          <span className="text-xs">Cargando catÃ¡logo de expedientes y verificando checklist...</span>
+          <span className="text-xs">Cargando catálogo de expedientes y verificando checklist...</span>
         </div>
       )}
 
       {status === 'error' && (
-        <AlertErr msg="Fallo de conexiÃ³n con el motor Flask (http://localhost:5000)." />
+        <AlertErr msg="Fallo de conexión con el motor Flask (http://localhost:5000)." />
       )}
 
       {status === 'done' && (

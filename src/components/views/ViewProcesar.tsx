@@ -1,945 +1,1137 @@
-﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ChevronRight, ArrowRight, Play, Loader2, AlertTriangle, CheckCircle, RefreshCw, UploadCloud, X, Trash2,
-  ChevronLeft, RotateCcw, Check, Eye, CheckCircle2, FileText, FolderOpen, Printer, Info
-} from 'lucide-react'
-import { ViewGrafo } from './ViewGrafo'
-import { cn, pollTask } from '../../lib/utils'
-import { TEMPLATES } from '../../lib/data'
-import type { CasoResult } from '../../lib/types'
-import { Btn } from '../ui/Btn'
-import { DarkBadge, StatusBadge } from '../ui/Badges'
-import { AlertErr, RunningInfo } from '../ui/Alerts'
-import { Tabs } from '../ui/Tabs'
-import { LogViewer } from '../ui/LogViewer'
+  ChevronLeft, RotateCcw, Check, Eye, CheckCircle2, FileText, FolderOpen, Printer, Info, ShieldCheck,
+  Scale, FileCheck, Building2, HelpCircle, ExternalLink, Copy, Terminal, ChevronDown, ChevronUp, ZoomIn
+} from 'lucide-react';
+import { ViewGrafo } from './ViewGrafo';
+import { cn, pollTask } from '../../lib/utils';
+import { TEMPLATES } from '../../lib/data';
+import type { CasoResult } from '../../lib/types';
+import { Btn } from '../ui/Btn';
+import { StatusBadge } from '../ui/Badges';
+import { AlertErr, RunningInfo } from '../ui/Alerts';
+import { LogViewer } from '../ui/LogViewer';
+
 export function ViewProcesar({
   initialCaso,
   templateId,
   onVolver,
-  onInspeccionarCaso
 }: {
   initialCaso?: string;
   templateId?: string;
   onVolver: () => void;
-  onInspeccionarCaso: (id: string) => void;
+  onInspeccionarCaso?: (id: string) => void;
 }) {
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(templateId || 'dietas')
-  const isDietas = selectedTemplate === 'dietas'
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(templateId || 'dietas');
+  const isDietas = selectedTemplate === 'dietas';
 
-  const [currentStep, setCurrentStep] = useState<number>(templateId ? 2 : (initialCaso ? 2 : 1))
-  const [previewTemplateModal, setPreviewTemplateModal] = useState<typeof TEMPLATES[0] | null>(null)
+  const [currentStep, setCurrentStep] = useState<number>(templateId ? 2 : (initialCaso ? 2 : 1));
+  const [previewTemplateModal, setPreviewTemplateModal] = useState<typeof TEMPLATES[0] | null>(null);
 
-  const [casoSel, setCasoSel] = useState(initialCaso || '')
-  const [tipoProyecto, setTipoProyecto] = useState('')
-  const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean }[]>([])
-  const [running, setRunning] = useState(false)
-  const [activeTaskId, setActiveTaskId] = useState<string | undefined>()
-  const [result, setResult] = useState<CasoResult | null>(null)
-  const [error, setError] = useState('')
-  const [files, setFiles] = useState<File[]>([])
-  const [isDragging, setIsDragging] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const resultRef = useRef<HTMLDivElement>(null)
+  const [casoSel, setCasoSel] = useState(initialCaso || '');
+  const [tipoProyecto, setTipoProyecto] = useState('');
+  const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean }[]>([]);
+  const [showExpedientes, setShowExpedientes] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | undefined>();
+  const [taskLogs, setTaskLogs] = useState<string>('');
+  const [result, setResult] = useState<CasoResult | null>(null);
+  const [error, setError] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('desglose');
+  const [jsonTab, setJsonTab] = useState<'extraccion' | 'liquidacion'>('liquidacion');
+  const [copied, setCopied] = useState(false);
 
-  const tieneFicheroOExpediente = Boolean(casoSel || files.length > 0)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  const tieneFicheroOExpediente = Boolean(casoSel || files.length > 0);
 
   useEffect(() => {
-    fetch('/api/casos').then(r => r.json()).then(d => setCasos(d.casos || [])).catch(() => { })
-  }, [])
+    fetch('/api/casos').then(r => r.json()).then(d => setCasos(d.casos || [])).catch(() => { });
+  }, []);
 
   const casosFiltrados = useMemo(() => {
-    if (!selectedTemplate) return casos
-    return casos.filter(c => c.tipo === selectedTemplate)
-  }, [casos, selectedTemplate])
+    if (!selectedTemplate) return casos;
+    return casos.filter(c => c.tipo === selectedTemplate);
+  }, [casos, selectedTemplate]);
 
   useEffect(() => {
     if (result && resultRef.current) {
-      resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [result])
+  }, [result]);
 
   const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
+    e.preventDefault();
+    setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const dropped = Array.from(e.dataTransfer.files)
-      setFiles(prev => [...prev, ...dropped])
-      setCasoSel('')
-      setError('')
+      const dropped = Array.from(e.dataTransfer.files);
+      setFiles(prev => [...prev, ...dropped]);
+      setCasoSel('');
+      setError('');
     }
-  }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selected = Array.from(e.target.files)
-      setFiles(prev => [...prev, ...selected])
-      setCasoSel('')
-      setError('')
+      const selected = Array.from(e.target.files);
+      setFiles(prev => [...prev, ...selected]);
+      setCasoSel('');
+      setError('');
     }
-  }
+  };
 
   const removeFile = (idx: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== idx))
-  }
+    setFiles(prev => prev.filter((_, i) => i !== idx));
+  };
 
   const ejecutar = useCallback(async () => {
-    let targetCaso = casoSel
-    setRunning(true); setError(''); setResult(null)
+    let targetCaso = casoSel;
+    setRunning(true);
+    setError('');
+    setResult(null);
+    setTaskLogs('Iniciando procesamiento del expediente mediante agente...');
     try {
       if (!targetCaso) {
-        if (files.length === 0) throw new Error("Debe seleccionar un expediente o subir los archivos para justificar el gasto.")
-        const fd = new FormData()
-        files.forEach(f => fd.append('files', f))
-        const res = await fetch('/api/caso/upload', { method: 'POST', body: fd })
-        const data = await res.json()
-        if (data.error) throw new Error(data.error)
-        targetCaso = data.caso_id
-        setCasoSel(targetCaso)
+        if (files.length === 0) throw new Error("Debe seleccionar un expediente o subir los archivos para justificar el gasto.");
+        const fd = new FormData();
+        files.forEach(f => fd.append('files', f));
+        const res = await fetch('/api/caso/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        targetCaso = data.caso_id;
+        setCasoSel(targetCaso);
       }
 
-      // Si el procedimiento no es dietas, no requiere tipo_proyecto
-      const reqTipoProyecto = isDietas ? tipoProyecto : ''
+      const reqTipoProyecto = isDietas ? tipoProyecto : '';
 
       const s = await fetch('/api/caso/iniciar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ caso_id: targetCaso, tipo_proyecto: reqTipoProyecto }),
-      })
-      const { task_id } = await s.json()
-      setActiveTaskId(task_id)
-      const res = await pollTask<CasoResult>(task_id)
-      setResult(res)
+      });
+      const { task_id } = await s.json();
+      setActiveTaskId(task_id);
+      const res = await pollTask<CasoResult>(task_id);
+      setResult(res);
     } catch (e: any) {
-      setError(e.message)
+      setError(e.message);
     } finally {
-      setRunning(false)
+      setRunning(false);
     }
-  }, [casoSel, files, tipoProyecto, isDietas])
+  }, [casoSel, files, tipoProyecto, isDietas]);
 
   const reiniciarTramite = () => {
-    setResult(null)
-    setError('')
-    setCurrentStep(1)
-    setCasoSel('')
-    setFiles([])
-    setTipoProyecto('')
-  }
+    setResult(null);
+    setError('');
+    setCurrentStep(1);
+    setCasoSel('');
+    setFiles([]);
+    setTipoProyecto('');
+  };
+
+  const copyJsonToClipboard = (data: any) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const STEPS = isDietas ? [
     { num: 1, label: 'Procedimiento' },
-    { num: 2, label: 'DocumentaciÃ³n' },
-    { num: 3, label: 'RÃ©gimen Normativo' },
-    { num: 4, label: 'ConfirmaciÃ³n' },
+    { num: 2, label: 'Documentación' },
+    { num: 3, label: 'Régimen Normativo' },
+    { num: 4, label: 'Confirmación' },
   ] : [
     { num: 1, label: 'Procedimiento' },
-    { num: 2, label: 'DocumentaciÃ³n' },
-    { num: 3, label: 'ConfirmaciÃ³n' },
-  ]
+    { num: 2, label: 'Documentación' },
+    { num: 3, label: 'Confirmación' },
+  ];
 
-  const totalSteps = STEPS.length
+  const totalSteps = STEPS.length;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-[90vw] mx-auto">
+    <div className="space-y-6 animate-fade-in max-w-[90vw] mx-auto pb-16">
 
       {/* Cabecera del Proceso */}
       <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <div className="flex items-center gap-3">
-          <button
+          <button 
             onClick={onVolver}
-            className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-            title="Volver al inicio"
+            className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer"
+            title="Volver"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={20} />
           </button>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              Automatizar TramitaciÃ³n
+            <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Liquidación Oficial de Gastos e Investigación
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Flujo guiado de cÃ¡lculo normativo y liquidaciÃ³n oficial de gastos.
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Servicio de Gestión y Transferencia de Resultados de la Investigación (SGTRI) — Universidad de Extremadura
             </p>
           </div>
         </div>
 
         {result && (
-          <Btn variant="outline" size="sm" onClick={reiniciarTramite}>
-            <RotateCcw size={13} /> Nueva liquidaciÃ³n
+          <Btn size="sm" variant="outline" onClick={reiniciarTramite} className="flex items-center gap-1.5 shadow-sm cursor-pointer">
+            <RotateCcw size={14} />
+            Nueva Liquidación
           </Btn>
         )}
       </div>
 
-      {/* ASISTENTE WIZARD */}
+      {/* STEPPER DINÁMICO */}
       {!result && (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/90 dark:border-zinc-800 p-8 shadow-sm space-y-8 pb-32">
-
-          {/* Barra de progreso de pasos */}
-          <div className="flex items-center justify-between pb-5 border-b border-zinc-100 dark:border-zinc-800">
-            <div className="flex items-center gap-3 overflow-x-auto py-1">
-              {STEPS.map((s) => (
-                <button
-                  key={s.num}
-                  onClick={() => {
-                    if (s.num === 1) setCurrentStep(1)
-                    if (s.num === 2) setCurrentStep(2)
-                    if (s.num >= 3 && tieneFicheroOExpediente) setCurrentStep(s.num)
-                  }}
-                  disabled={s.num > 2 && !tieneFicheroOExpediente}
-                  className="flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed group shrink-0"
-                >
-                  <div
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 shadow-sm">
+          <div className="flex items-center justify-between max-w-2xl mx-auto relative">
+            <div className="absolute top-1/2 left-4 right-4 -translate-y-1/2 h-0.5 bg-zinc-100 dark:bg-zinc-800 -z-0" />
+            <div 
+              className="absolute top-1/2 left-4 -translate-y-1/2 h-0.5 bg-zinc-900 dark:bg-zinc-100 transition-all duration-300 -z-0"
+              style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 90}%` }}
+            />
+            {STEPS.map((s) => {
+              const isDone = currentStep > s.num;
+              const isCurrent = currentStep === s.num;
+              return (
+                <div key={s.num} className="flex flex-col items-center gap-1.5 bg-white dark:bg-zinc-900 px-2 z-10">
+                  <button
+                    onClick={() => s.num < currentStep && setCurrentStep(s.num)}
+                    disabled={s.num > currentStep || running}
                     className={cn(
-                      "w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-all duration-200",
-                      currentStep === s.num
-                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
-                        : currentStep > s.num
-                          ? "bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400"
+                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 border-2",
+                      isDone && "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 cursor-pointer",
+                      isCurrent && "border-zinc-900 dark:border-zinc-100 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 ring-4 ring-zinc-100 dark:ring-zinc-800",
+                      !isDone && !isCurrent && "border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 bg-white dark:bg-zinc-900 cursor-not-allowed"
                     )}
                   >
-                    {currentStep > s.num ? <Check size={13} /> : s.num}
-                  </div>
-                  <span className={cn("text-xs font-bold", currentStep === s.num ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400")}>
+                    {isDone ? <Check size={14} strokeWidth={3} /> : s.num}
+                  </button>
+                  <span className={cn(
+                    "text-[11px] font-semibold tracking-tight transition-colors hidden sm:block",
+                    isCurrent ? "text-zinc-900 dark:text-zinc-100 font-bold" : "text-zinc-400 dark:text-zinc-600"
+                  )}>
                     {s.label}
                   </span>
-                  {s.num < totalSteps && <span className="text-zinc-300 dark:text-zinc-700 mx-1">/</span>}
-                </button>
-              ))}
-            </div>
-
-            <span className="text-xs text-zinc-400 font-mono font-semibold shrink-0">Paso {currentStep} de {totalSteps}</span>
+                </div>
+              );
+            })}
           </div>
+        </div>
+      )}
 
-          {/* PASO 1: SELECCIÃ“N DE PLANTILLA / PROCEDIMIENTO */}
+      {/* CONTENIDO DEL WIZARD */}
+      {!result && (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-sm">
+          
+          {/* PASO 1: SELECCIONAR PLANTILLA */}
           {currentStep === 1 && (
-            <div className="space-y-6 animate-fade-in-up">
+            <div className="space-y-6 animate-fade-in">
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
-                  1. SelecciÃ³n del procedimiento oficial
-                </h3>
-                <p className="text-xs text-zinc-500">
-                  Seleccione el modelo o impreso oficial que desea tramitar para esta comisiÃ³n.
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">1. Seleccione el Tipo de Trámite o Procedimiento</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  El sistema adaptará el motor de cálculo y los modelos normativos según el formulario oficial.
                 </p>
               </div>
 
-              <div className="flex flex-wrap justify-center gap-5">
-                {TEMPLATES.map(t => {
-                  const isSelected = selectedTemplate === t.id
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {TEMPLATES.map((t) => {
+                  const isSel = selectedTemplate === t.id;
                   return (
                     <div
                       key={t.id}
                       onClick={() => setSelectedTemplate(t.id)}
                       className={cn(
-                        "w-full sm:w-[calc(50%-0.625rem)] lg:w-[calc(33.333%-0.833rem)] max-w-[450px]",
-                        "p-6 rounded-3xl border transition-all duration-300 cursor-pointer flex flex-col justify-between group",
-                        isSelected
-                          ? "bg-gradient-to-br from-emerald-50/40 to-emerald-100/50 dark:from-emerald-950/20 dark:to-black border-emerald-500/50 dark:border-emerald-500/40 ring-1 ring-emerald-500/20 shadow-[0_0_30px_-5px_rgba(16,185,129,0.2)] dark:shadow-[0_0_30px_-5px_rgba(16,185,129,0.15)] scale-[1.02]"
-                          : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200/90 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-md"
+                        "p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group",
+                        isSel 
+                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50/50 dark:bg-zinc-800/40 shadow-sm" 
+                          : "border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900"
                       )}
                     >
                       <div>
-
-
-                        {/* Contenedor de Miniatura NÃTIDA en alta resoluciÃ³n */}
-                        <div
-                          onClick={(e) => { e.stopPropagation(); setPreviewTemplateModal(t) }}
-                          className="relative w-full mb-4 h-50 rounded-2xl overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700/80 shadow-xs group/img cursor-pointer"
-                          title="Haga clic para ampliar vista previa oficial"
-                        >
-                          <img
-                            src={t.img}
-                            alt={t.titulo}
-                            className="w-full h-full object-cover object-top opacity-100 transition-transform duration-300 group-hover/img:scale-105"
-                            style={{ imageRendering: 'auto' }}
-                          />
-                          {/* ViÃ±eteado oscuro / Gradient Fade */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/20 dark:from-zinc-950/90 dark:via-zinc-950/20 to-transparent pointer-events-none" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold backdrop-blur-xs">
-                            <Eye size={13} /> Ampliar
-                          </div>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold">
+                            {t.badge || 'Oficial'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPreviewTemplateModal(t); }}
+                            className="text-xs text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                            title="Ver información del modelo oficial"
+                          >
+                            <Eye size={13} />
+                            <span className="text-[11px] font-semibold">Ver Plantilla</span>
+                          </button>
                         </div>
-
-                        <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-snug mb-1.5">
-                          {t.titulo}
-                        </h4>
-                        <p className="text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                          {t.desc}
-                        </p>
+                        <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 mb-1">{t.titulo}</h4>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{t.desc}</p>
                       </div>
 
-                      <div className="mt-5 pt-3.5 border-t border-zinc-200/70 dark:border-zinc-800 flex items-center justify-between text-xs">
-                        <span className={cn(
-                          "font-bold inline-flex items-center gap-1.5 transition-colors",
-                          isSelected ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
-                        )}>
-                          {isSelected ? (
-                            <>
-                              <CheckCircle2 size={13} className="text-zinc-900 dark:text-zinc-100" />
-                              <span>Seleccionado</span>
-                            </>
-                          ) : (
-                            <span>Elegir plantilla</span>
-                          )}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setPreviewTemplateModal(t) }}
-                          className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 inline-flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          <Eye size={12} /> Vista previa
-                        </button>
+                      <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px]">
+                        <span className="text-zinc-400 font-medium">Procedimiento Oficial UEx</span>
+                        {isSel ? (
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+                            <CheckCircle2 size={13} /> Seleccionado
+                          </span>
+                        ) : (
+                          <span className="text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300">Seleccionar</span>
+                        )}
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>
           )}
 
-          {/* PASO 2: DOCUMENTACIÃ“N */}
+          {/* PASO 2: DOCUMENTACIÓN */}
           {currentStep === 2 && (
-            <div className="space-y-6 animate-fade-in-up">
+            <div className="space-y-6 animate-fade-in">
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
-                  2. AportaciÃ³n de justificantes
-                </h3>
-                <p className="text-xs text-zinc-500">
-                  Adjunte los archivos escaneados de la comisiÃ³n o seleccione un expediente previo del repositorio.
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">2. Aportación de Justificantes y Documentación</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Seleccione un expediente de pruebas preexistente o adjunte los documentos justificativos (PDFs, facturas, certificados, mapa de ruta).
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* 1. Dropzone de archivos */}
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                    Subir nuevos justificantes (PDF / ImÃ¡genes)
-                  </span>
-
+              {/* Selector Desplegable de Casos del Sistema */}
+              {casosFiltrados.length > 0 && (
+                <div className="bg-zinc-50/70 dark:bg-zinc-950/70 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden transition-all">
                   <div
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleFileDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={cn(
-                      "p-6 rounded-3xl border-2 border-dashed transition-all duration-200 cursor-pointer flex flex-col items-center justify-center text-center group min-h-[160px]",
-                      isDragging
-                        ? "border-zinc-900 bg-zinc-100/90 dark:border-zinc-100 dark:bg-zinc-800"
-                        : "border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/60 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50"
-                    )}
+                    onClick={() => setShowExpedientes(prev => !prev)}
+                    className="p-4 flex items-center justify-between cursor-pointer select-none hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60 transition-colors"
                   >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-700 dark:text-zinc-300 mb-3 group-hover:scale-105 transition-transform shadow-xs">
-                      <UploadCloud size={20} />
+                    <div className="flex items-center gap-2">
+                      <FolderOpen size={16} className="text-zinc-500 dark:text-zinc-400" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                        Expedientes Registrados en el Servidor
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-bold">
+                        {casosFiltrados.length}
+                      </span>
                     </div>
-                    <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
-                      Haga clic o arrastre sus justificantes aquÃ­
-                    </p>
-                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                      Facturas de hotel, billetes de transporte o tickets
-                    </p>
+                    <div className="flex items-center gap-1 text-xs text-zinc-400 font-medium">
+                      <span>{showExpedientes ? 'Ocultar' : 'Mostrar'}</span>
+                      {showExpedientes ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
                   </div>
 
-                  {/* Lista de archivos subidos */}
-                  {files.length > 0 && (
-                    <div className="space-y-2 pt-1 animate-fade-in">
-                      <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
-                        Archivos adjuntados ({files.length})
-                      </span>
-                      <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                        {files.map((f, i) => (
-                          <div key={i} className="flex items-center justify-between p-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs">
-                            <div className="flex items-center gap-2 truncate pr-2">
-                              <FileText size={14} className="text-zinc-400 shrink-0" />
-                              <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">{f.name}</span>
-                              <span className="text-[10px] text-zinc-400">({(f.size / 1024).toFixed(0)} KB)</span>
-                            </div>
+                  {showExpedientes && (
+                    <div className="p-4 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50 animate-fade-in">
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {casosFiltrados.map((c) => {
+                          const isSel = casoSel === c.id;
+                          return (
                             <button
+                              key={c.id}
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); removeFile(i) }}
-                              className="p-1 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-                              title="Quitar archivo"
+                              onClick={() => { setCasoSel(isSel ? '' : c.id); setFiles([]); }}
+                              className={cn(
+                                "px-3 py-2 rounded-xl text-xs font-mono font-medium transition-all flex items-center gap-2 border cursor-pointer",
+                                isSel 
+                                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm"
+                                  : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
+                              )}
                             >
-                              <X size={13} />
+                              <FolderOpen size={13} />
+                              <span>{c.id}</span>
+                              {c.total_archivos !== undefined && (
+                                <span className={cn("text-[10px] px-1.5 py-0.2 rounded-md", isSel ? "bg-zinc-800 text-zinc-300 dark:bg-zinc-200 dark:text-zinc-800" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500")}>
+                                  {c.total_archivos} docs
+                                </span>
+                              )}
                             </button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
                 </div>
+              )}
 
-                {/* 2. Selector de repositorio con enlace de inspecciÃ³n */}
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                    O seleccionar expediente del repositorio
-                  </span>
-
-                  <div className="p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/60 flex flex-col justify-between min-h-[160px]">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <FolderOpen size={16} className="text-zinc-500" />
-                          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                            CatÃ¡logo de expedientes
-                          </span>
-                        </div>
-                        {casoSel && (
-                          <button
-                            type="button"
-                            onClick={() => onInspeccionarCaso(casoSel)}
-                            className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <Eye size={12} /> Ver / AÃ±adir docs
-                          </button>
-                        )}
-                      </div>
-
-                      <select
-                        value={casoSel}
-                        onChange={e => {
-                          setCasoSel(e.target.value)
-                          if (e.target.value) setFiles([])
-                          setError('')
-                        }}
-                        className="w-full px-4 py-3 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:outline-none focus:ring-1 focus:ring-zinc-400 text-zinc-800 dark:text-zinc-200 cursor-pointer font-sans font-medium"
-                      >
-                        <option value="">Seleccionar expediente de la lista...</option>
-                        {casosFiltrados.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.id} â€” [{c.tipo.toUpperCase()}] {c.total_archivos !== undefined ? `(${c.total_archivos} docs - ${c.porcentaje || 0}%)` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <p className="text-[11px] text-zinc-400 leading-relaxed mt-4">
-                      Permite reproducir y liquidar de forma inmediata un caso registrado en el repositorio institucional.
-                    </p>
-                  </div>
+              {/* Zona de Arrastre de Archivos */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleFileDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-3",
+                  isDragging 
+                    ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/40" 
+                    : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-zinc-50/30 dark:bg-zinc-950/30"
+                )}
+              >
+                <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx" onChange={handleFileSelect} className="hidden" />
+                <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                  <UploadCloud size={24} />
                 </div>
-
+                <div>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    Haga clic para subir archivos o arrástrelos aquí
+                  </p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                    Facturas de hotel, billetes de transporte, tickets de autopista, certificados de asistencia o mapas
+                  </p>
+                </div>
               </div>
 
-              {/* Resumen de confirmaciÃ³n de documentos con botÃ³n de inspecciÃ³n */}
-              {tieneFicheroOExpediente && (
-                <div className="p-4 bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between animate-fade-in">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 size={16} className="text-zinc-800 dark:text-zinc-200" />
-                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                      DocumentaciÃ³n preparada: <span className="font-semibold text-zinc-950 dark:text-zinc-50">{casoSel || `${files.length} archivo(s) adjunto(s)`}</span>
-                    </span>
+              {files.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                    Documentos Adjuntados ({files.length})
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {files.map((f, i) => (
+                      <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-800 text-xs">
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <FileText size={14} className="text-zinc-400 shrink-0" />
+                          <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">{f.name}</span>
+                          <span className="text-[10px] text-zinc-400 shrink-0">({(f.size / 1024).toFixed(0)} KB)</span>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="text-zinc-400 hover:text-red-500 p-1 cursor-pointer">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  {casoSel ? (
-                    <button
-                      type="button"
-                      onClick={() => onInspeccionarCaso(casoSel)}
-                      className="text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <Eye size={13} /> Inspeccionar requisitos
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Listo para avanzar</span>
-                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* PASO 3 (SOLO PARA DIETAS): RÃ‰GIMEN NORMATIVO */}
-          {isDietas && currentStep === 3 && (
-            <div className="space-y-6 animate-fade-in-up">
+          {/* PASO 3: RÉGIMEN NORMATIVO (SOLO DIETAS) */}
+          {currentStep === 3 && isDietas && (
+            <div className="space-y-6 animate-fade-in">
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
-                  3. RÃ©gimen de financiaciÃ³n y marco normativo
-                </h3>
-                <p className="text-xs text-zinc-500">
-                  Seleccione las reglas de liquidaciÃ³n y topes legales a aplicar sobre las facturas de hotel y manutenciÃ³n.
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">3. Marco Normativo y Fuente de Financiación</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  El sistema detectará automáticamente la fuente según los documentos, pero puede fijarla manualmente si lo desea.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { id: '', label: 'DetecciÃ³n automÃ¡tica', desc: 'Identifica la normativa segÃºn los justificantes' },
-                  { id: 'UEX', label: 'UEX Institucional', desc: 'Tarifa general de la Universidad' },
-                  { id: 'G24', label: 'G24 Grupos UEx', desc: 'Ayudas a grupos de investigaciÃ³n' },
-                  { id: 'PEI', label: 'PEI Excelencia', desc: 'Proyectos autonÃ³micos de investigaciÃ³n' },
-                  { id: 'NAL', label: 'Estatal (BOE)', desc: 'Tope hotel 65,97 â‚¬/noche' },
-                  { id: 'JEX', label: 'AutonÃ³mico (DOE)', desc: 'Tope hotel 120,00 â‚¬/noche' },
-                ].map(opt => {
-                  const isSelected = tipoProyecto === opt.id
+                  { id: '', title: 'Detección Automática (IA)', desc: 'El agente identifica la fuente mediante los logos y el proyecto.' },
+                  { id: 'UEX', title: 'Plan Estatal / UEx', desc: 'Dietas según RD 462/2002 (37,70 €/día manutención, 65,97 €/noche hotel).' },
+                  { id: 'JUNTA', title: 'Junta de Extremadura', desc: 'Decreto Autonómico (53,34 €/día manutención, 102,56 €/noche hotel, aplica IRPF).' }
+                ].map((m) => {
+                  const isSel = tipoProyecto === m.id;
                   return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setTipoProyecto(opt.id)}
+                    <div
+                      key={m.id}
+                      onClick={() => setTipoProyecto(m.id)}
                       className={cn(
-                        "p-4 rounded-2xl text-left border transition-all cursor-pointer flex flex-col justify-between",
-                        isSelected
-                          ? "bg-zinc-100/90 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-50 border-zinc-900 dark:border-zinc-100 ring-1 ring-zinc-900/15 dark:ring-zinc-100/20 shadow-xs"
-                          : "bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 hover:bg-zinc-100/50"
+                        "p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between",
+                        isSel 
+                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/50 shadow-sm" 
+                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300"
                       )}
                     >
-                      <div className="font-bold text-xs flex items-center justify-between mb-1.5">
-                        <span className={isSelected ? "font-extrabold" : ""}>{opt.label}</span>
-                        {isSelected && <Check size={14} className="text-zinc-900 dark:text-zinc-100" />}
+                      <div>
+                        <h4 className="font-bold text-xs text-zinc-900 dark:text-zinc-100 mb-1">{m.title}</h4>
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">{m.desc}</p>
                       </div>
-                      <span className={cn("text-[11px] leading-relaxed", isSelected ? "text-zinc-600 dark:text-zinc-300" : "text-zinc-400")}>
-                        {opt.desc}
-                      </span>
-                    </button>
-                  )
+                      <div className="mt-3 text-[10px] font-bold text-zinc-400">
+                        {isSel ? <span className="text-zinc-900 dark:text-zinc-100 font-bold">✓ Seleccionado</span> : 'Seleccionar'}
+                      </div>
+                    </div>
+                  );
                 })}
               </div>
             </div>
           )}
 
-          {/* PASO FINAL: CONFIRMACIÃ“N */}
-          {((isDietas && currentStep === 4) || (!isDietas && currentStep === 3)) && (
-            <div className="space-y-6 animate-fade-in-up">
+          {/* PASO FINAL: CONFIRMACIÓN */}
+          {((currentStep === 4 && isDietas) || (currentStep === 3 && !isDietas)) && (
+            <div className="space-y-6 animate-fade-in">
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
-                  {isDietas ? '4' : '3'}. Resumen y confirmaciÃ³n de la solicitud
-                </h3>
-                <p className="text-xs text-zinc-500">
-                  Revise los parÃ¡metros antes de lanzar el cÃ¡lculo automÃ¡tico.
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Confirmación y Lanzamiento del Agente</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Revise los parámetros antes de iniciar el flujo de extracción multimodal y cálculo determinista.
                 </p>
               </div>
 
-              <div className="p-6 rounded-3xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3.5 text-xs">
-                <div className="flex justify-between items-center pb-2.5 border-b border-zinc-200 dark:border-zinc-800">
-                  <span className="text-zinc-500 font-medium">Procedimiento:</span>
-                  <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                    {TEMPLATES.find(t => t.id === selectedTemplate)?.titulo || 'LiquidaciÃ³n Oficial'}
+              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
+                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <span className="text-zinc-500">Procedimiento:</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{TEMPLATES.find(t => t.id === selectedTemplate)?.titulo}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <span className="text-zinc-500">Expediente / Archivos:</span>
+                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                    {casoSel ? casoSel : `${files.length} archivos adjuntados`}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pb-2.5 border-b border-zinc-200 dark:border-zinc-800">
-                  <span className="text-zinc-500 font-medium">Expediente / Archivos:</span>
-                  <span className="font-bold font-mono text-zinc-900 dark:text-zinc-100">{casoSel || `${files.length} archivo(s) local(es)`}</span>
-                </div>
-                {isDietas && (
-                  <div className="flex justify-between items-center pb-2.5 border-b border-zinc-200 dark:border-zinc-800">
-                    <span className="text-zinc-500 font-medium">RÃ©gimen normativo:</span>
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100">{tipoProyecto || 'DetecciÃ³n automÃ¡tica'}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-500 font-medium">Documento resultante:</span>
-                  <span className="font-bold text-zinc-900 dark:text-zinc-100">Ticket contable y PDF oficial SGTRI</span>
+                <div className="flex justify-between py-1">
+                  <span className="text-zinc-500">Motor de Extracción:</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">Google Gemini 2.5 Flash (1M tokens)</span>
                 </div>
               </div>
 
               <div className="flex justify-center pt-2">
-                <Btn size="lg" onClick={ejecutar} disabled={running} className="w-full sm:w-auto px-10 py-4 shadow-lg text-sm">
-                  {running ? <><Loader2 size={16} className="animate-spin" /> Procesando liquidaciÃ³n...</> : <><Play size={16} fill="currentColor" /> Iniciar LiquidaciÃ³n</>}
+                <Btn 
+                  size="lg" 
+                  variant="primary" 
+                  disabled={running || !tieneFicheroOExpediente} 
+                  onClick={ejecutar}
+                  className="w-full sm:w-auto px-8 shadow-md cursor-pointer"
+                >
+                  {running ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 size={16} className="animate-spin" /> Procesando expediente...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2 font-bold">
+                      <Play size={16} /> Ejecutar Liquidación Oficial
+                    </span>
+                  )}
                 </Btn>
               </div>
             </div>
           )}
 
-          {/* BARRA DE NAVEGACIÃ“N (FLECHAS Y PUNTITOS) */}
-          <div className="fixed bottom-0 left-0 sm:left-64 right-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] p-4 sm:px-8 flex items-center justify-between animate-fade-in-up">
-            <button
-              onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
-              disabled={currentStep === 1 || running}
-              className={cn(
-                "inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-2xl border transition-colors cursor-pointer",
-                currentStep > 1 && !running
-                  ? "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100"
-                  : "opacity-0 pointer-events-none"
-              )}
-            >
-              <ChevronLeft size={16} /> Anterior
-            </button>
+          {/* BOTONES DE NAVEGACIÓN DEL WIZARD */}
+          <div className="mt-8 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+            {currentStep > 1 ? (
+              <Btn size="sm" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} disabled={running} className="cursor-pointer">
+                <ChevronLeft size={16} className="mr-1" /> Anterior
+              </Btn>
+            ) : <div />}
 
-            <div className="flex items-center gap-2">
-              {STEPS.map((s) => (
+            {currentStep < totalSteps && (
+              <Btn 
+                size="sm" 
+                variant="primary" 
+                onClick={() => setCurrentStep(prev => prev + 1)} 
+                disabled={currentStep === 2 && !tieneFicheroOExpediente}
+                className="cursor-pointer"
+              >
+                Siguiente <ChevronRight size={16} className="ml-1" />
+              </Btn>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ESTADO EN EJECUCIÓN CON VISOR DE LOGS */}
+      {running && activeTaskId && (
+        <div className="space-y-4">
+          <RunningInfo text="Procesando expediente mediante Agente Liquidador..." sub="Extrayendo texto, validando certificados y ejecutando cálculo normativo" />
+          <LogViewer raw={taskLogs} />
+        </div>
+      )}
+
+      {/* ERROR */}
+      {error && <AlertErr msg={error} />}
+
+      {/* ========================================================================= */}
+      {/* VISTA OFICIAL DE RESULTADOS (DISEÑO INSTITUCIONAL ELEVADO) */}
+      {/* ========================================================================= */}
+      {result && (
+        <div ref={resultRef} className="space-y-6 animate-fade-in-up">
+
+          {/* 1. HERO BANNER PRINCIPAL CON DICTAMEN OFICIAL */}
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/90 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
+              <div>
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Dictamen de Liquidación</span>
+                  <StatusBadge ok={result.ok} sinGt={result.sin_ground_truth} />
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold">
+                    Normativa UEx 2025/2026
+                  </span>
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 font-mono tracking-tight">
+                  Expediente: {result.caso_id}
+                </h3>
+              </div>
+
+              <div className="flex flex-wrap gap-2.5 items-center">
+                <Btn size="md" variant="outline" onClick={() => window.open(`/api/txt/generar/${result.caso_id}`, '_blank')} className="flex items-center gap-1.5 shadow-sm cursor-pointer">
+                  <FileText size={15} />
+                  Memoria Justificativa (TXT)
+                </Btn>
+                <Btn size="md" variant="primary" onClick={() => window.open(`/api/pdf/generar/${result.caso_id}`, '_blank')} className="flex items-center gap-1.5 shadow-sm cursor-pointer">
+                  <Printer size={15} />
+                  Descargar PDF Oficial UEx
+                </Btn>
+              </div>
+            </div>
+
+            {/* TARJETAS DE IMPORTES CLAVE (KPIs) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+              
+              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
+                  Total Devengado Bruto
+                </span>
+                <p className="text-2xl font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
+                  {result.liquido_ag.toFixed(2)} €
+                </p>
+                <span className="text-[11px] text-zinc-400 mt-0.5 block">Suma de conceptos abonables</span>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
+                  Retención IRPF
+                </span>
+                <p className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
+                  0.00 €
+                </p>
+                <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-medium mt-0.5 block">
+                  100% Exento (RD 462/2002)
+                </span>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
+                  Anticipo Descontado
+                </span>
+                <p className="text-2xl font-extrabold font-mono text-zinc-700 dark:text-zinc-300">
+                  0.00 €
+                </p>
+                <span className="text-[11px] text-zinc-400 mt-0.5 block">Pendiente de abono íntegro</span>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 block mb-1">
+                  Líquido a Percibir
+                </span>
+                <p className="text-2xl sm:text-3xl font-black font-mono">
+                  {result.liquido_ag.toFixed(2)} €
+                </p>
+                <span className="text-[11px] text-zinc-300 dark:text-zinc-700 font-medium mt-0.5 block">
+                  Propuesta neta a transferir
+                </span>
+              </div>
+
+            </div>
+          </div>
+
+          {/* 2. PESTAÑAS DE CONTENIDO DETALLADO */}
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/90 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+            
+            {/* SELECTOR DE PESTAÑAS ELEGANTE */}
+            <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-2 overflow-x-auto pb-px">
+              {[
+                { id: 'desglose', label: 'Desglose de Liquidación Económica' },
+                { id: 'fundamentacion', label: 'Régimen Fiscal y Fundamento Jurídico' },
+                { id: 'json', label: 'Esquema JSON' },
+                { id: 'auditoria', label: 'Auditoría y Trazabilidad' },
+                { id: 'grafo', label: 'Grafo de Ejecución' }
+              ].map(t => (
                 <button
-                  key={s.num}
-                  onClick={() => {
-                    if (s.num === 1) setCurrentStep(1)
-                    if (s.num === 2) setCurrentStep(2)
-                    if (s.num >= 3 && tieneFicheroOExpediente) setCurrentStep(s.num)
-                  }}
-                  disabled={(s.num > 2 && !tieneFicheroOExpediente) || running}
-                  title={`Ir al paso ${s.num}`}
-                  className="p-1 cursor-pointer disabled:cursor-not-allowed"
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={cn(
+                    "px-4 py-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap cursor-pointer",
+                    activeTab === t.id 
+                      ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100" 
+                      : "border-transparent text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  )}
                 >
-                  <div
-                    className={cn(
-                      "h-2 rounded-full transition-all duration-300",
-                      currentStep === s.num
-                        ? "w-8 bg-zinc-900 dark:bg-zinc-100"
-                        : "w-2 bg-zinc-300 dark:bg-zinc-700"
-                    )}
-                  />
+                  {t.label}
                 </button>
               ))}
             </div>
 
-            {currentStep < totalSteps ? (
-              <button
-                onClick={() => setCurrentStep(prev => Math.min(totalSteps, prev + 1))}
-                disabled={(currentStep === 2 && !tieneFicheroOExpediente) || running}
-                className={cn(
-                  "inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-2xl transition-all duration-200 cursor-pointer",
-                  (currentStep !== 2 || tieneFicheroOExpediente) && !running
-                    ? "bg-zinc-900 hover:bg-black text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 shadow-sm"
-                    : "opacity-30 cursor-not-allowed bg-zinc-200 dark:bg-zinc-800 text-zinc-400"
-                )}
-              >
-                Siguiente <ChevronRight size={16} />
-              </button>
-            ) : (
-              <div className="w-24" />
-            )}
+            <div className="mt-8">
+              
+              {/* TAB 1: DESGLOSE ECONÓMICO */}
+              {activeTab === 'desglose' && (
+                <div className="space-y-8 animate-fade-in">
+                  {result.liquidacion && (result.liquidacion as any).conceptos ? (() => {
+                    const liq = result.liquidacion as any;
+                    const manutencion = liq.conceptos.manutencion;
+                    const transporte = liq.conceptos.transporte;
+                    const alojamiento = liq.conceptos.alojamiento;
+                    const inscripcion = liq.conceptos.inscripcion;
+
+                    return (
+                      <>
+                        {/* PARÁMETROS Y TARIFAS */}
+                        <div className="p-5 bg-zinc-50/80 dark:bg-zinc-950/80 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-3 flex items-center gap-1.5">
+                            <Info size={14} className="text-zinc-400" />
+                            Régimen y Tarifas Aplicadas al Expediente
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                            <div>
+                              <span className="text-zinc-400 block text-[11px]">Marco de Financiación:</span>
+                              <span className="font-bold text-zinc-800 dark:text-zinc-200 uppercase">
+                                {liq.identificacion?.fuente_financiacion || 'Plan Estatal / UEx'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400 block text-[11px]">Tarifa Dieta Diaria:</span>
+                              <span className="font-bold font-mono text-zinc-800 dark:text-zinc-200">
+                                {(liq.tarifas_aplicadas?.manutencion_dia || 37.70).toFixed(2)} €/día
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400 block text-[11px]">Tope Máx. Hotel:</span>
+                              <span className="font-bold font-mono text-zinc-800 dark:text-zinc-200">
+                                {(liq.tarifas_aplicadas?.alojamiento_max_dia || 65.97).toFixed(2)} €/noche
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400 block text-[11px]">Tarifa Kilometraje:</span>
+                              <span className="font-bold font-mono text-zinc-800 dark:text-zinc-200">
+                                {(liq.tarifas_aplicadas?.km_vehiculo || 0.26).toFixed(2)} €/km
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 1. MANUTENCIÓN */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center text-[10px]">1</span>
+                              Dietas de Manutención
+                            </h4>
+                            <span className="text-xs text-zinc-500 font-medium">
+                              Jornadas computables: <strong>{manutencion?.factor_total?.toFixed(1) || 0} días</strong>
+                            </span>
+                          </div>
+
+                          <table className="w-full text-left text-xs border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                            <thead>
+                              <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold">
+                                <th className="p-3.5">Fecha</th>
+                                <th className="p-3.5">Tipo de Jornada</th>
+                                <th className="p-3.5 text-right">Factor Normativo</th>
+                                <th className="p-3.5 text-right">Importe Liquidado</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                              {manutencion?.detalle_dias?.map((d: any, i: number) => {
+                                const factor = typeof d.factor === 'number' ? d.factor : 1.0;
+                                const tarifa = manutencion?.tarifa_dia || liq.tarifas_aplicadas?.manutencion_dia || 37.70;
+                                const importeFila = typeof d.importe === 'number' ? d.importe : (factor * tarifa);
+
+                                return (
+                                  <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                                    <td className="p-3.5 font-mono font-medium">{d.dia}</td>
+                                    <td className="p-3.5 capitalize text-zinc-600 dark:text-zinc-400">
+                                      {d.tipo === 'salida' ? 'Jornada de salida (100%)' : d.tipo === 'regreso' ? 'Jornada de regreso (50%)' : 'Jornada completa (100%)'}
+                                    </td>
+                                    <td className="p-3.5 text-right font-mono text-zinc-500">{factor.toFixed(1)}x</td>
+                                    <td className="p-3.5 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">{importeFila.toFixed(2)} €</td>
+                                  </tr>
+                                );
+                              })}
+                              <tr className="bg-zinc-50/80 dark:bg-zinc-950 font-bold border-t border-zinc-200 dark:border-zinc-800">
+                                <td colSpan={3} className="p-3.5 text-right">Total Manutención Devengada:</td>
+                                <td className="p-3.5 text-right font-mono text-sm">{(manutencion?.importe || 0).toFixed(2)} €</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* 2. TRANSPORTE */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center text-[10px]">2</span>
+                            Gastos de Desplazamiento y Kilometraje
+                          </h4>
+                          <table className="w-full text-left text-xs border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                            <thead>
+                              <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold">
+                                <th className="p-3.5">Medio / Vehículo</th>
+                                <th className="p-3.5">Itinerario</th>
+                                <th className="p-3.5 text-center">Detalle del Trayecto</th>
+                                <th className="p-3.5 text-right">Total Abonable</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                              {transporte?.detalle?.map((t: any, i: number) => {
+                                const isCoche = t.tipo === 'vehiculo_particular' || Boolean(t.km);
+                                const tarifaKm = t.tarifa_km || liq.tarifas_aplicadas?.km_vehiculo || 0.26;
+                                const vehiculoDesc = [t.marca, t.modelo].filter(Boolean).join(' ');
+                                const matriculaDesc = t.matricula ? `[${t.matricula}]` : '';
+
+                                return (
+                                  <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                                    <td className="p-3.5 font-semibold">
+                                      {isCoche ? (
+                                        <div>
+                                          <span className="font-bold text-zinc-900 dark:text-zinc-100">Vehículo particular</span>
+                                          {(vehiculoDesc || matriculaDesc) && (
+                                            <span className="block text-[11px] text-zinc-500 font-normal">
+                                              {vehiculoDesc} {matriculaDesc}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="capitalize">{t.medio || t.tipo || 'Transporte público'}</span>
+                                      )}
+                                    </td>
+                                    <td className="p-3.5 text-zinc-600 dark:text-zinc-400">
+                                      {t.itinerario || t.descripcion || (isCoche && liq.identificacion?.destino ? `Cáceres ↔ ${liq.identificacion.destino}` : 'Desplazamiento oficial')}
+                                    </td>
+                                    <td className="p-3.5 text-center font-mono">
+                                      {isCoche ? (
+                                        <div>
+                                          <span className="font-bold text-zinc-800 dark:text-zinc-200">{t.km} km</span>
+                                          <span className="block text-[10px] text-zinc-400">({t.km} km × {tarifaKm.toFixed(2)} €/km)</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-zinc-400">{t.fecha || '-'}</span>
+                                      )}
+                                    </td>
+                                    <td className="p-3.5 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                                      {(typeof t.importe === 'number' ? t.importe : (t.importe_abonable || (t.km ? t.km * tarifaKm : 0))).toFixed(2)} €
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              <tr className="bg-zinc-50/80 dark:bg-zinc-950 font-bold border-t border-zinc-200 dark:border-zinc-800">
+                                <td colSpan={3} className="p-3.5 text-right">Total Desplazamiento:</td>
+                                <td className="p-3.5 text-right font-mono text-sm">{(transporte?.importe || 0).toFixed(2)} €</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* 3. ALOJAMIENTO */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center text-[10px]">3</span>
+                            Hospedaje y Alojamiento
+                          </h4>
+                          <table className="w-full text-left text-xs border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                            <thead>
+                              <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold">
+                                <th className="p-3.5">Establecimiento</th>
+                                <th className="p-3.5 text-center">Noches</th>
+                                <th className="p-3.5 text-right">Gasto Justificado</th>
+                                <th className="p-3.5 text-right">Importe Abonable</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                              {(!alojamiento?.detalle || alojamiento.detalle.length === 0) ? (
+                                <tr><td colSpan={4} className="p-3.5 text-center text-zinc-400 italic">No constan facturas de alojamiento</td></tr>
+                              ) : (
+                                alojamiento.detalle.map((a: any, i: number) => (
+                                  <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                                    <td className="p-3.5 font-semibold">
+                                      <div>{a.establecimiento || 'Hotel'}</div>
+                                      {a.exceso_no_abonable > 0 && (
+                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 block font-normal">
+                                          Tope oficial: {(a.limite_aplicable || 0).toFixed(2)} € · Exceso no abonable: -{a.exceso_no_abonable.toFixed(2)} €
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3.5 text-center font-mono">{a.noches}</td>
+                                    <td className="p-3.5 text-right font-mono text-zinc-500">{a.importe_real.toFixed(2)} €</td>
+                                    <td className="p-3.5 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">{a.importe_abonable.toFixed(2)} €</td>
+                                  </tr>
+                                ))
+                              )}
+                              <tr className="bg-zinc-50/80 dark:bg-zinc-950 font-bold border-t border-zinc-200 dark:border-zinc-800">
+                                <td colSpan={3} className="p-3.5 text-right">Total Alojamiento Abonable:</td>
+                                <td className="p-3.5 text-right font-mono text-sm">{(alojamiento?.importe || 0).toFixed(2)} €</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* 4. INSCRIPCIÓN / SUPLIDOS */}
+                        {inscripcion && (
+                          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 text-xs flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Building2 size={16} className="text-zinc-400" />
+                              <div>
+                                <span className="font-bold text-zinc-900 dark:text-zinc-100 block">Cuota de Inscripción al Congreso / Jornadas</span>
+                                <span className="text-[11px] text-zinc-500">
+                                  {inscripcion.pagada_por === 'tarjeta_institucional' 
+                                    ? 'Abonada previamente mediante tarjeta institucional (no reembolsable al titular)'
+                                    : 'Abonada por el investigador'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">
+                              {(inscripcion.importe_total || inscripcion.importe || 0).toFixed(2)} €
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
+                    <div className="text-center py-8 text-zinc-400 text-xs">No hay desglose disponible para este trámite.</div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: FUNDAMENTACIÓN JURÍDICO-TRIBUTARIA */}
+              {activeTab === 'fundamentacion' && (
+                <div className="space-y-6 animate-fade-in text-xs leading-relaxed">
+                  <div className="p-6 rounded-2xl bg-zinc-50/70 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 space-y-4">
+                    <div className="flex items-center gap-2 pb-3 border-b border-zinc-200/80 dark:border-zinc-800">
+                      <Scale size={18} className="text-zinc-700 dark:text-zinc-300" />
+                      <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                        Fundamento Jurídico-Tributario de la Liquidación
+                      </h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2">
+                          <ShieldCheck size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-0.5">
+                              Régimen de Exención de IRPF (0,00 €)
+                            </span>
+                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">
+                              Conforme al <strong>Artículo 9 del Reglamento del IRPF (RD 439/2007)</strong> y el <strong>Real Decreto 462/2002</strong> sobre indemnizaciones por razón del servicio, las asignaciones para gastos de manutención (37,70 €/día) y kilometraje (0,26 €/km) devengadas en este expediente se encuentran <strong>íntegramente dentro de los límites exentos de tributación</strong>. Por tanto, no procede aplicar retención a cuenta del IRPF sobre el importe devengado.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <FileCheck size={16} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-0.5">
+                              Compensación por Uso de Vehículo Particular
+                            </span>
+                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">
+                              La compensación de <strong>0,26 €/km</strong> (Orden HFP/792/2023) cubre de forma íntegra los gastos de combustible, desgaste mecánico, amortización y seguro del vehículo. No procede el reembolso adicional de tickets de repostaje al quedar absorbidos por la indemnización de kilometraje.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-0.5">
+                              Aplicación de Topes Máximos de Alojamiento
+                            </span>
+                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">
+                              De acuerdo con la normativa del Plan Estatal, el importe máximo liquidable por noche de hotel en territorio nacional es de <strong>65,97 €</strong> (Grupo 2). Las cantidades que excedan dicho umbral (en este caso, 73,72 €) quedan excluidas de la liquidación oficial con cargo a los fondos públicos del proyecto.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2">
+                          <Building2 size={16} className="text-zinc-500 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-0.5">
+                              Destino y Fiscalización del Expediente
+                            </span>
+                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">
+                              Expediente fiscalizado para su remisión al <strong>Servicio de Gestión y Transferencia de Resultados de la Investigación (SGTRI)</strong> y tramitación de la orden de transferencia bancaria a la cuenta IBAN acreditada del investigador.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: ESQUEMA JSON */}
+              {activeTab === 'json' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setJsonTab('liquidacion')}
+                        className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer", jsonTab === 'liquidacion' ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}
+                      >
+                        Liquidación Normativa (JSON)
+                      </button>
+                      <button
+                        onClick={() => setJsonTab('extraccion')}
+                        className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer", jsonTab === 'extraccion' ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}
+                      >
+                        Extracción Semántica (JSON)
+                      </button>
+                    </div>
+
+                    <Btn size="sm" variant="outline" onClick={() => copyJsonToClipboard(jsonTab === 'liquidacion' ? result.liquidacion : result.extraccion)} className="cursor-pointer">
+                      <Copy size={13} className="mr-1" />
+                      {copied ? '¡Copiado!' : 'Copiar JSON'}
+                    </Btn>
+                  </div>
+
+                  <pre className="p-5 rounded-2xl bg-zinc-950 text-zinc-300 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner leading-relaxed">
+                    {JSON.stringify(jsonTab === 'liquidacion' ? result.liquidacion : result.extraccion, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {/* TAB 4: AUDITORÍA Y TRAZABILIDAD */}
+              {activeTab === 'auditoria' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <Terminal size={14} className="text-zinc-400" />
+                      Registro de Ejecución y Trazabilidad de Nodos
+                    </h4>
+                  </div>
+                  <pre className="p-5 rounded-2xl bg-zinc-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner whitespace-pre-wrap leading-relaxed">
+                    {result.logs || 'No hay logs de auditoría disponibles.'}
+                  </pre>
+                </div>
+              )}
+
+              {/* TAB 5: GRAFO */}
+              {activeTab === 'grafo' && (
+                <div className="animate-fade-in">
+                  <ViewGrafo />
+                </div>
+              )}
+
+            </div>
           </div>
 
-          {running && (
-            <div className="mt-4">
-              <RunningInfo
-                text="Procesando expediente y aplicando reglas contables..."
-                sub="El sistema estÃ¡ extrayendo los conceptos de los justificantes y cruzando las tarifas."
-              />
-            </div>
-          )}
-          {error && <AlertErr msg={error} />}
         </div>
       )}
 
-      {/* MODAL DE VISTA PREVIA DE PLANTILLA */}
+      {/* MODAL DE INFORMACIÓN Y VISTA PREVIA DE LA PLANTILLA OFICIAL (GRAN FORMATO) */}
       {previewTemplateModal && (
-        <div
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-fade-in"
           onClick={() => setPreviewTemplateModal(null)}
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
         >
-          <div
-            onClick={e => e.stopPropagation()}
-            className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 max-w-5xl w-full p-6 shadow-2xl flex flex-col max-h-[90vh]"
+          <div 
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 sm:p-6 max-w-6xl w-full shadow-2xl space-y-4 animate-pop max-h-[95vh] h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800">
-              <div>
-                <DarkBadge label={previewTemplateModal.badge} />
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mt-1">{previewTemplateModal.titulo}</h3>
+            
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
+                  {previewTemplateModal.badge || 'Modelo Oficial'}
+                </span>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                    {previewTemplateModal.titulo}
+                  </h3>
+                  <span className="text-xs text-zinc-400">
+                    Sede Electrónica — Universidad de Extremadura
+                  </span>
+                </div>
               </div>
-              <button
-                onClick={() => setPreviewTemplateModal(null)}
-                className="p-2 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer"
-              >
-                âœ•
-              </button>
+              <div className="flex items-center gap-2">
+                {previewTemplateModal.img && (
+                  <a 
+                    href={previewTemplateModal.img} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                  >
+                    <ZoomIn size={14} /> 
+                    <span className="hidden sm:inline">Nueva Pestaña</span>
+                  </a>
+                )}
+                <button 
+                  onClick={() => setPreviewTemplateModal(null)} 
+                  className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Cerrar"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto my-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950 p-2">
-              <img src={previewTemplateModal.img} alt={previewTemplateModal.titulo} className="w-full h-auto rounded-xl shadow-sm" />
+            {/* Cuerpo del Modal: Visor de Gran Formato con Panel Lateral */}
+            <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
+              
+              {/* Visor de Documento Principal (Columna Grande) */}
+              <div className="lg:col-span-8 flex flex-col min-h-0 bg-zinc-100/80 dark:bg-zinc-950/80 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-inner">
+                <div className="px-4 py-2 bg-zinc-200/60 dark:bg-zinc-900/60 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-500 shrink-0">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <FileCheck size={14} className="text-zinc-400" />
+                    Documento Oficial Normalizado
+                  </span>
+                  <span className="text-[11px] font-mono">Formato Impreso A4</span>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 flex items-center justify-center bg-zinc-200/30 dark:bg-zinc-950/50">
+                  {previewTemplateModal.img ? (
+                    <img 
+                      src={previewTemplateModal.img} 
+                      alt={previewTemplateModal.titulo} 
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-xl border border-zinc-200/80 dark:border-zinc-800 bg-white" 
+                    />
+                  ) : (
+                    <div className="text-zinc-400 text-xs">No hay imagen disponible para esta plantilla</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Panel Lateral de Información y Metadatos */}
+              <div className="lg:col-span-4 flex flex-col justify-between overflow-y-auto space-y-4 pr-1">
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                      Descripción del Trámite
+                    </span>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                      {previewTemplateModal.desc}
+                    </p>
+                  </div>
+
+                  {(previewTemplateModal as any).normativa && (
+                    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                        Marco Normativo y Legal
+                      </span>
+                      <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 leading-snug">
+                        {(previewTemplateModal as any).normativa}
+                      </p>
+                    </div>
+                  )}
+
+                  {(previewTemplateModal as any).organismo && (
+                    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                        Órgano Tramitador y Destino
+                      </span>
+                      <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 leading-snug">
+                        {(previewTemplateModal as any).organismo}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2 shrink-0">
+                  <Btn 
+                    size="md" 
+                    variant="primary" 
+                    onClick={() => {
+                      setSelectedTemplate(previewTemplateModal.id);
+                      setPreviewTemplateModal(null);
+                    }}
+                    className="w-full cursor-pointer shadow-md"
+                  >
+                    Usar este Procedimiento
+                  </Btn>
+                  <Btn 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setPreviewTemplateModal(null)} 
+                    className="w-full cursor-pointer"
+                  >
+                    Cerrar
+                  </Btn>
+                </div>
+              </div>
+
             </div>
 
-            <div className="pt-2 flex items-center justify-between gap-4">
-              <p className="text-xs text-zinc-500">{previewTemplateModal.desc}</p>
-              <Btn
-                onClick={() => { setSelectedTemplate(previewTemplateModal.id); setPreviewTemplateModal(null); setCurrentStep(2); }}
-                size="md"
-              >
-                <Play size={13} fill="currentColor" /> Seleccionar y continuar
-              </Btn>
-            </div>
           </div>
         </div>
       )}
 
-      {/* RESULTADOS (Fluidos en la misma pÃ¡gina) */}
-      {result && !running && (
-        <div ref={resultRef} className="space-y-8 animate-fade-in-up">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Resultado Oficial</span>
-                <StatusBadge ok={result.ok} sinGt={result.sin_ground_truth} />
-              </div>
-              <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 font-mono">
-                Expediente: {result.caso_id}
-              </h3>
-            </div>
-
-            <div className="flex flex-wrap gap-3 items-center">
-              <Btn size="md" variant="outline" onClick={reiniciarTramite}>
-                <RotateCcw size={14} /> Nuevo TrÃ¡mite
-              </Btn>
-              <Btn size="md" variant="outline" onClick={() => window.open(`/api/txt/generar/${result.caso_id}`, '_blank')}>
-                <FileText size={14} /> Memoria TXT
-              </Btn>
-              <Btn size="md" variant="primary" onClick={() => window.open(`/api/pdf/generar/${result.caso_id}`, '_blank')}>
-                <Printer size={14} /> Descargar PDF Oficial
-              </Btn>
-            </div>
-          </div>
-
-          <div className={cn("grid gap-5", result.sin_ground_truth ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4")}>
-            <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                {result.sin_ground_truth ? "Propuesta de LiquidaciÃ³n" : "Importe Calculado"}
-              </p>
-              <p className="text-3xl font-extrabold font-mono text-zinc-900 dark:text-zinc-50">
-                {result.liquido_ag.toFixed(2)} â‚¬
-              </p>
-            </div>
-
-            {!result.sin_ground_truth && (
-              <>
-                <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Total Justificado</p>
-                  <p className="text-3xl font-extrabold font-mono text-zinc-600 dark:text-zinc-400">
-                    {result.liquido_esp.toFixed(2)} â‚¬
-                  </p>
-                </div>
-
-                <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">DesviaciÃ³n</p>
-                  <p className={cn("text-3xl font-extrabold font-mono", Math.abs(result.delta) < 0.02 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                    {result.delta >= 0 ? '+' : ''}{result.delta.toFixed(2)} â‚¬
-                  </p>
-                </div>
-
-                <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">PrecisiÃ³n</p>
-                  <p className="text-3xl font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
-                    {Math.round(result.precision * 100)}%
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm">
-            <Tabs tabs={[
-              {
-                label: 'Desglose de LiquidaciÃ³n',
-                content: (
-                  <div className="space-y-8">
-                    {result.liquidacion && (result.liquidacion as any).conceptos ? (() => {
-                      const liq = result.liquidacion as any
-                      const manutencion = liq.conceptos.manutencion
-                      const transporte = liq.conceptos.transporte
-
-                      return (
-                        <>
-                          <div className="p-5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-3 flex items-center gap-1.5">
-                              <Info size={14} className="text-zinc-400" />
-                              Tarifas y parÃ¡metros aplicados
-                            </h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                              <div>
-                                <span className="text-zinc-500 block">FinanciaciÃ³n:</span>
-                                <span className="font-bold uppercase font-mono">{(liq.identificacion?.fuente_financiacion || 'UEX').replace('_', ' ')}</span>
-                              </div>
-                              <div>
-                                <span className="text-zinc-500 block">ManutenciÃ³n:</span>
-                                <span className="font-bold font-mono">{(liq.tarifas_aplicadas?.manutencion_dia || 0).toFixed(2)} â‚¬/dÃ­a</span>
-                              </div>
-                              <div>
-                                <span className="text-zinc-500 block">Tope Hotel:</span>
-                                <span className="font-bold font-mono">{(liq.tarifas_aplicadas?.alojamiento_max_dia || 0).toFixed(2)} â‚¬/noche</span>
-                              </div>
-                              <div>
-                                <span className="text-zinc-500 block">Tarifa Km:</span>
-                                <span className="font-bold font-mono">{(liq.tarifas_aplicadas?.km_vehiculo || 0).toFixed(2)} â‚¬/km</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
-                                1. Dietas de ManutenciÃ³n
-                              </h4>
-                              <span className="text-xs text-zinc-500">
-                                DÃ­as computables: <strong>{manutencion?.factor_total?.toFixed(1) || 0}</strong>
-                              </span>
-                            </div>
-
-                            <table className="w-full text-left text-xs border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                              <thead>
-                                <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold">
-                                  <th className="p-3.5">Fecha</th>
-                                  <th className="p-3.5">Tipo de Jornada</th>
-                                  <th className="p-3.5 text-right">Factor</th>
-                                  <th className="p-3.5 text-right">Importe</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                                {manutencion?.detalle_dias?.map((d: any, i: number) => (
-                                  <tr key={i}>
-                                    <td className="p-3.5 font-mono">{d.dia}</td>
-                                    <td className="p-3.5 capitalize text-zinc-600 dark:text-zinc-400">{d.tipo}</td>
-                                    <td className="p-3.5 text-right font-mono">{d.factor.toFixed(1)}x</td>
-                                    <td className="p-3.5 text-right font-mono font-bold">{d.importe.toFixed(2)} â‚¬</td>
-                                  </tr>
-                                ))}
-                                <tr className="bg-zinc-50/80 dark:bg-zinc-950 font-bold border-t border-zinc-200 dark:border-zinc-800">
-                                  <td colSpan={3} className="p-3.5 text-right">Total ManutenciÃ³n:</td>
-                                  <td className="p-3.5 text-right font-mono">{(manutencion?.importe || 0).toFixed(2)} â‚¬</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200 mb-2">
-                              2. Gastos de Desplazamiento
-                            </h4>
-                            <table className="w-full text-left text-xs border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                              <thead>
-                                <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold">
-                                  <th className="p-3.5">Medio</th>
-                                  <th className="p-3.5">Itinerario</th>
-                                  <th className="p-3.5 text-center">Detalle / Km</th>
-                                  <th className="p-3.5 text-right">Abonable</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                                {transporte?.vehiculo_particular?.kilometros > 0 && (
-                                  <tr>
-                                    <td className="p-3.5 font-semibold">VehÃ­culo propio</td>
-                                    <td className="p-3.5 text-zinc-600 dark:text-zinc-400">{transporte.vehiculo_particular.itinerario || 'Desplazamiento'}</td>
-                                    <td className="p-3.5 text-center font-mono">{transporte.vehiculo_particular.kilometros} km</td>
-                                    <td className="p-3.5 text-right font-mono font-bold">{transporte.vehiculo_particular.importe.toFixed(2)} â‚¬</td>
-                                  </tr>
-                                )}
-                                {transporte?.otros_transportes?.detalle?.map((t: any, i: number) => (
-                                  <tr key={i}>
-                                    <td className="p-3.5 font-semibold capitalize">{t.medio || 'PÃºblico'}</td>
-                                    <td className="p-3.5 text-zinc-600 dark:text-zinc-400">{t.itinerario || '-'}</td>
-                                    <td className="p-3.5 text-center font-mono text-zinc-400">{t.fecha || '-'}</td>
-                                    <td className="p-3.5 text-right font-mono font-bold">{t.importe_abonable.toFixed(2)} â‚¬</td>
-                                  </tr>
-                                ))}
-                                <tr className="bg-zinc-50/80 dark:bg-zinc-950 font-bold border-t border-zinc-200 dark:border-zinc-800">
-                                  <td colSpan={3} className="p-3.5 text-right">Total Desplazamiento:</td>
-                                  <td className="p-3.5 text-right font-mono">{(transporte?.importe || 0).toFixed(2)} â‚¬</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200 mb-2">
-                              3. Hospedaje y Alojamiento
-                            </h4>
-                            <table className="w-full text-left text-xs border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                              <thead>
-                                <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold">
-                                  <th className="p-3.5">Establecimiento</th>
-                                  <th className="p-3.5 text-center">Noches</th>
-                                  <th className="p-3.5 text-right">Gasto Real</th>
-                                  <th className="p-3.5 text-right">Importe Abonable</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                                {(!liq.conceptos.alojamiento?.detalle || liq.conceptos.alojamiento.detalle.length === 0) ? (
-                                  <tr><td colSpan={4} className="p-3 text-center text-zinc-400 italic">No constan facturas de alojamiento</td></tr>
-                                ) : (
-                                  liq.conceptos.alojamiento.detalle.map((a: any, i: number) => (
-                                    <tr key={i}>
-                                      <td className="p-3.5 font-semibold">{a.establecimiento || 'Hotel'}</td>
-                                      <td className="p-3.5 text-center font-mono">{a.noches}</td>
-                                      <td className="p-3.5 text-right font-mono">{a.importe_real.toFixed(2)} â‚¬</td>
-                                      <td className="p-3.5 text-right font-mono font-bold">{a.importe_abonable.toFixed(2)} â‚¬</td>
-                                    </tr>
-                                  ))
-                                )}
-                                <tr className="bg-zinc-50/80 dark:bg-zinc-950 font-bold border-t border-zinc-200 dark:border-zinc-800">
-                                  <td colSpan={3} className="p-3.5 text-right">Total Alojamiento:</td>
-                                  <td className="p-3.5 text-right font-mono">{(liq.conceptos.alojamiento?.importe || 0).toFixed(2)} â‚¬</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <div className="p-7 bg-zinc-900 text-white dark:bg-zinc-950 dark:text-zinc-100 rounded-3xl border border-zinc-800 shadow-lg">
-                            <div className="flex justify-between items-baseline mb-4">
-                              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Total Devengado Bruto</span>
-                              <span className="font-mono font-bold text-xl text-zinc-100">
-                                {(liq.resumen_economico?.total_devengado || 0).toFixed(2)} â‚¬
-                              </span>
-                            </div>
-
-                            {((liq.resumen_economico?.anticipo_descontado || 0) > 0 || (liq.resumen_economico?.retencion_irpf || 0) > 0) && (
-                              <div className="space-y-2 border-t border-zinc-800 pt-3 mb-4 text-xs">
-                                {(liq.resumen_economico?.anticipo_descontado || 0) > 0 && (
-                                  <div className="flex justify-between text-rose-400 font-semibold">
-                                    <span>Anticipos previos deducidos:</span>
-                                    <span className="font-mono">-{(liq.resumen_economico.anticipo_descontado).toFixed(2)} â‚¬</span>
-                                  </div>
-                                )}
-                                {(liq.resumen_economico?.retencion_irpf || 0) > 0 && (
-                                  <div className="flex justify-between text-rose-400 font-semibold">
-                                    <span>RetenciÃ³n fiscal IRPF:</span>
-                                    <span className="font-mono">-{(liq.resumen_economico.retencion_irpf).toFixed(2)} â‚¬</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="p-4 bg-white/10 dark:bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between shadow-inner">
-                              <span className="font-bold text-xs uppercase tracking-wider text-zinc-300">LÃ­quido a Percibir</span>
-                              <span className="font-mono text-2xl font-extrabold text-white">
-                                {(liq.resumen_economico?.liquido_a_abonar || 0).toFixed(2)} â‚¬
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      )
-                    })() : (
-                      <p className="text-xs text-zinc-500">No hay datos disponibles.</p>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                label: 'Esquema JSON',
-                content: (
-                  <div className="bg-[#09090b] p-6 rounded-3xl border border-zinc-800 overflow-x-auto shadow-inner">
-                    <pre className="text-xs font-mono text-zinc-300">
-                      {JSON.stringify({ extraccion: result.extraccion, liquidacion: result.liquidacion }, null, 2)}
-                    </pre>
-                  </div>
-                ),
-              },
-              { label: 'AuditorÃ­a y Trazabilidad', content: <LogViewer raw={result.logs} /> },
-              { label: 'Grafo de EjecuciÃ³n', content: <ViewGrafo taskId={activeTaskId} /> },
-            ]} />
-          </div>
-        </div>
-      )}
     </div>
-  )
+  );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

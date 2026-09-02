@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from './lib/utils'
 import { ChatWidget } from './ChatWidget'

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { FolderOpen, X, Download, FileText, CheckCircle2, XCircle, FileSpreadsheet, Plus, HelpCircle, Loader2, CheckCircle, AlertTriangle, Trash2, Play } from 'lucide-react'
 import { AlertErr } from '../ui/Alerts'
 import type { DetalleCaso } from '../../lib/types'
@@ -63,7 +63,7 @@ export function ExpedienteInspectorModal({
   }
 
   const handleEliminarArchivo = async (filename: string) => {
-    if (!window.confirm(`Â¿Desea eliminar el archivo "${filename}" del expediente?`)) return
+    if (!window.confirm(`¿Desea eliminar el archivo "${filename}" del expediente?`)) return
     try {
       const res = await fetch(`/api/caso/${casoId}/archivo/${encodeURIComponent(filename)}`, {
         method: 'DELETE'
@@ -90,7 +90,7 @@ export function ExpedienteInspectorModal({
         <div className="flex items-start justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800">
           <div>
             <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">InspecciÃ³n Documental</span>
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Inspección Documental</span>
               {detalle && (
                 <DarkBadge label={detalle.tipo.toUpperCase()} />
               )}
@@ -129,7 +129,7 @@ export function ExpedienteInspectorModal({
                     Estado y Checklist de Requisitos
                   </h4>
                   <p className="text-[11px] text-zinc-400 mt-0.5">
-                    VerificaciÃ³n automÃ¡tica de componentes necesarios para la liquidaciÃ³n oficial.
+                    Verificación automática de componentes necesarios para la liquidación oficial.
                   </p>
                 </div>
                 <div className="text-right">
@@ -177,12 +177,12 @@ export function ExpedienteInspectorModal({
                 <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
                   Archivos en el expediente ({detalle.archivos.length})
                 </h4>
-                <span className="text-[11px] text-zinc-400">PDFs y tablas de cÃ¡lculo</span>
+                <span className="text-[11px] text-zinc-400">PDFs y tablas de cálculo</span>
               </div>
 
               {detalle.archivos.length === 0 ? (
                 <div className="p-8 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl text-xs text-zinc-400">
-                  No hay archivos en este expediente. Puede aÃ±adirlos a continuaciÃ³n.
+                  No hay archivos en este expediente. Puede añadirlos a continuación.
                 </div>
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -232,10 +232,10 @@ export function ExpedienteInspectorModal({
               )}
             </div>
 
-            {/* 3. ZONA PARA AÃ‘ADIR DOCUMENTOS FALTANTES */}
+            {/* 3. ZONA PARA AÑADIR DOCUMENTOS FALTANTES */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                AÃ±adir justificante que falte a este expediente
+                Añadir justificante que falte a este expediente
               </span>
 
               <div
@@ -253,7 +253,7 @@ export function ExpedienteInspectorModal({
                 {uploading ? (
                   <><Loader2 size={15} className="animate-spin" /> Subiendo y actualizando expediente...</>
                 ) : (
-                  <><Plus size={15} /> Seleccionar archivos para aÃ±adir a {casoId}</>
+                  <><Plus size={15} /> Seleccionar archivos para añadir a {casoId}</>
                 )}
               </div>
             </div>

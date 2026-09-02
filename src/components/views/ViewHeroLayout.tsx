@@ -1,4 +1,4 @@
-﻿
+
 import logo from '../../logo_v2.jpg'
 import { ArrowRight } from 'lucide-react'
 import { Btn } from '../ui/Btn'

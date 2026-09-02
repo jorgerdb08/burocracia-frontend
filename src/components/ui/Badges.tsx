@@ -1,4 +1,4 @@
-﻿
+
 import { CheckCircle2, XCircle, HelpCircle } from 'lucide-react'
 
 export function StatusBadge({ ok, sinGt }: { ok: boolean; sinGt?: boolean }) {

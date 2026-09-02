@@ -1,4 +1,4 @@
-﻿import { useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { Terminal } from 'lucide-react'
 
 export function LogLine({ line }: { line: string }) {

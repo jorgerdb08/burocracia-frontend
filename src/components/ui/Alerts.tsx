@@ -1,4 +1,4 @@
-﻿
+
 import { AlertTriangle, Loader2 } from 'lucide-react'
 
 export function AlertErr({ msg }: { msg: string }) {
