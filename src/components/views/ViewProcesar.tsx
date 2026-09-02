@@ -1494,7 +1494,7 @@ export function ViewProcesar({
                           <div className="flex justify-between items-center pt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
                             <span>Total Deducciones del Reembolso Personal:</span>
                             <span className="font-mono font-extrabold text-base text-red-600 dark:text-red-400">
-                              -{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal).toFixed(2)} €
+                              -{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal + balanceFinanciero.irpfRetencion).toFixed(2)} €
                             </span>
                           </div>
                         </div>
@@ -1521,7 +1521,7 @@ export function ViewProcesar({
                           </div>
                           <div className="flex justify-between text-xs text-red-300 dark:text-red-700">
                             <span>Excesos y Pagos UEx:</span>
-                            <span className="font-mono font-bold">-{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal).toFixed(2)} €</span>
+                            <span className="font-mono font-bold">-{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal + balanceFinanciero.irpfRetencion).toFixed(2)} €</span>
                           </div>
                           <div className="pt-2 border-t border-zinc-700/60 dark:border-zinc-300/60 flex justify-between items-center">
                             <span className="font-bold text-sm">Líquido a Percibir:</span>
