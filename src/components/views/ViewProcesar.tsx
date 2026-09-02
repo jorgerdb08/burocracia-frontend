@@ -421,6 +421,8 @@ export function ViewProcesar({
   const balanceFinanciero = useMemo(() => {
     if (!result || !result.liquidacion || !(result.liquidacion as any).conceptos) return null;
     const liq = result.liquidacion as any;
+    const fuente = liq.identificacion?.fuente_financiacion || 'plan_estatal';
+    const esJunta = fuente === 'extremadura';
     const man = liq.conceptos.manutencion?.importe || 0;
     const tra = liq.conceptos.transporte?.importe || 0;
     const aloAbonable = liq.conceptos.alojamiento?.importe || 0;
@@ -429,13 +431,17 @@ export function ViewProcesar({
     const insTotal = liq.conceptos.inscripcion?.importe_total || liq.conceptos.inscripcion?.importe || 0;
     const insPagadaPor = liq.conceptos.inscripcion?.pagada_por || 'tarjeta_investigador';
     const insEsTarjetaInst = insPagadaPor === 'tarjeta_institucional' || liq.conceptos.inscripcion?.reembolsable_al_investigador === false;
+    const irpfRetencion = liq.resumen_economico?.retencion_irpf || liq.irpf?.retencion || 0;
+    const irpfBase = liq.irpf?.base_sujeta || 0;
 
     // Gasto bruto total justificado
     const gastoTotalMision = man + tra + aloReal + insTotal;
     // Total líquido que se paga al investigador
-    const liquidoTransferir = result.liquido_ag || (man + tra + aloAbonable);
+    const liquidoTransferir = result.liquido_ag || (liq.resumen_economico?.liquido_a_abonar ?? (man + tra + aloAbonable - irpfRetencion));
 
     return {
+      fuente,
+      esJunta,
       man,
       tra,
       aloReal,
@@ -443,6 +449,8 @@ export function ViewProcesar({
       aloExceso,
       insTotal,
       insEsTarjetaInst,
+      irpfRetencion,
+      irpfBase,
       gastoTotalMision,
       liquidoTransferir
     };
@@ -903,20 +911,66 @@ export function ViewProcesar({
                 </span>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#FDF7ED] dark:bg-[#342416]/40 border border-[#F7E5CB] dark:border-[#FB923C]/30">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#754E20] dark:text-[#FDBA74]">
-                    Exceso Hotel Excluido
+              {/* Tarjeta 3: Muestra Retención IRPF si aplica (Junta) o Exceso Hotel (Estatal) */}
+              {balanceFinanciero && balanceFinanciero.irpfRetencion > 0 ? (
+                <div className="p-5 rounded-2xl bg-[#FDF7ED] dark:bg-[#342416]/40 border border-[#F7E5CB] dark:border-[#FB923C]/30">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#754E20] dark:text-[#FDBA74]">
+                      Retención IRPF (15%)
+                    </span>
+                    <Scale size={14} className="text-[#754E20] dark:text-[#FDBA74]" />
+                  </div>
+                  <p className="text-2xl font-extrabold font-mono text-[#754E20] dark:text-[#FDBA74]">
+                    -{balanceFinanciero.irpfRetencion.toFixed(2)} €
+                  </p>
+                  <span className="text-[11px] text-[#754E20]/80 dark:text-[#FDBA74]/80 mt-0.5 block">
+                    Sobre exceso de topes estatales (Base: {balanceFinanciero.irpfBase.toFixed(2)} €)
                   </span>
-                  <ShieldAlert size={14} className="text-[#754E20] dark:text-[#FDBA74]" />
                 </div>
-                <p className="text-2xl font-extrabold font-mono text-[#754E20] dark:text-[#FDBA74]">
-                  -{balanceFinanciero?.aloExceso.toFixed(2) || '0.00'} €
-                </p>
-                <span className="text-[11px] text-[#754E20]/80 dark:text-[#FDBA74]/80 mt-0.5 block">
-                  Supera límite de 65,97 €/noche
-                </span>
-              </div>
+              ) : (
+                <div className={cn(
+                  "p-5 rounded-2xl border",
+                  balanceFinanciero && balanceFinanciero.aloExceso > 0
+                    ? "bg-[#FDF7ED] dark:bg-[#342416]/40 border-[#F7E5CB] dark:border-[#FB923C]/30"
+                    : "bg-[#EEF6F0] dark:bg-[#1A2E22]/50 border-[#D5E8DA] dark:border-[#22543D]/60"
+                )}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={cn(
+                      "text-[11px] font-semibold uppercase tracking-wider",
+                      balanceFinanciero && balanceFinanciero.aloExceso > 0
+                        ? "text-[#754E20] dark:text-[#FDBA74]"
+                        : "text-[#285735] dark:text-[#86EFAC]"
+                    )}>
+                      {balanceFinanciero && balanceFinanciero.aloExceso > 0 ? 'Exceso Hotel Excluido' : 'Retención IRPF'}
+                    </span>
+                    {balanceFinanciero && balanceFinanciero.aloExceso > 0 ? (
+                      <ShieldAlert size={14} className="text-[#754E20] dark:text-[#FDBA74]" />
+                    ) : (
+                      <ShieldCheck size={14} className="text-[#285735] dark:text-[#86EFAC]" />
+                    )}
+                  </div>
+                  <p className={cn(
+                    "text-2xl font-extrabold font-mono",
+                    balanceFinanciero && balanceFinanciero.aloExceso > 0
+                      ? "text-[#754E20] dark:text-[#FDBA74]"
+                      : "text-[#285735] dark:text-[#86EFAC]"
+                  )}>
+                    {balanceFinanciero && balanceFinanciero.aloExceso > 0
+                      ? `-${balanceFinanciero.aloExceso.toFixed(2)} €`
+                      : '0.00 €'}
+                  </p>
+                  <span className={cn(
+                    "text-[11px] font-medium mt-0.5 block",
+                    balanceFinanciero && balanceFinanciero.aloExceso > 0
+                      ? "text-[#754E20]/80 dark:text-[#FDBA74]/80"
+                      : "text-[#3D8252] dark:text-[#4ADE80]"
+                  )}>
+                    {balanceFinanciero && balanceFinanciero.aloExceso > 0
+                      ? 'Supera límite de 65,97 €/noche'
+                      : '100% Exento (RD 462/2002 · Art. 9 RIRPF)'}
+                  </span>
+                </div>
+              )}
 
               <div className="p-5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md">
                 <div className="flex items-center justify-between mb-1">
@@ -1406,14 +1460,27 @@ export function ViewProcesar({
                         </span>
 
                         <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 space-y-2 text-xs">
-                          <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#754E20] dark:text-[#FDBA74]">
-                            <span className="flex items-center gap-2">
-                              <ShieldAlert size={14} /> Exceso de Hotel sobre Límite RD 462/2002 (65,97 €/noche)
-                            </span>
-                            <span className="font-mono font-bold">
-                              -{balanceFinanciero.aloExceso.toFixed(2)} €
-                            </span>
-                          </div>
+                          {balanceFinanciero.aloExceso > 0 && (
+                            <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#754E20] dark:text-[#FDBA74]">
+                              <span className="flex items-center gap-2">
+                                <ShieldAlert size={14} /> Exceso de Hotel sobre Límite Legal ({balanceFinanciero.esJunta ? '120,00' : '65,97'} €/noche)
+                              </span>
+                              <span className="font-mono font-bold">
+                                -{balanceFinanciero.aloExceso.toFixed(2)} €
+                              </span>
+                            </div>
+                          )}
+
+                          {balanceFinanciero.irpfRetencion > 0 && (
+                            <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#754E20] dark:text-[#FDBA74]">
+                              <span className="flex items-center gap-2">
+                                <Scale size={14} /> Retención IRPF (15% sobre exceso de topes estatales RD 462/2002)
+                              </span>
+                              <span className="font-mono font-bold">
+                                -{balanceFinanciero.irpfRetencion.toFixed(2)} €
+                              </span>
+                            </div>
+                          )}
 
                           <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#6B3E82] dark:text-[#E9D5FF]">
                             <span className="flex items-center gap-2">
