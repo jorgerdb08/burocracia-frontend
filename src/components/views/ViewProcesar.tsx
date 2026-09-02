@@ -869,11 +869,11 @@ export function ViewProcesar({
               </div>
 
               <div className="flex flex-wrap gap-2.5 items-center">
-                <Btn size="md" variant="outline" onClick={() => window.open(`/api/txt/generar/${result.caso_id}`, '_blank')} className="flex items-center gap-1.5 shadow-xs cursor-pointer rounded-2xl">
+                <Btn size="md" variant="outline" onClick={() => window.open(`/api/txt/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} className="flex items-center gap-1.5 shadow-xs cursor-pointer rounded-2xl">
                   <FileText size={15} />
                   Memoria Justificativa (TXT)
                 </Btn>
-                <Btn size="md" variant="primary" onClick={() => window.open(`/api/pdf/generar/${result.caso_id}`, '_blank')} className="flex items-center gap-1.5 shadow-sm cursor-pointer rounded-2xl">
+                <Btn size="md" variant="primary" onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} className="flex items-center gap-1.5 shadow-sm cursor-pointer rounded-2xl">
                   <Printer size={15} />
                   Descargar PDF Oficial UEx
                 </Btn>
