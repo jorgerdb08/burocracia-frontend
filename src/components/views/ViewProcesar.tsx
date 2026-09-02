@@ -15,6 +15,352 @@ import { StatusBadge } from '../ui/Badges';
 import { AlertErr, RunningInfo } from '../ui/Alerts';
 import { LogViewer } from '../ui/LogViewer';
 
+
+// Componente de Calendario Mensual con Días de Comisión de Servicio Marcados
+function CalendarioDietas({ 
+  detalleDias, 
+  tarifaDia, 
+  factorTotal, 
+  importeTotal 
+}: { 
+  detalleDias: Array<{ dia: string; tipo: string; factor?: number; importe?: number }>;
+  tarifaDia: number;
+  factorTotal: number;
+  importeTotal: number;
+}) {
+  const [viewMode, setViewMode] = useState<'calendar' | 'cards'>('calendar');
+  const [selectedDay, setSelectedDay] = useState<string | null>(detalleDias?.[0]?.dia || null);
+
+  // Mapear días de la comisión
+  const daysMap = useMemo(() => {
+    const map = new Map<string, { tipo: string; factor: number; importe: number; diaStr: string; dayNum: number }>();
+    detalleDias?.forEach(d => {
+      if (!d.dia) return;
+      const parsed = new Date(d.dia);
+      const factor = typeof d.factor === 'number' ? d.factor : (d.tipo === 'regreso' ? 0.5 : 1.0);
+      const importe = typeof d.importe === 'number' ? d.importe : factor * tarifaDia;
+      
+      const key = d.dia.includes('T') ? d.dia.split('T')[0] : d.dia;
+      map.set(key, {
+        tipo: d.tipo,
+        factor,
+        importe,
+        diaStr: d.dia,
+        dayNum: parsed.getDate()
+      });
+    });
+    return map;
+  }, [detalleDias, tarifaDia]);
+
+  const firstDate = useMemo(() => {
+    if (detalleDias && detalleDias.length > 0 && detalleDias[0].dia) {
+      const d = new Date(detalleDias[0].dia);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date();
+  }, [detalleDias]);
+
+  const year = firstDate.getFullYear();
+  const month = firstDate.getMonth(); // 0-indexed
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const monthName = monthNames[month];
+
+  const { startDayOffset, totalDaysInMonth } = useMemo(() => {
+    const firstDay = new Date(year, month, 1);
+    const startDayOffset = (firstDay.getDay() + 6) % 7; // Lunes=0, Domingo=6
+    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+    return { startDayOffset, totalDaysInMonth };
+  }, [year, month]);
+
+  const weekDayHeaders = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  const selectedDayInfo = useMemo(() => {
+    if (!selectedDay) return null;
+    return daysMap.get(selectedDay) || null;
+  }, [selectedDay, daysMap]);
+
+  return (
+    <div className="space-y-4">
+      {/* Encabezado del Módulo con Selector de Vista */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <Calendar size={18} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              Calendario de Estancia y Manutención
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-mono font-bold">
+                {monthName} {year}
+              </span>
+            </h4>
+            <span className="text-[11px] text-zinc-400">
+              Tarifa regulada: {tarifaDia.toFixed(2)} €/día íntegro · {factorTotal.toFixed(1)} jornadas computables
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex p-0.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
+                viewMode === 'calendar' 
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              )}
+            >
+              Vista Calendario
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
+                viewMode === 'cards' 
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm" 
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+              )}
+            >
+              Vista Fichas
+            </button>
+          </div>
+
+          <span className="text-sm font-extrabold font-mono px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+            {importeTotal.toFixed(2)} €
+          </span>
+        </div>
+      </div>
+
+      {/* VISTA 1: CALENDARIO MENSUAL INTERACTIVO */}
+      {viewMode === 'calendar' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          
+          {/* Cuadrícula del Calendario Mensual (Columna Izquierda 8 cols) */}
+          <div className="lg:col-span-8 p-5 rounded-3xl bg-zinc-50/90 dark:bg-zinc-950/90 border border-zinc-200/80 dark:border-zinc-800 space-y-3 shadow-inner">
+            
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 font-mono">
+                {monthName} {year}
+              </span>
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-zinc-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Salida (100%)
+                </span>
+                <span className="flex items-center gap-1 text-zinc-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Estancia (100%)
+                </span>
+                <span className="flex items-center gap-1 text-zinc-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Regreso (50%)
+                </span>
+              </div>
+            </div>
+
+            {/* Cabecera de días de la semana */}
+            <div className="grid grid-cols-7 gap-1 text-center font-bold text-[11px] text-zinc-400 dark:text-zinc-500 pb-1">
+              {weekDayHeaders.map((d, idx) => (
+                <div key={idx} className="py-1">{d}</div>
+              ))}
+            </div>
+
+            {/* Celdas de días del mes */}
+            <div className="grid grid-cols-7 gap-1.5">
+              {Array.from({ length: startDayOffset }).map((_, idx) => (
+                <div key={`empty-${idx}`} className="h-16 rounded-2xl bg-zinc-100/30 dark:bg-zinc-900/20 border border-transparent" />
+              ))}
+
+              {Array.from({ length: totalDaysInMonth }).map((_, idx) => {
+                const dayNum = idx + 1;
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                const tripDay = daysMap.get(dateKey);
+                const isSelected = selectedDay === dateKey;
+
+                if (tripDay) {
+                  const isSalida = tripDay.tipo === 'salida';
+                  const isRegreso = tripDay.tipo === 'regreso';
+                  
+                  return (
+                    <button
+                      key={dateKey}
+                      type="button"
+                      onClick={() => setSelectedDay(dateKey)}
+                      className={cn(
+                        "h-16 rounded-2xl p-1.5 flex flex-col justify-between transition-all cursor-pointer text-left border relative group shadow-sm",
+                        isSalida && "bg-blue-500/10 border-blue-400/60 dark:border-blue-500/50 hover:bg-blue-500/20",
+                        isRegreso && "bg-amber-500/10 border-amber-400/60 dark:border-amber-500/50 hover:bg-amber-500/20",
+                        !isSalida && !isRegreso && "bg-emerald-500/10 border-emerald-400/60 dark:border-emerald-500/50 hover:bg-emerald-500/20",
+                        isSelected && "ring-2 ring-zinc-900 dark:ring-zinc-100 shadow-md scale-[1.02]"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100">
+                          {dayNum}
+                        </span>
+                        <span className={cn(
+                          "w-2 h-2 rounded-full",
+                          isSalida && "bg-blue-500",
+                          isRegreso && "bg-amber-500",
+                          !isSalida && !isRegreso && "bg-emerald-500"
+                        )} />
+                      </div>
+                      
+                      <div className="w-full">
+                        <span className={cn(
+                          "text-[9px] font-bold block truncate",
+                          isSalida && "text-blue-700 dark:text-blue-300",
+                          isRegreso && "text-amber-700 dark:text-amber-300",
+                          !isSalida && !isRegreso && "text-emerald-700 dark:text-emerald-300"
+                        )}>
+                          {isSalida ? 'Salida' : isRegreso ? 'Regreso' : 'Congreso'}
+                        </span>
+                        <span className="text-[10px] font-mono font-extrabold text-zinc-900 dark:text-zinc-100 block">
+                          {tripDay.importe.toFixed(2)} €
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
+
+                return (
+                  <div
+                    key={dateKey}
+                    className="h-16 rounded-2xl p-1.5 flex flex-col justify-start bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-zinc-800/50 text-zinc-400 dark:text-zinc-600 select-none"
+                  >
+                    <span className="font-mono text-xs">{dayNum}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Panel Lateral de Detalle del Día Seleccionado (4 cols) */}
+          <div className="lg:col-span-4 p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 flex flex-col justify-between shadow-sm space-y-4">
+            {selectedDayInfo ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Día Inspeccionado
+                    </span>
+                    <h5 className="text-sm font-extrabold text-zinc-900 dark:text-zinc-100 font-mono">
+                      {selectedDayInfo.diaStr}
+                    </h5>
+                  </div>
+                  <span className={cn(
+                    "text-xs px-2.5 py-1 rounded-xl font-bold font-mono",
+                    selectedDayInfo.tipo === 'salida' && "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+                    selectedDayInfo.tipo === 'regreso' && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+                    selectedDayInfo.tipo !== 'salida' && selectedDayInfo.tipo !== 'regreso' && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                  )}>
+                    {selectedDayInfo.factor * 100}% Manutención
+                  </span>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/70 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-400 block">Concepto Liquidado</span>
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200 text-xs">
+                      {selectedDayInfo.tipo === 'salida' ? 'Jornada de Ida y Desplazamiento Inicial' : selectedDayInfo.tipo === 'regreso' ? 'Jornada de Retorno a Origen' : 'Estancia y Participación en Congreso'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/70 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-400 block">Fórmula de Cálculo</span>
+                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 text-xs">
+                      {selectedDayInfo.factor.toFixed(1)} factor × {tarifaDia.toFixed(2)} €/día = {selectedDayInfo.importe.toFixed(2)} €
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/70 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-400 block">Normativa Aplicable</span>
+                    <span className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-tight block mt-0.5">
+                      RD 462/2002 · Exención total de IRPF según Art. 9 RIRPF.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-12 text-center text-zinc-400 text-xs">
+                Seleccione un día marcado en el calendario para inspeccionar el desglose normativo.
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs">
+              <span className="text-zinc-400 font-medium">Total Comisión:</span>
+              <span className="text-base font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
+                {importeTotal.toFixed(2)} €
+              </span>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* VISTA 2: FICHAS DIARIAS */}
+      {viewMode === 'cards' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 animate-fade-in">
+          {detalleDias?.map((d: any, i: number) => {
+            const factor = typeof d.factor === 'number' ? d.factor : 1.0;
+            const importeFila = typeof d.importe === 'number' ? d.importe : (factor * tarifaDia);
+            const isSalida = d.tipo === 'salida';
+            const isRegreso = d.tipo === 'regreso';
+
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "p-4 rounded-2xl border transition-all flex flex-col justify-between relative overflow-hidden group",
+                  isSalida && "bg-gradient-to-br from-blue-50/60 to-white dark:from-blue-950/20 dark:to-zinc-900 border-blue-200/80 dark:border-blue-900/60",
+                  isRegreso && "bg-gradient-to-br from-amber-50/60 to-white dark:from-amber-950/20 dark:to-zinc-900 border-amber-200/80 dark:border-amber-900/60",
+                  !isSalida && !isRegreso && "bg-zinc-50/70 dark:bg-zinc-950/70 border-zinc-200/80 dark:border-zinc-800"
+                )}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                      <Clock size={13} className="text-zinc-400" />
+                      {d.dia}
+                    </span>
+                    <span className={cn(
+                      "text-[10px] font-bold px-2 py-0.5 rounded-md uppercase font-mono",
+                      isSalida && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+                      isRegreso && "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
+                      !isSalida && !isRegreso && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                    )}>
+                      {factor * 100}% Dieta
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                    {isSalida ? 'Jornada de Ida / Inicio' : isRegreso ? 'Jornada de Retorno' : 'Actividad Oficial / Congreso'}
+                  </p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                    Factor asignado: {factor.toFixed(1)}x
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between">
+                  <span className="text-[11px] text-zinc-400">Total Día:</span>
+                  <span className="text-base font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
+                    {importeFila.toFixed(2)} €
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ViewProcesar({
   initialCaso,
   templateId,
@@ -659,86 +1005,13 @@ export function ViewProcesar({
 
                     return (
                       <>
-                        {/* 1. MANUTENCIÓN: CRONOGRAMA Y CALENDARIO DE JORNADAS */}
-                        <div className="space-y-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                                <Calendar size={16} />
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                                  Cronograma de Jornadas y Dietas de Manutención
-                                </h4>
-                                <span className="text-[11px] text-zinc-400">
-                                  Tarifa oficial aplicada: {(manutencion?.tarifa_dia || liq.tarifas_aplicadas?.manutencion_dia || 37.70).toFixed(2)} €/día (RD 462/2002)
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-bold">
-                                {manutencion?.factor_total?.toFixed(1) || 0} jornadas computables
-                              </span>
-                              <span className="text-sm font-extrabold font-mono px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                {(manutencion?.importe || 0).toFixed(2)} €
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* GRID DE DÍAS DEL CALENDARIO */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                            {manutencion?.detalle_dias?.map((d: any, i: number) => {
-                              const factor = typeof d.factor === 'number' ? d.factor : 1.0;
-                              const tarifa = manutencion?.tarifa_dia || liq.tarifas_aplicadas?.manutencion_dia || 37.70;
-                              const importeFila = typeof d.importe === 'number' ? d.importe : (factor * tarifa);
-                              const isSalida = d.tipo === 'salida';
-                              const isRegreso = d.tipo === 'regreso';
-
-                              return (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    "p-4 rounded-2xl border transition-all flex flex-col justify-between relative overflow-hidden group",
-                                    isSalida && "bg-gradient-to-br from-blue-50/60 to-white dark:from-blue-950/20 dark:to-zinc-900 border-blue-200/80 dark:border-blue-900/60",
-                                    isRegreso && "bg-gradient-to-br from-amber-50/60 to-white dark:from-amber-950/20 dark:to-zinc-900 border-amber-200/80 dark:border-amber-900/60",
-                                    !isSalida && !isRegreso && "bg-zinc-50/70 dark:bg-zinc-950/70 border-zinc-200/80 dark:border-zinc-800"
-                                  )}
-                                >
-                                  <div>
-                                    <div className="flex items-center justify-between gap-2 mb-2">
-                                      <span className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                                        <Clock size={13} className="text-zinc-400" />
-                                        {d.dia}
-                                      </span>
-                                      <span className={cn(
-                                        "text-[10px] font-bold px-2 py-0.5 rounded-md uppercase font-mono",
-                                        isSalida && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-                                        isRegreso && "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-                                        !isSalida && !isRegreso && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
-                                      )}>
-                                        {factor * 100}% Dieta
-                                      </span>
-                                    </div>
-
-                                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                                      {isSalida ? 'Jornada de Ida / Inicio' : isRegreso ? 'Jornada de Retorno' : 'Actividad Oficial / Congreso'}
-                                    </p>
-                                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                                      Factor asignado: {factor.toFixed(1)}x
-                                    </p>
-                                  </div>
-
-                                  <div className="mt-4 pt-3 border-t border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between">
-                                    <span className="text-[11px] text-zinc-400">Total Día:</span>
-                                    <span className="text-base font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
-                                      {importeFila.toFixed(2)} €
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        {/* 1. MANUTENCIÓN: CALENDARIO MENSUAL DINÁMICO & CRONOGRAMA */}
+                        <CalendarioDietas 
+                          detalleDias={manutencion?.detalle_dias}
+                          tarifaDia={manutencion?.tarifa_dia || liq.tarifas_aplicadas?.manutencion_dia || 37.70}
+                          factorTotal={manutencion?.factor_total || 0}
+                          importeTotal={manutencion?.importe || 0}
+                        />
 
                         {/* 2. TRANSPORTE: ODÓMETRO & ITINERARIO VISUAL */}
                         <div className="space-y-4 pt-2">
