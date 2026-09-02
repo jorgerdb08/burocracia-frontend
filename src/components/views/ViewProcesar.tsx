@@ -849,8 +849,10 @@ export function ViewProcesar({
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Dictamen de Liquidación</span>
                   <StatusBadge ok={result.ok} sinGt={result.sin_ground_truth} />
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold border border-[#ECE7DD] dark:border-zinc-700/60">
-                    Normativa UEx 2025/2026
+                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold border border-[#ECE7DD] dark:border-zinc-700/60">
+                    {result.liquidacion && (result.liquidacion as any).identificacion?.fuente_financiacion === 'extremadura' 
+                      ? 'Normativa Junta de Extremadura (Decreto 42/2025)' 
+                      : 'Normativa Plan Estatal / UEx (RD 462/2002)'}
                   </span>
                 </div>
                 <h3 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 font-mono tracking-tight">
