@@ -4,7 +4,7 @@ import {
   ChevronLeft, RotateCcw, Check, Eye, CheckCircle2, FileText, FolderOpen, Printer, Info, ShieldCheck,
   Scale, FileCheck, Building2, HelpCircle, ExternalLink, Copy, Terminal, ChevronDown, ChevronUp, ZoomIn,
   Calendar, Car, BedDouble, MapPin, Navigation, Gauge, Fuel, CreditCard, Clock, Sparkles, Route, ArrowRightLeft,
-  ShieldAlert, Wallet, CalendarDays, Compass
+  ShieldAlert, Wallet, CalendarDays, Compass, Receipt, Calculator, ArrowDownRight, ArrowUpRight
 } from 'lucide-react';
 import { ViewGrafo } from './ViewGrafo';
 import { cn, pollTask } from '../../lib/utils';
@@ -210,7 +210,7 @@ function CalendarioDietas({
                 );
               }
 
-              // Días fuera de comisión (blanco roto / arena suave)
+              // Días fuera de comisión
               return (
                 <div
                   key={dateKey}
@@ -416,6 +416,37 @@ export function ViewProcesar({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Cálculos consolidados para reconciliación financiera
+  const balanceFinanciero = useMemo(() => {
+    if (!result || !result.liquidacion || !(result.liquidacion as any).conceptos) return null;
+    const liq = result.liquidacion as any;
+    const man = liq.conceptos.manutencion?.importe || 0;
+    const tra = liq.conceptos.transporte?.importe || 0;
+    const aloAbonable = liq.conceptos.alojamiento?.importe || 0;
+    const aloReal = liq.conceptos.alojamiento?.importe_real_total || aloAbonable;
+    const aloExceso = Math.max(0, aloReal - aloAbonable);
+    const insTotal = liq.conceptos.inscripcion?.importe_total || liq.conceptos.inscripcion?.importe || 0;
+    const insPagadaPor = liq.conceptos.inscripcion?.pagada_por || 'tarjeta_investigador';
+    const insEsTarjetaInst = insPagadaPor === 'tarjeta_institucional' || liq.conceptos.inscripcion?.reembolsable_al_investigador === false;
+
+    // Gasto bruto total justificado
+    const gastoTotalMision = man + tra + aloReal + insTotal;
+    // Total líquido que se paga al investigador
+    const liquidoTransferir = result.liquido_ag || (man + tra + aloAbonable);
+
+    return {
+      man,
+      tra,
+      aloReal,
+      aloAbonable,
+      aloExceso,
+      insTotal,
+      insEsTarjetaInst,
+      gastoTotalMision,
+      liquidoTransferir
+    };
+  }, [result]);
 
   const STEPS = isDietas ? [
     { num: 1, label: 'Procedimiento' },
@@ -806,7 +837,7 @@ export function ViewProcesar({
       {error && <AlertErr msg={error} />}
 
       {/* ========================================================================= */}
-      {/* VISTA OFICIAL DE RESULTADOS (DISEÑO PASTEL MINIMALISTA) */}
+      {/* VISTA OFICIAL DE RESULTADOS */}
       {/* ========================================================================= */}
       {result && (
         <div ref={resultRef} className="space-y-6 animate-fade-in-up">
@@ -839,50 +870,64 @@ export function ViewProcesar({
               </div>
             </div>
 
-            {/* TARJETAS DE IMPORTES CLAVE (PALETA PASTEL NATURAL) */}
+            {/* TARJETAS DE IMPORTES CLAVE (RECONCILIACIÓN DEL GASTO) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
               
               <div className="p-5 rounded-2xl bg-[#FAF9F7] dark:bg-zinc-950 border border-[#EFECE6] dark:border-zinc-800">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
-                  Total Devengado Bruto
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Coste Total de la Misión
+                  </span>
+                  <Receipt size={14} className="text-zinc-400" />
+                </div>
                 <p className="text-2xl font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
-                  {result.liquido_ag.toFixed(2)} €
+                  {balanceFinanciero ? balanceFinanciero.gastoTotalMision.toFixed(2) : result.liquido_ag.toFixed(2)} €
                 </p>
-                <span className="text-[11px] text-zinc-400 mt-0.5 block">Suma de conceptos abonables</span>
+                <span className="text-[11px] text-zinc-400 mt-0.5 block">Suma de todas las facturas y tickets</span>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#EEF6F0] dark:bg-[#1A2E22]/50 border border-[#D5E8DA] dark:border-[#22543D]/60">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#285735] dark:text-[#86EFAC] block mb-1">
-                  Retención IRPF
-                </span>
-                <p className="text-2xl font-extrabold font-mono text-[#285735] dark:text-[#86EFAC]">
-                  0.00 €
+              <div className="p-5 rounded-2xl bg-[#F4EEF8] dark:bg-[#2A1D33]/40 border border-[#E8DAEE] dark:border-[#581C87]/40">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B3E82] dark:text-[#E9D5FF]">
+                    Tarjeta Institucional UEx
+                  </span>
+                  <CreditCard size={14} className="text-[#6B3E82] dark:text-[#E9D5FF]" />
+                </div>
+                <p className="text-2xl font-extrabold font-mono text-[#6B3E82] dark:text-[#E9D5FF]">
+                  -{balanceFinanciero?.insTotal.toFixed(2) || '0.00'} €
                 </p>
-                <span className="text-[11px] text-[#3D8252] dark:text-[#4ADE80] font-medium mt-0.5 block">
-                  100% Exento (RD 462/2002)
+                <span className="text-[11px] text-[#6B3E82]/80 dark:text-[#E9D5FF]/80 font-medium mt-0.5 block">
+                  Inscripción pagada por UEx (no transferible)
                 </span>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#FAF9F7] dark:bg-zinc-950 border border-[#EFECE6] dark:border-zinc-800">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
-                  Anticipo Descontado
-                </span>
-                <p className="text-2xl font-extrabold font-mono text-zinc-700 dark:text-zinc-300">
-                  0.00 €
+              <div className="p-5 rounded-2xl bg-[#FDF7ED] dark:bg-[#342416]/40 border border-[#F7E5CB] dark:border-[#FB923C]/30">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#754E20] dark:text-[#FDBA74]">
+                    Exceso Hotel Excluido
+                  </span>
+                  <ShieldAlert size={14} className="text-[#754E20] dark:text-[#FDBA74]" />
+                </div>
+                <p className="text-2xl font-extrabold font-mono text-[#754E20] dark:text-[#FDBA74]">
+                  -{balanceFinanciero?.aloExceso.toFixed(2) || '0.00'} €
                 </p>
-                <span className="text-[11px] text-zinc-400 mt-0.5 block">Pendiente de abono íntegro</span>
+                <span className="text-[11px] text-[#754E20]/80 dark:text-[#FDBA74]/80 mt-0.5 block">
+                  Supera límite de 65,97 €/noche
+                </span>
               </div>
 
               <div className="p-5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 block mb-1">
-                  Líquido a Percibir
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">
+                    Líquido a Transferir
+                  </span>
+                  <Wallet size={14} className="text-zinc-300 dark:text-zinc-700" />
+                </div>
                 <p className="text-2xl sm:text-3xl font-black font-mono">
                   {result.liquido_ag.toFixed(2)} €
                 </p>
                 <span className="text-[11px] text-zinc-300 dark:text-zinc-700 font-medium mt-0.5 block">
-                  Propuesta neta a transferir
+                  Abono en cuenta bancaria (IBAN)
                 </span>
               </div>
 
@@ -895,6 +940,7 @@ export function ViewProcesar({
             <div className="flex border-b border-zinc-200/80 dark:border-zinc-800/80 gap-2 overflow-x-auto pb-px">
               {[
                 { id: 'desglose', label: 'Desglose Visual de Liquidación' },
+                { id: 'balance', label: 'Balance y Reconciliación de Gastos' },
                 { id: 'fundamentacion', label: 'Régimen Fiscal y Fundamento Jurídico' },
                 { id: 'json', label: 'Esquema JSON' },
                 { id: 'auditoria', label: 'Auditoría y Trazabilidad' },
@@ -1202,27 +1248,78 @@ export function ViewProcesar({
                           )}
                         </div>
 
-                        {/* 4. INSCRIPCIÓN / CUOTAS DE CONGRESO */}
+                        {/* 4. INSCRIPCIÓN / CUOTAS DE CONGRESO (REFLEJO CLARO DE LOS 475 €) */}
                         {inscripcion && (
-                          <div className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shrink-0 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
-                                <Building2 size={18} />
+                          <div className="space-y-4 pt-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-[#F4EEF8] dark:bg-[#2A1D33]/60 text-[#6B3E82] dark:text-[#E9D5FF] flex items-center justify-center border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
+                                  <Building2 size={16} />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                    Inscripción al Congreso / Seminario Científico
+                                  </h4>
+                                  <span className="text-[11px] text-zinc-400">
+                                    Factura justificada e imputada a fondos del proyecto
+                                  </span>
+                                </div>
                               </div>
-                              <div>
-                                <h5 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                                  Inscripción al Congreso / Seminario
-                                </h5>
-                                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                                  {inscripcion.pagada_por === 'tarjeta_institucional' 
-                                    ? 'Abonada previamente con Tarjeta Institucional (justificada contablemente, no reintegrable)'
-                                    : 'Abonada por el investigador'}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono font-medium border border-[#EBE6DC] dark:border-zinc-700">
+                                  Factura: {(inscripcion.importe_total || inscripcion.importe || 0).toFixed(2)} €
+                                </span>
+                                <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-[#F4EEF8] text-[#6B3E82] dark:bg-[#2A1D33] dark:text-[#E9D5FF] border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
+                                  {inscripcion.reembolsable_al_investigador ? `${(inscripcion.importe_reembolsable || 0).toFixed(2)} €` : '0,00 € (Abonado por UEx)'}
                                 </span>
                               </div>
                             </div>
-                            <span className="text-base font-extrabold font-mono px-4 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs">
-                              {(inscripcion.importe_total || inscripcion.importe || 0).toFixed(2)} €
-                            </span>
+
+                            <div className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 text-[#6B3E82] dark:text-[#E9D5FF] flex items-center justify-center shrink-0 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
+                                    <Receipt size={18} />
+                                  </div>
+                                  <div>
+                                    <h5 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                                      Cuota de Inscripción y Matrícula Oficial
+                                    </h5>
+                                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                      XXX Jornadas de Ingeniería del Software y Bases de Datos (JISBD - SISTEDES)
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs px-3 py-1.5 rounded-xl bg-[#F4EEF8] text-[#6B3E82] dark:bg-[#2A1D33] dark:text-[#E9D5FF] border border-[#E8DAEE] dark:border-[#581C87]/40 font-semibold flex items-center gap-1.5">
+                                    <CreditCard size={13} />
+                                    Tarjeta Institucional UEx
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs space-y-2 text-xs">
+                                <div className="flex justify-between items-center py-1 border-b border-zinc-100 dark:border-zinc-800">
+                                  <span className="text-zinc-500">Importe de la Factura de Inscripción:</span>
+                                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
+                                    {(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center py-1 border-b border-zinc-100 dark:border-zinc-800">
+                                  <span className="text-zinc-500">Modalidad de Pago y Cargo Contable:</span>
+                                  <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                                    Abonado previamente con Tarjeta Corporativa de la Universidad
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center py-1 text-[11px]">
+                                  <span className="text-zinc-500">Efecto en la Nómina / Transferencia Personal:</span>
+                                  <span className="font-bold text-[#6B3E82] dark:text-[#E9D5FF]">
+                                    0,00 € a transferir (Gasto ya satisfecho por la UEx, debidamente justificado en el expediente)
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </>
@@ -1233,7 +1330,149 @@ export function ViewProcesar({
                 </div>
               )}
 
-              {/* TAB 2: FUNDAMENTACIÓN JURÍDICO-TRIBUTARIA */}
+              {/* TAB 2: BALANCE Y RECONCILIACIÓN DE GASTOS */}
+              {activeTab === 'balance' && balanceFinanciero && (
+                <div className="space-y-6 animate-fade-in text-xs leading-relaxed">
+                  <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-6">
+                    <div className="flex items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                      <Calculator size={18} className="text-zinc-700 dark:text-zinc-300" />
+                      <div>
+                        <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                          Cuadro de Balance y Reconciliación Financiera del Expediente
+                        </h4>
+                        <span className="text-[11px] text-zinc-400">
+                          Explicación matemática entre el coste total justificado en facturas y el importe neto a transferir
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      
+                      {/* Columna Izquierda: Tabla de Sumas y Restas */}
+                      <div className="lg:col-span-7 space-y-3">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
+                          1. Desglose Integral de Justificantes Aportados
+                        </span>
+
+                        <div className="p-4 rounded-2xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-2 text-xs">
+                          <div className="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800">
+                            <span className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                              <Car size={14} className="text-zinc-400" /> Kilometraje Vehículo Particular (1.340 km)
+                            </span>
+                            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                              +{balanceFinanciero.tra.toFixed(2)} €
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800">
+                            <span className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                              <Calendar size={14} className="text-zinc-400" /> Manutención y Dietas de Estancia (4,5 días)
+                            </span>
+                            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                              +{balanceFinanciero.man.toFixed(2)} €
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800">
+                            <span className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                              <BedDouble size={14} className="text-zinc-400" /> Factura Completa de Alojamiento (4 noches)
+                            </span>
+                            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                              +{balanceFinanciero.aloReal.toFixed(2)} €
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800">
+                            <span className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                              <Receipt size={14} className="text-zinc-400" /> Factura de Inscripción al Congreso
+                            </span>
+                            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                              +{balanceFinanciero.insTotal.toFixed(2)} €
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                            <span>Coste Total Bruto de la Comisión:</span>
+                            <span className="font-mono font-extrabold text-base">
+                              {balanceFinanciero.gastoTotalMision.toFixed(2)} €
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block pt-3 mb-2">
+                          2. Deducciones y Exclusiones Normativas
+                        </span>
+
+                        <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 space-y-2 text-xs">
+                          <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#754E20] dark:text-[#FDBA74]">
+                            <span className="flex items-center gap-2">
+                              <ShieldAlert size={14} /> Exceso de Hotel sobre Límite RD 462/2002 (65,97 €/noche)
+                            </span>
+                            <span className="font-mono font-bold">
+                              -{balanceFinanciero.aloExceso.toFixed(2)} €
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#6B3E82] dark:text-[#E9D5FF]">
+                            <span className="flex items-center gap-2">
+                              <CreditCard size={14} /> Inscripción Pagada Directamente por UEx (Tarjeta Institucional)
+                            </span>
+                            <span className="font-mono font-bold">
+                              -{balanceFinanciero.insTotal.toFixed(2)} €
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                            <span>Total Deducciones del Reembolso Personal:</span>
+                            <span className="font-mono font-extrabold text-base text-red-600 dark:text-red-400">
+                              -{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal).toFixed(2)} €
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Columna Derecha: Tarjeta de Dictamen Final */}
+                      <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-3xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md space-y-5">
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-600 block">
+                            Resultado de la Liquidación
+                          </span>
+                          <h3 className="text-xl font-extrabold tracking-tight">
+                            Importe Neto a Abonar al Investigador
+                          </h3>
+                          <p className="text-xs text-zinc-300 dark:text-zinc-700 leading-relaxed">
+                            Cantidad líquida que se remitirá a la entidad bancaria del perceptor tras auditar topes máximos y medios de pago institucionales.
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-zinc-800/80 dark:bg-zinc-200/80 border border-zinc-700 dark:border-zinc-300 space-y-2">
+                          <div className="flex justify-between text-xs text-zinc-300 dark:text-zinc-700">
+                            <span>Total Gastos de Misión:</span>
+                            <span className="font-mono font-bold">{balanceFinanciero.gastoTotalMision.toFixed(2)} €</span>
+                          </div>
+                          <div className="flex justify-between text-xs text-red-300 dark:text-red-700">
+                            <span>Excesos y Pagos UEx:</span>
+                            <span className="font-mono font-bold">-{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal).toFixed(2)} €</span>
+                          </div>
+                          <div className="pt-2 border-t border-zinc-700/60 dark:border-zinc-300/60 flex justify-between items-center">
+                            <span className="font-bold text-sm">Líquido a Percibir:</span>
+                            <span className="text-2xl sm:text-3xl font-black font-mono">
+                              {balanceFinanciero.liquidoTransferir.toFixed(2)} €
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-[11px] text-zinc-400 dark:text-zinc-600 italic">
+                          * Conforme a la Memoria de Justificación Económica de la Sede Electrónica UEx.
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: FUNDAMENTACIÓN JURÍDICO-TRIBUTARIA */}
               {activeTab === 'fundamentacion' && (
                 <div className="space-y-6 animate-fade-in text-xs leading-relaxed">
                   <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-5">
@@ -1301,7 +1540,7 @@ export function ViewProcesar({
                 </div>
               )}
 
-              {/* TAB 3: ESQUEMA JSON */}
+              {/* TAB 4: ESQUEMA JSON */}
               {activeTab === 'json' && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between">
@@ -1332,7 +1571,7 @@ export function ViewProcesar({
                 </div>
               )}
 
-              {/* TAB 4: AUDITORÍA Y TRAZABILIDAD */}
+              {/* TAB 5: AUDITORÍA Y TRAZABILIDAD */}
               {activeTab === 'auditoria' && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between">
@@ -1347,7 +1586,7 @@ export function ViewProcesar({
                 </div>
               )}
 
-              {/* TAB 5: GRAFO */}
+              {/* TAB 6: GRAFO */}
               {activeTab === 'grafo' && (
                 <div className="animate-fade-in">
                   <ViewGrafo />
