@@ -16,7 +16,7 @@ import { AlertErr, RunningInfo } from '../ui/Alerts';
 import { LogViewer } from '../ui/LogViewer';
 
 // =========================================================================
-// COMPONENTE: CALENDARIO MENSUAL SOBRIO Y MINIMALISTA (ESTILO NOTION / LINEAR)
+// COMPONENTE: CALENDARIO MENSUAL CON PALETA PASTEL MINIMALISTA Y ELEGANTE
 // =========================================================================
 function CalendarioDietas({ 
   detalleDias, 
@@ -86,32 +86,32 @@ function CalendarioDietas({
 
   return (
     <div className="space-y-4 font-sans">
-      {/* Encabezado Sobrio y Elegante */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200/80 dark:border-zinc-800">
+      {/* Encabezado Pastel Minimalista */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200/60 dark:border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-center border border-zinc-200/60 dark:border-zinc-700/60">
+          <div className="w-8 h-8 rounded-xl bg-[#EEF4F8] dark:bg-[#1E293B]/60 text-[#3B6282] dark:text-[#93C5FD] flex items-center justify-center border border-[#DDE7F0] dark:border-[#334155]/60 shadow-xs">
             <Calendar size={16} />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 tracking-tight">
+            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 tracking-tight">
               Calendario de Estancia y Manutención
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono">
+              <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800/80 text-[#5C5346] dark:text-[#D1C7B7] border border-[#EBE6DC] dark:border-zinc-700/60 font-mono">
                 {monthName} {year}
               </span>
             </h4>
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Tarifa oficial: {tarifaDia.toFixed(2)} €/día · {factorTotal.toFixed(1)} jornadas computables (RD 462/2002)
+            <span className="text-[11px] text-zinc-400">
+              Tarifa regulada: {tarifaDia.toFixed(2)} €/día · {factorTotal.toFixed(1)} jornadas computables
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 dark:bg-zinc-100" />
-            <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{factorTotal.toFixed(1)} jornadas</span>
+          <div className="px-3 py-1 rounded-xl bg-[#EEF6F0] dark:bg-[#1A2E22]/60 border border-[#D5E8DA] dark:border-[#22543D]/60 flex items-center gap-2 text-xs text-[#285735] dark:text-[#86EFAC]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#3D8252] dark:bg-[#4ADE80]" />
+            <span className="font-mono font-bold">{factorTotal.toFixed(1)} jornadas</span>
           </div>
 
-          <div className="px-3.5 py-1 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-mono font-bold text-xs shadow-xs">
+          <div className="px-3.5 py-1 rounded-xl bg-[#EEF4F8] dark:bg-[#1E293B]/70 border border-[#D0E2F0] dark:border-[#3B82F6]/30 text-[#274B6B] dark:text-[#93C5FD] font-mono font-bold text-xs shadow-xs">
             {importeTotal.toFixed(2)} €
           </div>
         </div>
@@ -121,30 +121,33 @@ function CalendarioDietas({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
         {/* Cuadrícula del Calendario Mensual (8 cols) */}
-        <div className="lg:col-span-8 p-5 sm:p-6 rounded-3xl bg-zinc-50/60 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800 space-y-4">
+        <div className="lg:col-span-8 p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-[#161618] border border-[#EFECE6] dark:border-zinc-800/80 space-y-4 shadow-xs">
           
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-mono">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-mono">
               {monthName} {year}
             </span>
-            <div className="flex items-center gap-3 text-[11px] text-zinc-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100" /> Jornadas de Comisión
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                <span className="w-2 h-2 rounded-full bg-[#7BA7C7] dark:bg-[#60A5FA]" /> Salida (100%)
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full border border-zinc-400 dark:border-zinc-600" /> Días Inactivos
+              <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                <span className="w-2 h-2 rounded-full bg-[#75B889] dark:bg-[#4ADE80]" /> Estancia (100%)
+              </span>
+              <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                <span className="w-2 h-2 rounded-full bg-[#E5A86E] dark:bg-[#FB923C]" /> Regreso (50%)
               </span>
             </div>
           </div>
 
           {/* Días de la semana */}
-          <div className="grid grid-cols-7 gap-1 text-center font-semibold text-xs text-zinc-400 dark:text-zinc-500 pb-1">
+          <div className="grid grid-cols-7 gap-1 text-center font-medium text-xs text-zinc-400 dark:text-zinc-500 pb-1">
             {weekDayHeaders.map((d, idx) => (
               <div key={idx} className="py-1">{d}</div>
             ))}
           </div>
 
-          {/* Celdas del mes */}
+          {/* Celdas del mes con tonos pastel suaves */}
           <div className="grid grid-cols-7 gap-2">
             {Array.from({ length: startDayOffset }).map((_, idx) => (
               <div key={`empty-${idx}`} className="h-15 sm:h-16 rounded-2xl bg-transparent" />
@@ -166,30 +169,40 @@ function CalendarioDietas({
                     type="button"
                     onClick={() => setSelectedDay(dateKey)}
                     className={cn(
-                      "h-15 sm:h-16 rounded-2xl p-2.5 flex flex-col justify-between transition-all duration-150 cursor-pointer text-left border relative group",
-                      isSelected 
-                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm scale-[1.02] z-10" 
-                        : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-xs"
+                      "h-15 sm:h-16 rounded-2xl p-2.5 flex flex-col justify-between transition-all duration-150 cursor-pointer text-left border relative group shadow-xs",
+                      isSalida && "bg-[#EDF4F9] dark:bg-[#1E293B]/70 border-[#D2E4F2] dark:border-[#38BDF8]/40 hover:bg-[#E2EFF7]",
+                      isRegreso && "bg-[#FDF7ED] dark:bg-[#342416]/70 border-[#F7E5CB] dark:border-[#FB923C]/40 hover:bg-[#F9EFE0]",
+                      !isSalida && !isRegreso && "bg-[#EDF6F1] dark:bg-[#172E22]/70 border-[#CFE7D7] dark:border-[#4ADE80]/40 hover:bg-[#E1F2E8]",
+                      isSelected && "ring-2 ring-zinc-700 dark:ring-zinc-200 shadow-md scale-[1.02] z-10"
                     )}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="font-mono font-bold text-xs">
+                      <span className={cn(
+                        "font-mono font-bold text-xs",
+                        isSalida && "text-[#285073] dark:text-[#BAE6FD]",
+                        isRegreso && "text-[#754E20] dark:text-[#FED7AA]",
+                        !isSalida && !isRegreso && "text-[#265E39] dark:text-[#BBF7D0]"
+                      )}>
                         {dayNum}
                       </span>
                       <span className={cn(
                         "w-1.5 h-1.5 rounded-full",
-                        isSelected ? "bg-white dark:bg-zinc-900" : "bg-zinc-900 dark:bg-zinc-100"
+                        isSalida && "bg-[#5B8FB9] dark:bg-[#38BDF8]",
+                        isRegreso && "bg-[#D9914D] dark:bg-[#FB923C]",
+                        !isSalida && !isRegreso && "bg-[#5AA672] dark:bg-[#4ADE80]"
                       )} />
                     </div>
                     
                     <div className="w-full">
                       <span className={cn(
-                        "text-[9px] font-semibold block truncate",
-                        isSelected ? "text-zinc-300 dark:text-zinc-700" : "text-zinc-500 dark:text-zinc-400"
+                        "text-[9px] font-medium block truncate",
+                        isSalida && "text-[#3D6E94] dark:text-[#7DD3FC]",
+                        isRegreso && "text-[#94652F] dark:text-[#FDBA74]",
+                        !isSalida && !isRegreso && "text-[#36794D] dark:text-[#86EFAC]"
                       )}>
                         {isSalida ? 'Salida' : isRegreso ? 'Regreso (50%)' : 'Congreso'}
                       </span>
-                      <span className="text-[11px] font-mono font-bold block">
+                      <span className="text-[11px] font-mono font-bold text-zinc-900 dark:text-zinc-100 block">
                         {tripDay.importe.toFixed(2)} €
                       </span>
                     </div>
@@ -197,13 +210,13 @@ function CalendarioDietas({
                 );
               }
 
-              // Días fuera de comisión
+              // Días fuera de comisión (blanco roto / arena suave)
               return (
                 <div
                   key={dateKey}
-                  className="h-15 sm:h-16 rounded-2xl p-2.5 flex flex-col justify-start bg-zinc-100/40 dark:bg-zinc-900/30 border border-zinc-200/40 dark:border-zinc-800/40 text-zinc-300 dark:text-zinc-700 select-none"
+                  className="h-15 sm:h-16 rounded-2xl p-2.5 flex flex-col justify-start bg-white/70 dark:bg-zinc-900/30 border border-[#F2EFE9] dark:border-zinc-800/40 text-zinc-300 dark:text-zinc-700 select-none"
                 >
-                  <span className="font-mono text-xs font-medium">{dayNum}</span>
+                  <span className="font-mono text-xs font-normal">{dayNum}</span>
                 </div>
               );
             })}
@@ -211,42 +224,47 @@ function CalendarioDietas({
         </div>
 
         {/* Panel Lateral de Detalle del Día Inspeccionado (4 cols) */}
-        <div className="lg:col-span-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 flex flex-col justify-between shadow-sm space-y-4">
+        <div className="lg:col-span-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#161618] border border-[#EFECE6] dark:border-zinc-800 flex flex-col justify-between shadow-xs space-y-4">
           {selectedDayInfo ? (
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
-                    Detalle de Jornada
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block">
+                    Jornada Seleccionada
                   </span>
                   <h5 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">
                     {selectedDayInfo.diaStr}
                   </h5>
                 </div>
-                <span className="text-xs px-2.5 py-1 rounded-lg font-bold font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-700/60">
+                <span className={cn(
+                  "text-xs px-2.5 py-1 rounded-xl font-bold font-mono border",
+                  selectedDayInfo.tipo === 'salida' && "bg-[#EDF4F9] text-[#285073] dark:bg-[#1E293B] dark:text-[#93C5FD] border-[#D2E4F2] dark:border-[#38BDF8]/30",
+                  selectedDayInfo.tipo === 'regreso' && "bg-[#FDF7ED] text-[#754E20] dark:bg-[#342416] dark:text-[#FDBA74] border-[#F7E5CB] dark:border-[#FB923C]/30",
+                  selectedDayInfo.tipo !== 'salida' && selectedDayInfo.tipo !== 'regreso' && "bg-[#EDF6F1] text-[#265E39] dark:bg-[#172E22] dark:text-[#86EFAC] border-[#CFE7D7] dark:border-[#4ADE80]/30"
+                )}>
                   {selectedDayInfo.factor * 100}% Manutención
                 </span>
               </div>
 
               <div className="space-y-2.5 text-xs">
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
+                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#1E1E20] border border-[#ECE7DD] dark:border-zinc-800">
                   <span className="text-[10px] text-zinc-400 block mb-0.5">Concepto Liquidado</span>
                   <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                    {selectedDayInfo.tipo === 'salida' ? 'Jornada de Ida y Desplazamiento Inicial' : selectedDayInfo.tipo === 'regreso' ? 'Jornada de Retorno a Origen' : 'Estancia Oficial en Comisión de Servicio'}
+                    {selectedDayInfo.tipo === 'salida' ? 'Jornada de Ida y Desplazamiento' : selectedDayInfo.tipo === 'regreso' ? 'Jornada de Retorno a Origen' : 'Estancia Oficial en Comisión de Servicio'}
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
+                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#1E1E20] border border-[#ECE7DD] dark:border-zinc-800">
                   <span className="text-[10px] text-zinc-400 block mb-0.5">Fórmula de Liquidación</span>
                   <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
-                    {selectedDayInfo.factor.toFixed(1)} factor × {tarifaDia.toFixed(2)} €/día = {selectedDayInfo.importe.toFixed(2)} €
+                    {selectedDayInfo.factor.toFixed(1)}x × {tarifaDia.toFixed(2)} €/día = {selectedDayInfo.importe.toFixed(2)} €
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
+                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#1E1E20] border border-[#ECE7DD] dark:border-zinc-800">
                   <span className="text-[10px] text-zinc-400 block mb-0.5">Régimen Tributario</span>
                   <span className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-snug block">
-                    Exento de retención a cuenta del IRPF según RD 462/2002 y Art. 9 del Reglamento del IRPF.
+                    100% Exento de retención a cuenta del IRPF según RD 462/2002 y Art. 9 del Reglamento del IRPF.
                   </span>
                 </div>
               </div>
@@ -506,13 +524,13 @@ export function ViewProcesar({
                       className={cn(
                         "p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group",
                         isSel 
-                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50/50 dark:bg-zinc-800/40 shadow-xs" 
+                          ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/40 shadow-xs" 
                           : "border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900"
                       )}
                     >
                       <div>
                         <div className="flex items-start justify-between gap-3 mb-2">
-                          <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold">
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold border border-zinc-200/60 dark:border-zinc-700/60">
                             {t.badge || 'Oficial'}
                           </span>
                           <button
@@ -558,7 +576,7 @@ export function ViewProcesar({
 
               {/* Selector Desplegable de Casos */}
               {casosFiltrados.length > 0 && (
-                <div className="bg-zinc-50/70 dark:bg-zinc-950/70 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden transition-all">
+                <div className="bg-[#FAF9F7] dark:bg-zinc-950/70 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden transition-all">
                   <div
                     onClick={() => setShowExpedientes(prev => !prev)}
                     className="p-4 flex items-center justify-between cursor-pointer select-none hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60 transition-colors"
@@ -620,8 +638,8 @@ export function ViewProcesar({
                 className={cn(
                   "p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-3",
                   isDragging 
-                    ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/40" 
-                    : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-zinc-50/30 dark:bg-zinc-950/30"
+                    ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/40" 
+                    : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-[#FAF8F5]/40 dark:bg-zinc-950/30"
                 )}
               >
                 <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx" onChange={handleFileSelect} className="hidden" />
@@ -686,7 +704,7 @@ export function ViewProcesar({
                       className={cn(
                         "p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between",
                         isSel 
-                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800/50 shadow-xs" 
+                          ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/50 shadow-xs" 
                           : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300"
                       )}
                     >
@@ -714,7 +732,7 @@ export function ViewProcesar({
                 </p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
+              <div className="p-5 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
                   <span className="text-zinc-500">Procedimiento:</span>
                   <span className="font-bold text-zinc-900 dark:text-zinc-100">{TEMPLATES.find(t => t.id === selectedTemplate)?.titulo}</span>
@@ -788,19 +806,19 @@ export function ViewProcesar({
       {error && <AlertErr msg={error} />}
 
       {/* ========================================================================= */}
-      {/* VISTA OFICIAL DE RESULTADOS */}
+      {/* VISTA OFICIAL DE RESULTADOS (DISEÑO PASTEL MINIMALISTA) */}
       {/* ========================================================================= */}
       {result && (
         <div ref={resultRef} className="space-y-6 animate-fade-in-up">
 
           {/* 1. HERO BANNER PRINCIPAL CON DICTAMEN OFICIAL */}
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 shadow-xs">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
               <div>
                 <div className="flex items-center gap-2.5 mb-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Dictamen de Liquidación</span>
                   <StatusBadge ok={result.ok} sinGt={result.sin_ground_truth} />
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold">
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold border border-[#ECE7DD] dark:border-zinc-700/60">
                     Normativa UEx 2025/2026
                   </span>
                 </div>
@@ -821,10 +839,10 @@ export function ViewProcesar({
               </div>
             </div>
 
-            {/* TARJETAS DE IMPORTES CLAVE */}
+            {/* TARJETAS DE IMPORTES CLAVE (PALETA PASTEL NATURAL) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
               
-              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
+              <div className="p-5 rounded-2xl bg-[#FAF9F7] dark:bg-zinc-950 border border-[#EFECE6] dark:border-zinc-800">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                   Total Devengado Bruto
                 </span>
@@ -834,19 +852,19 @@ export function ViewProcesar({
                 <span className="text-[11px] text-zinc-400 mt-0.5 block">Suma de conceptos abonables</span>
               </div>
 
-              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
+              <div className="p-5 rounded-2xl bg-[#EEF6F0] dark:bg-[#1A2E22]/50 border border-[#D5E8DA] dark:border-[#22543D]/60">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#285735] dark:text-[#86EFAC] block mb-1">
                   Retención IRPF
                 </span>
-                <p className="text-2xl font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
+                <p className="text-2xl font-extrabold font-mono text-[#285735] dark:text-[#86EFAC]">
                   0.00 €
                 </p>
-                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium mt-0.5 block">
+                <span className="text-[11px] text-[#3D8252] dark:text-[#4ADE80] font-medium mt-0.5 block">
                   100% Exento (RD 462/2002)
                 </span>
               </div>
 
-              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80">
+              <div className="p-5 rounded-2xl bg-[#FAF9F7] dark:bg-zinc-950 border border-[#EFECE6] dark:border-zinc-800">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                   Anticipo Descontado
                 </span>
@@ -900,7 +918,7 @@ export function ViewProcesar({
             <div className="mt-8">
               
               {/* =============================================================== */}
-              {/* TAB 1: DESGLOSE VISUAL E INTERACTIVO */}
+              {/* TAB 1: DESGLOSE VISUAL PASTEL ELEGANTE */}
               {/* =============================================================== */}
               {activeTab === 'desglose' && (
                 <div className="space-y-8 animate-fade-in">
@@ -928,7 +946,7 @@ export function ViewProcesar({
                         <div className="space-y-4 pt-2">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-center border border-zinc-200/60 dark:border-zinc-700/60">
+                              <div className="w-8 h-8 rounded-xl bg-[#EEF6F0] dark:bg-[#1A2E22]/60 text-[#285735] dark:text-[#86EFAC] flex items-center justify-center border border-[#D5E8DA] dark:border-[#22543D]/60 shadow-xs">
                                 <Route size={16} />
                               </div>
                               <div>
@@ -940,7 +958,7 @@ export function ViewProcesar({
                                 </span>
                               </div>
                             </div>
-                            <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs">
+                            <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-[#EEF6F0] text-[#285735] dark:bg-[#1A2E22] dark:text-[#86EFAC] border border-[#D5E8DA] dark:border-[#22543D]/60 shadow-xs">
                               {(transporte?.importe || 0).toFixed(2)} €
                             </span>
                           </div>
@@ -955,15 +973,15 @@ export function ViewProcesar({
 
                             if (isCoche) {
                               return (
-                                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-zinc-50/60 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800 space-y-5">
+                                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-5">
                                   
                                   {/* RUTA VISUAL SOBRIA */}
-                                  <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+                                  <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
                                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
                                       
                                       {/* Origen */}
                                       <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shrink-0 border border-zinc-200/60 dark:border-zinc-700/60">
+                                        <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shrink-0 border border-[#ECE7DD] dark:border-zinc-700/60 shadow-xs">
                                           <MapPin size={18} />
                                         </div>
                                         <div>
@@ -982,15 +1000,15 @@ export function ViewProcesar({
                                           <span>Vuelta ({mitadKm} km)</span>
                                         </div>
                                         <div className="relative flex items-center">
-                                          <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-zinc-900 dark:bg-zinc-100 w-full rounded-full" />
+                                          <div className="h-2 w-full bg-[#EBE7DF] dark:bg-zinc-700 rounded-full overflow-hidden">
+                                            <div className="h-full bg-[#4A7055] dark:bg-[#86EFAC] w-full rounded-full" />
                                           </div>
                                         </div>
                                       </div>
 
                                       {/* Destino */}
                                       <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shrink-0 border border-zinc-200/60 dark:border-zinc-700/60">
+                                        <div className="w-10 h-10 rounded-2xl bg-[#EEF6F0] dark:bg-[#1A2E22] flex items-center justify-center text-[#285735] dark:text-[#86EFAC] shrink-0 border border-[#D5E8DA] dark:border-[#22543D]/60 shadow-xs">
                                           <Navigation size={18} />
                                         </div>
                                         <div>
@@ -1004,7 +1022,7 @@ export function ViewProcesar({
 
                                   {/* FICHAS DEL VEHÍCULO Y CÁLCULO */}
                                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 flex items-center gap-3 shadow-xs">
                                       <Car size={18} className="text-zinc-400" />
                                       <div>
                                         <span className="text-[10px] text-zinc-400 block">Vehículo Autorizado</span>
@@ -1012,7 +1030,7 @@ export function ViewProcesar({
                                       </div>
                                     </div>
 
-                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 flex items-center gap-3 shadow-xs">
                                       <Gauge size={18} className="text-zinc-400" />
                                       <div>
                                         <span className="text-[10px] text-zinc-400 block">Odómetro Oficial</span>
@@ -1020,8 +1038,8 @@ export function ViewProcesar({
                                       </div>
                                     </div>
 
-                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
-                                      <Wallet size={18} className="text-zinc-700 dark:text-zinc-300" />
+                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                                      <Wallet size={18} className="text-[#285735] dark:text-[#86EFAC]" />
                                       <div>
                                         <span className="text-[10px] text-zinc-400 block">Cálculo de Indemnización</span>
                                         <span className="font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -1061,7 +1079,7 @@ export function ViewProcesar({
                         <div className="space-y-4 pt-2">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-center border border-zinc-200/60 dark:border-zinc-700/60">
+                              <div className="w-8 h-8 rounded-xl bg-[#F4EEF8] dark:bg-[#2A1D33]/60 text-[#6B3E82] dark:text-[#E9D5FF] flex items-center justify-center border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
                                 <BedDouble size={16} />
                               </div>
                               <div>
@@ -1073,7 +1091,7 @@ export function ViewProcesar({
                                 </span>
                               </div>
                             </div>
-                            <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs">
+                            <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-[#F4EEF8] text-[#6B3E82] dark:bg-[#2A1D33] dark:text-[#E9D5FF] border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
                               {(alojamiento?.importe || 0).toFixed(2)} €
                             </span>
                           </div>
@@ -1091,12 +1109,12 @@ export function ViewProcesar({
                               const porcentajeExceso = 100 - porcentajeAbonable;
 
                               return (
-                                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-zinc-50/60 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800 space-y-4">
+                                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-4">
                                   
                                   {/* Encabezado del Hotel */}
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 flex items-center justify-center shrink-0 border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+                                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 flex items-center justify-center shrink-0 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
                                         <BedDouble size={18} />
                                       </div>
                                       <div>
@@ -1110,35 +1128,35 @@ export function ViewProcesar({
                                     </div>
 
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium">
+                                      <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium border border-[#EBE6DC] dark:border-zinc-700">
                                         {a.noches || 2} noches
                                       </span>
                                       {exceso > 0 && (
-                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 font-semibold flex items-center gap-1">
+                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FDF6ED] dark:bg-amber-950/40 text-[#7C4F1A] dark:text-[#FDBA74] border border-[#F5E0C7] dark:border-amber-900/60 font-medium flex items-center gap-1">
                                           <ShieldAlert size={12} /> Exceso no abonable: -{exceso.toFixed(2)} €
                                         </span>
                                       )}
                                     </div>
                                   </div>
 
-                                  {/* BARRA COMPARATIVA MINIMALISTA */}
-                                  <div className="space-y-2.5 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+                                  {/* BARRA COMPARATIVA CON TONOS PASTEL */}
+                                  <div className="space-y-2.5 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
                                     <div className="flex justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
                                       <span>Distribución del Gasto de Factura ({importeReal.toFixed(2)} €)</span>
-                                      <span className="font-mono text-zinc-900 dark:text-zinc-100">
+                                      <span className="font-mono text-[#285735] dark:text-[#86EFAC]">
                                         {porcentajeAbonable.toFixed(0)}% Abonable
                                       </span>
                                     </div>
 
-                                    <div className="h-3 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex border border-zinc-200/60 dark:border-zinc-700/60">
+                                    <div className="h-3 w-full bg-[#F3EFE9] dark:bg-zinc-800 rounded-full overflow-hidden flex border border-[#E5E0D6] dark:border-zinc-700/60">
                                       <div 
-                                        className="h-full bg-zinc-900 dark:bg-zinc-100 rounded-l-full transition-all duration-500" 
+                                        className="h-full bg-[#75B889] dark:bg-[#4ADE80] rounded-l-full transition-all duration-500" 
                                         style={{ width: `${porcentajeAbonable}%` }}
                                         title={`Subvencionado: ${importeAbonable.toFixed(2)} €`}
                                       />
                                       {porcentajeExceso > 0 && (
                                         <div 
-                                          className="h-full bg-zinc-300 dark:bg-zinc-600 rounded-r-full transition-all duration-500" 
+                                          className="h-full bg-[#E5A86E] dark:bg-[#FB923C] rounded-r-full transition-all duration-500" 
                                           style={{ width: `${porcentajeExceso}%` }}
                                           title={`Exceso no imputable: ${exceso.toFixed(2)} €`}
                                         />
@@ -1146,27 +1164,27 @@ export function ViewProcesar({
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
-                                        <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold uppercase">
-                                          <div className="w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100" />
+                                      <div className="p-3 rounded-xl bg-[#EEF6F0] dark:bg-[#1A2E22]/50 border border-[#D5E8DA] dark:border-[#22543D]/60">
+                                        <div className="flex items-center gap-1.5 text-[#285735] dark:text-[#86EFAC] text-[10px] font-bold uppercase">
+                                          <div className="w-2 h-2 rounded-full bg-[#75B889] dark:bg-[#4ADE80]" />
                                           Límite Abonable UEx
                                         </div>
-                                        <span className="text-sm font-extrabold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5 block">
+                                        <span className="text-sm font-extrabold font-mono text-[#285735] dark:text-[#86EFAC] mt-0.5 block">
                                           {importeAbonable.toFixed(2)} €
                                         </span>
                                       </div>
 
-                                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
-                                        <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
-                                          <div className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-600" />
+                                      <div className="p-3 rounded-xl bg-[#FDF7ED] dark:bg-[#342416]/50 border border-[#F7E5CB] dark:border-[#FB923C]/30">
+                                        <div className="flex items-center gap-1.5 text-[#754E20] dark:text-[#FDBA74] text-[10px] font-bold uppercase">
+                                          <div className="w-2 h-2 rounded-full bg-[#E5A86E] dark:bg-[#FB923C]" />
                                           Exceso no Imputable
                                         </div>
-                                        <span className="text-sm font-extrabold font-mono text-zinc-600 dark:text-zinc-400 mt-0.5 block">
+                                        <span className="text-sm font-extrabold font-mono text-[#754E20] dark:text-[#FDBA74] mt-0.5 block">
                                           -{exceso.toFixed(2)} €
                                         </span>
                                       </div>
 
-                                      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
+                                      <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
                                         <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
                                           <FileText size={11} />
                                           Total Factura Presentada
@@ -1186,9 +1204,9 @@ export function ViewProcesar({
 
                         {/* 4. INSCRIPCIÓN / CUOTAS DE CONGRESO */}
                         {inscripcion && (
-                          <div className="p-5 sm:p-6 rounded-3xl bg-zinc-50/60 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+                          <div className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shrink-0 border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+                              <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shrink-0 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
                                 <Building2 size={18} />
                               </div>
                               <div>
@@ -1202,7 +1220,7 @@ export function ViewProcesar({
                                 </span>
                               </div>
                             </div>
-                            <span className="text-base font-extrabold font-mono px-4 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs">
+                            <span className="text-base font-extrabold font-mono px-4 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs">
                               {(inscripcion.importe_total || inscripcion.importe || 0).toFixed(2)} €
                             </span>
                           </div>
@@ -1228,8 +1246,8 @@ export function ViewProcesar({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
                       <div className="space-y-4">
-                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 flex items-start gap-3">
-                          <ShieldCheck size={18} className="text-zinc-800 dark:text-zinc-200 shrink-0 mt-0.5" />
+                        <div className="p-4 rounded-2xl bg-[#EEF6F0]/60 dark:bg-[#1A2E22]/30 border border-[#D5E8DA] dark:border-[#22543D]/50 flex items-start gap-3">
+                          <ShieldCheck size={18} className="text-[#285735] dark:text-[#86EFAC] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
                               Régimen de Exención de IRPF (0,00 €)
@@ -1240,8 +1258,8 @@ export function ViewProcesar({
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 flex items-start gap-3">
-                          <FileCheck size={18} className="text-zinc-800 dark:text-zinc-200 shrink-0 mt-0.5" />
+                        <div className="p-4 rounded-2xl bg-[#EEF4F8]/60 dark:bg-[#1E293B]/30 border border-[#D0E2F0] dark:border-[#334155]/50 flex items-start gap-3">
+                          <FileCheck size={18} className="text-[#2B4C6F] dark:text-[#93C5FD] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
                               Compensación por Uso de Vehículo Particular
@@ -1254,8 +1272,8 @@ export function ViewProcesar({
                       </div>
 
                       <div className="space-y-4">
-                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 flex items-start gap-3">
-                          <AlertTriangle size={18} className="text-zinc-800 dark:text-zinc-200 shrink-0 mt-0.5" />
+                        <div className="p-4 rounded-2xl bg-[#FDF7ED]/60 dark:bg-[#342416]/30 border border-[#F7E5CB] dark:border-[#5C3818]/50 flex items-start gap-3">
+                          <AlertTriangle size={18} className="text-[#754E20] dark:text-[#FDBA74] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
                               Aplicación de Topes Máximos de Alojamiento
@@ -1266,7 +1284,7 @@ export function ViewProcesar({
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 flex items-start gap-3">
+                        <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 flex items-start gap-3">
                           <Building2 size={18} className="text-zinc-500 shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
@@ -1356,7 +1374,7 @@ export function ViewProcesar({
             {/* Header del Modal */}
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-700/60">
+                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-[#ECE7DD] dark:border-zinc-700/60">
                   {previewTemplateModal.badge || 'Modelo Oficial'}
                 </span>
                 <div>
@@ -1393,7 +1411,7 @@ export function ViewProcesar({
             {/* Cuerpo del Modal */}
             <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
               
-              <div className="lg:col-span-8 flex flex-col min-h-0 bg-zinc-100/60 dark:bg-zinc-950/60 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-inner">
+              <div className="lg:col-span-8 flex flex-col min-h-0 bg-[#FAF8F5] dark:bg-zinc-950/60 rounded-2xl border border-[#ECE7DD] dark:border-zinc-800 overflow-hidden shadow-inner">
                 <div className="px-4 py-2 bg-zinc-200/60 dark:bg-zinc-900/60 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-500 shrink-0">
                   <span className="flex items-center gap-1.5 font-medium">
                     <FileCheck size={14} className="text-zinc-400" />
@@ -1417,7 +1435,7 @@ export function ViewProcesar({
 
               <div className="lg:col-span-4 flex flex-col justify-between overflow-y-auto space-y-4 pr-1">
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
+                  <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                       Descripción del Trámite
                     </span>
@@ -1427,7 +1445,7 @@ export function ViewProcesar({
                   </div>
 
                   {(previewTemplateModal as any).normativa && (
-                    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
+                    <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                         Marco Normativo y Legal
                       </span>
@@ -1438,7 +1456,7 @@ export function ViewProcesar({
                   )}
 
                   {(previewTemplateModal as any).organismo && (
-                    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800">
+                    <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                         Órgano Tramitador y Destino
                       </span>
