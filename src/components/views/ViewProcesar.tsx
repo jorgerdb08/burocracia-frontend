@@ -799,7 +799,7 @@ export function ViewProcesar({
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-zinc-500">Motor de Extracción:</span>
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">Google Gemini 2.5 Flash (1M tokens)</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">Google Gemini 3.6 Flash / Groq LPU (1M tokens)</span>
                 </div>
               </div>
 
