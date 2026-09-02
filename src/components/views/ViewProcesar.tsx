@@ -729,12 +729,16 @@ export function ViewProcesar({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {[
-                  { id: '', title: 'Detección Automática (IA)', desc: 'El agente identifica la fuente mediante los logos y el proyecto.' },
-                  { id: 'UEX', title: 'Plan Estatal / UEx', desc: 'Dietas según RD 462/2002 (37,70 €/día manutención, 65,97 €/noche hotel).' },
-                  { id: 'JUNTA', title: 'Junta de Extremadura', desc: 'Decreto Autonómico (53,34 €/día manutención, 102,56 €/noche hotel, aplica IRPF).' }
-                ].map((m) => {
+                  { id: '', title: 'Detección Automática (IA)', tag: 'IA Auto', desc: 'El agente identifica la fuente oficial mediante los logos y el proyecto.', badge: 'Auto' },
+                  { id: 'PEI', title: 'Plan Estatal de Investigación', tag: 'RD 462/2002', desc: 'Dietas estatales (37,70 €/día, 65,97 €/noche, 0,26 €/km). 100% Exento de IRPF.', badge: 'Estatal' },
+                  { id: 'G24', title: 'Ayudas a grupos o proyectos GR24/IB24', tag: 'Decreto 42/2025', desc: 'Dietas autonómicas (60,00 €/día, 120,00 €/noche, 0,26 €/km). Aplica 15% IRPF sobre exceso.', badge: 'Junta' },
+                  { id: 'JEX', title: 'Otros proyectos Decreto 42/2025', tag: 'Decreto 42/2025', desc: 'Proyectos autonómicos Junta de Extremadura (60,00 €/día, 120,00 €/noche). IRPF 15%.', badge: 'Junta' },
+                  { id: 'UEX', title: 'Contratos y convenios UEx', tag: 'RD 462/2002', desc: 'Contratos Art. 60 / OTRI y convenios de colaboración suscritos por la UEx.', badge: 'UEx' },
+                  { id: 'PCO', title: 'Planes Complementarios', tag: 'RD 462/2002', desc: 'Proyectos cofinanciados mediante Planes Complementarios de I+D+i.', badge: 'Estatal' },
+                  { id: 'NAL', title: 'Otros proyectos R.D. 462/2002', tag: 'RD 462/2002', desc: 'Otros proyectos sujetos al régimen general de indemnizaciones del Estado.', badge: 'Estatal' }
+                ].map((m: { id: string; title: string; tag: string; desc: string; badge: string }) => {
                   const isSel = tipoProyecto === m.id;
                   return (
                     <div
@@ -748,7 +752,18 @@ export function ViewProcesar({
                       )}
                     >
                       <div>
-                        <h4 className="font-bold text-xs text-zinc-900 dark:text-zinc-100 mb-1">{m.title}</h4>
+                        <div className="flex items-center justify-between gap-1 mb-1.5">
+                          <h4 className="font-bold text-xs text-zinc-900 dark:text-zinc-100">{m.title}</h4>
+                          <span className={cn(
+                            "text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase",
+                            m.badge === 'Junta' ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" :
+                            m.badge === 'Estatal' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" :
+                            m.badge === 'UEx' ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" :
+                            "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                          )}>
+                            {m.tag}
+                          </span>
+                        </div>
                         <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">{m.desc}</p>
                       </div>
                       <div className="mt-3 text-[10px] font-bold text-zinc-400">
