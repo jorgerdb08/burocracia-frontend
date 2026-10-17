@@ -5,10 +5,10 @@ import {
   Scale, FileCheck, Building2, HelpCircle, ExternalLink, Copy, Terminal, ChevronDown, ChevronUp, ZoomIn,
   Calendar, Car, BedDouble, MapPin, Navigation, Gauge, Fuel, CreditCard, Clock, Sparkles, Route, ArrowRightLeft,
   ShieldAlert, Wallet, CalendarDays, Compass, Receipt, Calculator, ArrowDownRight, ArrowUpRight,
-  ArrowLeft, Table, Layers, Filter
+  ArrowLeft, Table, Layers, Filter, Landmark, Utensils, Code2, GitFork, Download
 } from 'lucide-react';
 import { ViewGrafo } from './ViewGrafo';
-import { cn, pollTask } from '../../lib/utils';
+import { cn, pollTask, fmtEur } from '../../lib/utils';
 import { TEMPLATES } from '../../lib/data';
 import type { CasoResult } from '../../lib/types';
 import { Btn } from '../ui/Btn';
@@ -986,155 +986,200 @@ export function ViewProcesar({
               </div>
 
               <div className="flex flex-wrap gap-2.5 items-center">
-                <Btn size="md" variant="outline" onClick={() => window.open(`/api/txt/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} className="flex items-center gap-1.5 shadow-xs cursor-pointer rounded-2xl">
+                <button 
+                  type="button"
+                  onClick={() => window.open(`/api/txt/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} 
+                  className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold flex items-center gap-2 shadow-2xs transition-colors cursor-pointer"
+                >
                   <FileText size={15} />
                   Memoria Justificativa (TXT)
-                </Btn>
-                <Btn size="md" variant="primary" onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} className="flex items-center gap-1.5 shadow-sm cursor-pointer rounded-2xl">
-                  <Printer size={15} />
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} 
+                  className="px-4 py-2.5 rounded-xl bg-[#0b1528] hover:bg-[#152342] text-white text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+                >
+                  <Download size={15} />
                   Descargar PDF Oficial UEx
-                </Btn>
+                </button>
               </div>
             </div>
 
             {/* TARJETAS DE IMPORTES CLAVE (RECONCILIACIÓN DEL GASTO) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
               
-              <div className="p-5 rounded-2xl bg-[#FAF9F7] dark:bg-zinc-950 border border-[#EFECE6] dark:border-zinc-800">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              {/* CARD 1: Coste Total de la Misión */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 flex items-center gap-4 shadow-2xs">
+                <div className="w-11 h-11 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-500 dark:text-zinc-400">
+                  <FileText size={18} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block truncate">
                     Coste Total de la Misión
                   </span>
-                  <Receipt size={14} className="text-zinc-400" />
+                  <p className="text-2xl font-black font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
+                    {fmtEur(balanceFinanciero ? balanceFinanciero.gastoTotalMision : result.liquido_ag)}
+                  </p>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
+                    Suma de todas las facturas y tickets
+                  </span>
                 </div>
-                <p className="text-2xl font-extrabold font-mono text-zinc-900 dark:text-zinc-100">
-                  {balanceFinanciero ? balanceFinanciero.gastoTotalMision.toFixed(2) : result.liquido_ag.toFixed(2)} €
-                </p>
-                <span className="text-[11px] text-zinc-400 mt-0.5 block">Suma de todas las facturas y tickets</span>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#F4EEF8] dark:bg-[#2A1D33]/40 border border-[#E8DAEE] dark:border-[#581C87]/40">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B3E82] dark:text-[#E9D5FF]">
+              {/* CARD 2: Tarjeta Institucional UEx */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/30 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 flex items-center gap-4 shadow-2xs">
+                <div className="w-11 h-11 rounded-full bg-blue-100/70 dark:bg-blue-900/40 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400">
+                  <CreditCard size={18} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 block truncate">
                     Tarjeta Institucional UEx
                   </span>
-                  <CreditCard size={14} className="text-[#6B3E82] dark:text-[#E9D5FF]" />
+                  <p className="text-2xl font-black font-mono text-blue-800 dark:text-blue-300 tracking-tight">
+                    {(balanceFinanciero?.insTotal || 0) > 0 ? `-${fmtEur(balanceFinanciero?.insTotal || 0)}` : '0,00 €'}
+                  </p>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
+                    Inscripción pagada por UEx (no transferible)
+                  </span>
                 </div>
-                <p className="text-2xl font-extrabold font-mono text-[#6B3E82] dark:text-[#E9D5FF]">
-                  -{balanceFinanciero?.insTotal.toFixed(2) || '0.00'} €
-                </p>
-                <span className="text-[11px] text-[#6B3E82]/80 dark:text-[#E9D5FF]/80 font-medium mt-0.5 block">
-                  Inscripción pagada por UEx (no transferible)
-                </span>
               </div>
 
-              {/* Tarjeta 3: Muestra Retención IRPF si aplica (Junta) o Exceso Hotel (Estatal) */}
+              {/* CARD 3: Retención IRPF / Exceso Hotel */}
               {balanceFinanciero && balanceFinanciero.irpfRetencion > 0 ? (
-                <div className="p-5 rounded-2xl bg-[#FDF7ED] dark:bg-[#342416]/40 border border-[#F7E5CB] dark:border-[#FB923C]/30">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#754E20] dark:text-[#FDBA74]">
+                <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/30 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 flex items-center gap-4 shadow-2xs">
+                  <div className="w-11 h-11 rounded-full bg-amber-100/70 dark:bg-amber-900/40 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400">
+                    <Scale size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400 block truncate">
                       Retención IRPF (15%)
                     </span>
-                    <Scale size={14} className="text-[#754E20] dark:text-[#FDBA74]" />
+                    <p className="text-2xl font-black font-mono text-amber-900 dark:text-amber-300 tracking-tight">
+                      -{fmtEur(balanceFinanciero.irpfRetencion)}
+                    </p>
+                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
+                      Sobre exceso de topes estatales (Base: {fmtEur(balanceFinanciero.irpfBase)})
+                    </span>
                   </div>
-                  <p className="text-2xl font-extrabold font-mono text-[#754E20] dark:text-[#FDBA74]">
-                    -{balanceFinanciero.irpfRetencion.toFixed(2)} €
-                  </p>
-                  <span className="text-[11px] text-[#754E20]/80 dark:text-[#FDBA74]/80 mt-0.5 block">
-                    Sobre exceso de topes estatales (Base: {balanceFinanciero.irpfBase.toFixed(2)} €)
-                  </span>
                 </div>
               ) : (
                 <div className={cn(
-                  "p-5 rounded-2xl border",
+                  "p-4 sm:p-5 rounded-2xl border flex items-center gap-4 shadow-2xs",
                   balanceFinanciero && balanceFinanciero.aloExceso > 0
-                    ? "bg-[#FDF7ED] dark:bg-[#342416]/40 border-[#F7E5CB] dark:border-[#FB923C]/30"
-                    : "bg-[#EEF6F0] dark:bg-[#1A2E22]/50 border-[#D5E8DA] dark:border-[#22543D]/60"
+                    ? "bg-amber-50/30 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40"
+                    : "bg-emerald-50/20 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40"
                 )}>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className={cn(
+                    "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
+                    balanceFinanciero && balanceFinanciero.aloExceso > 0
+                      ? "bg-amber-100/70 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+                      : "bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
+                  )}>
+                    {balanceFinanciero && balanceFinanciero.aloExceso > 0 ? (
+                      <ShieldAlert size={18} />
+                    ) : (
+                      <ShieldCheck size={18} />
+                    )}
+                  </div>
+                  <div className="min-w-0">
                     <span className={cn(
-                      "text-[11px] font-semibold uppercase tracking-wider",
+                      "text-[11px] font-bold uppercase tracking-wider block truncate",
                       balanceFinanciero && balanceFinanciero.aloExceso > 0
-                        ? "text-[#754E20] dark:text-[#FDBA74]"
-                        : "text-[#285735] dark:text-[#86EFAC]"
+                        ? "text-amber-800 dark:text-amber-400"
+                        : "text-emerald-700 dark:text-emerald-400"
                     )}>
                       {balanceFinanciero && balanceFinanciero.aloExceso > 0 ? 'Exceso Hotel Excluido' : 'Retención IRPF'}
                     </span>
-                    {balanceFinanciero && balanceFinanciero.aloExceso > 0 ? (
-                      <ShieldAlert size={14} className="text-[#754E20] dark:text-[#FDBA74]" />
-                    ) : (
-                      <ShieldCheck size={14} className="text-[#285735] dark:text-[#86EFAC]" />
-                    )}
+                    <p className={cn(
+                      "text-2xl font-black font-mono tracking-tight",
+                      balanceFinanciero && balanceFinanciero.aloExceso > 0
+                        ? "text-amber-900 dark:text-amber-300"
+                        : "text-emerald-800 dark:text-emerald-300"
+                    )}>
+                      {balanceFinanciero && balanceFinanciero.aloExceso > 0
+                        ? `-${fmtEur(balanceFinanciero.aloExceso)}`
+                        : '0,00 €'}
+                    </p>
+                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
+                      {balanceFinanciero && balanceFinanciero.aloExceso > 0
+                        ? 'Supera límite de 65,97 €/noche'
+                        : '100% Exento (RD 462/2002 · Art. 9 RIRPF)'}
+                    </span>
                   </div>
-                  <p className={cn(
-                    "text-2xl font-extrabold font-mono",
-                    balanceFinanciero && balanceFinanciero.aloExceso > 0
-                      ? "text-[#754E20] dark:text-[#FDBA74]"
-                      : "text-[#285735] dark:text-[#86EFAC]"
-                  )}>
-                    {balanceFinanciero && balanceFinanciero.aloExceso > 0
-                      ? `-${balanceFinanciero.aloExceso.toFixed(2)} €`
-                      : '0.00 €'}
-                  </p>
-                  <span className={cn(
-                    "text-[11px] font-medium mt-0.5 block",
-                    balanceFinanciero && balanceFinanciero.aloExceso > 0
-                      ? "text-[#754E20]/80 dark:text-[#FDBA74]/80"
-                      : "text-[#3D8252] dark:text-[#4ADE80]"
-                  )}>
-                    {balanceFinanciero && balanceFinanciero.aloExceso > 0
-                      ? 'Supera límite de 65,97 €/noche'
-                      : '100% Exento (RD 462/2002 · Art. 9 RIRPF)'}
-                  </span>
                 </div>
               )}
 
-              <div className="p-5 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">
+              {/* CARD 4: Líquido a Transferir */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/30 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex items-center gap-4 shadow-2xs">
+                <div className="w-11 h-11 rounded-full bg-emerald-100/70 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+                  <Landmark size={18} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block truncate">
                     Líquido a Transferir
                   </span>
-                  <Wallet size={14} className="text-zinc-300 dark:text-zinc-700" />
+                  <p className="text-2xl font-black font-mono text-emerald-800 dark:text-emerald-300 tracking-tight">
+                    {fmtEur(result.liquido_ag)}
+                  </p>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
+                    Abono en cuenta bancaria (IBAN)
+                  </span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-black font-mono">
-                  {result.liquido_ag.toFixed(2)} €
-                </p>
-                <span className="text-[11px] text-zinc-300 dark:text-zinc-700 font-medium mt-0.5 block">
-                  Abono en cuenta bancaria (IBAN)
-                </span>
               </div>
 
             </div>
           </div>
 
-          {/* 2. PESTAÑAS DE CONTENIDO DETALLADO */}
+          {/* 2. PESTAÑAS Y CONTENIDO DETALLADO */}
           <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
             
-            <div className="flex border-b border-zinc-200/80 dark:border-zinc-800/80 gap-2 overflow-x-auto pb-px">
-              {[
-                { id: 'desglose', label: 'Desglose Oficial de Liquidación' },
-                { id: 'balance', label: 'Balance y Reconciliación de Gastos' },
-                { id: 'fundamentacion', label: 'Régimen Fiscal y Fundamento Jurídico' },
-                { id: 'json', label: 'Esquema JSON' },
-                { id: 'auditoria', label: 'Auditoría y Trazabilidad' },
-                { id: 'grafo', label: 'Grafo de Ejecución' }
-              ].map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
-                  className={cn(
-                    "px-4 py-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap cursor-pointer",
-                    activeTab === t.id 
-                      ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100" 
-                      : "border-transparent text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+              
+              {/* SIDEBAR VERTICAL DE PESTAÑAS */}
+              <div className="w-full lg:w-64 shrink-0 flex flex-col space-y-1">
+                {[
+                  { id: 'desglose', label: 'Desglose Oficial de Liquidación', icon: Layers },
+                  { id: 'balance', label: 'Balance y Reconciliación de Gastos', icon: FileText },
+                  { id: 'fundamentacion', label: 'Régimen Fiscal y Fundamento Jurídico', icon: Scale },
+                  { id: 'json', label: 'Esquema JSON', icon: Code2 },
+                  { id: 'auditoria', label: 'Auditoría y Trazabilidad', icon: Clock },
+                  { id: 'grafo', label: 'Grafo de Ejecución', icon: GitFork }
+                ].map(t => {
+                  const Icon = t.icon;
+                  const isActive = activeTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveTab(t.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3.5 py-3 text-xs text-left transition-all cursor-pointer border-l-4",
+                        isActive
+                          ? "border-blue-600 bg-blue-50/80 text-blue-700 font-bold dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-500 rounded-r-xl"
+                          : "border-transparent text-zinc-600 dark:text-zinc-400 font-medium hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 rounded-xl"
+                      )}
+                    >
+                      <Icon 
+                        size={17} 
+                        className={isActive ? "text-blue-600 dark:text-blue-400 shrink-0" : "text-zinc-400 dark:text-zinc-500 shrink-0"} 
+                      />
+                      <span className="leading-snug">{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <div className="mt-8">
+              {/* PANEL PRINCIPAL DE CONTENIDO */}
+              <div className="flex-1 min-w-0 w-full space-y-6">
+                
+                {/* Título de la sección activa */}
+                <h3 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">
+                  {activeTab === 'desglose' && 'Desglose Oficial de Liquidación'}
+                  {activeTab === 'balance' && 'Balance y Reconciliación de Gastos'}
+                  {activeTab === 'fundamentacion' && 'Régimen Fiscal y Fundamento Jurídico'}
+                  {activeTab === 'json' && 'Esquema JSON'}
+                  {activeTab === 'auditoria' && 'Auditoría y Trazabilidad'}
+                  {activeTab === 'grafo' && 'Grafo de Ejecución'}
+                </h3>
               
               {/* =============================================================== */}
               {/* TAB 1: DESGLOSE OFICIAL DE LIQUIDACIÓN CON FILTRO POR CONCEPTO */}
@@ -1164,154 +1209,157 @@ export function ViewProcesar({
 
                     return (
                       <div className="space-y-6">
-                        {/* 1. SELECTOR Y FILTRADO INTERACTIVO DE CONCEPTOS */}
-                        <div className="p-4 sm:p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                  Partidas y Conceptos de la Comisión
-                                </h4>
-                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
-                                  R.D. 462/2002
-                                </span>
-                              </div>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                Seleccione la partida que desee examinar individualmente o consulte el resumen contable consolidado.
-                              </p>
+                        {/* 1. PARTIDAS Y CONCEPTOS DE LA COMISIÓN (SELECTOR INTERACTIVO) */}
+                        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 space-y-4 shadow-2xs">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                Partidas y Conceptos de la Comisión
+                              </h4>
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                {result.liquidacion && (result.liquidacion as any).identificacion?.fuente_financiacion === 'extremadura'
+                                  ? 'Decreto 42/2025'
+                                  : 'R.D. 462/2002'}
+                              </span>
                             </div>
-
-                            {filtroConcepto !== 'todos' && (
-                              <button
-                                type="button"
-                                onClick={() => setFiltroConcepto('todos')}
-                                className="text-xs font-semibold text-[#176B52] dark:text-[#86EFAC] hover:underline flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-                              >
-                                <ArrowLeft size={13} />
-                                Mostrar todas las partidas
-                              </button>
-                            )}
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                              Seleccione la partida que desee examinar individualmente o consulte el resumen contable consolidado.
+                            </p>
                           </div>
 
-                          {/* Botones de Selección */}
-                          <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-0.5">
+                          {/* Fila de 5 Tarjetas de Conceptos */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 pt-1">
+                            
+                            {/* 1. Resumen Global */}
                             <button
                               type="button"
                               onClick={() => setFiltroConcepto('todos')}
                               className={cn(
-                                "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
+                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
                                 filtroConcepto === 'todos'
-                                  ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100 shadow-xs"
-                                  : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                                  ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
+                                  : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
                               )}
                             >
-                              <Layers size={14} />
-                              <span>Resumen Global</span>
-                              <span className={cn(
-                                "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
-                                filtroConcepto === 'todos'
-                                  ? "bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900"
-                                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-                              )}>
-                                {(result.liquido_ag || 0).toFixed(2)} €
-                              </span>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Layers size={18} className={filtroConcepto === 'todos' ? "text-blue-600 shrink-0" : "text-zinc-500 shrink-0"} />
+                                <div className="truncate">
+                                  <div className="text-xs font-semibold leading-tight truncate">Resumen Global</div>
+                                  <div className={cn(
+                                    "text-sm font-mono font-bold mt-0.5",
+                                    filtroConcepto === 'todos' ? "text-blue-700 dark:text-blue-400" : "text-zinc-900 dark:text-zinc-100"
+                                  )}>
+                                    {fmtEur(result.liquido_ag || 0)}
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronRight size={15} className={cn("shrink-0 ml-1.5", filtroConcepto === 'todos' ? "text-blue-600" : "text-zinc-400")} />
                             </button>
 
-                            {manutencion && (
-                              <button
-                                type="button"
-                                onClick={() => setFiltroConcepto('manutencion')}
-                                className={cn(
-                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
-                                  filtroConcepto === 'manutencion'
-                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
-                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
-                                )}
-                              >
-                                <CalendarDays size={14} />
-                                <span>Manutención</span>
-                                <span className={cn(
-                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
-                                  filtroConcepto === 'manutencion'
-                                    ? "bg-white/20 text-white"
-                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-                                )}>
-                                  {(manutencion.importe || 0).toFixed(2)} €
-                                </span>
-                              </button>
-                            )}
+                            {/* 2. Manutención */}
+                            <button
+                              type="button"
+                              onClick={() => setFiltroConcepto('manutencion')}
+                              className={cn(
+                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                filtroConcepto === 'manutencion'
+                                  ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
+                                  : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
+                              )}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Utensils size={18} className={filtroConcepto === 'manutencion' ? "text-blue-600 shrink-0" : "text-zinc-500 shrink-0"} />
+                                <div className="truncate">
+                                  <div className="text-xs font-semibold leading-tight truncate">Manutención</div>
+                                  <div className={cn(
+                                    "text-sm font-mono font-bold mt-0.5",
+                                    filtroConcepto === 'manutencion' ? "text-blue-700 dark:text-blue-400" : "text-zinc-900 dark:text-zinc-100"
+                                  )}>
+                                    {fmtEur(manutencion?.importe || 0)}
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronRight size={15} className={cn("shrink-0 ml-1.5", filtroConcepto === 'manutencion' ? "text-blue-600" : "text-zinc-400")} />
+                            </button>
 
-                            {transporte && (
-                              <button
-                                type="button"
-                                onClick={() => setFiltroConcepto('transporte')}
-                                className={cn(
-                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
-                                  filtroConcepto === 'transporte'
-                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
-                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
-                                )}
-                              >
-                                <Car size={14} />
-                                <span>Transporte</span>
-                                <span className={cn(
-                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
-                                  filtroConcepto === 'transporte'
-                                    ? "bg-white/20 text-white"
-                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-                                )}>
-                                  {(transporte.importe || 0).toFixed(2)} €
-                                </span>
-                              </button>
-                            )}
+                            {/* 3. Transporte */}
+                            <button
+                              type="button"
+                              onClick={() => setFiltroConcepto('transporte')}
+                              className={cn(
+                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                filtroConcepto === 'transporte'
+                                  ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
+                                  : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
+                              )}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Car size={18} className={filtroConcepto === 'transporte' ? "text-blue-600 shrink-0" : "text-zinc-500 shrink-0"} />
+                                <div className="truncate">
+                                  <div className="text-xs font-semibold leading-tight truncate">Transporte</div>
+                                  <div className={cn(
+                                    "text-sm font-mono font-bold mt-0.5",
+                                    filtroConcepto === 'transporte' ? "text-blue-700 dark:text-blue-400" : "text-zinc-900 dark:text-zinc-100"
+                                  )}>
+                                    {fmtEur(transporte?.importe || 0)}
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronRight size={15} className={cn("shrink-0 ml-1.5", filtroConcepto === 'transporte' ? "text-blue-600" : "text-zinc-400")} />
+                            </button>
 
-                            {alojamiento && (
-                              <button
-                                type="button"
-                                onClick={() => setFiltroConcepto('alojamiento')}
-                                className={cn(
-                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
-                                  filtroConcepto === 'alojamiento'
-                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
-                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
-                                )}
-                              >
-                                <BedDouble size={14} />
-                                <span>Alojamiento</span>
-                                <span className={cn(
-                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
-                                  filtroConcepto === 'alojamiento'
-                                    ? "bg-white/20 text-white"
-                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-                                )}>
-                                  {(alojamiento.importe || 0).toFixed(2)} €
-                                </span>
-                              </button>
-                            )}
+                            {/* 4. Alojamiento */}
+                            <button
+                              type="button"
+                              onClick={() => setFiltroConcepto('alojamiento')}
+                              className={cn(
+                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                filtroConcepto === 'alojamiento'
+                                  ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
+                                  : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
+                              )}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <BedDouble size={18} className={filtroConcepto === 'alojamiento' ? "text-blue-600 shrink-0" : "text-zinc-500 shrink-0"} />
+                                <div className="truncate">
+                                  <div className="text-xs font-semibold leading-tight truncate">Alojamiento</div>
+                                  <div className={cn(
+                                    "text-sm font-mono font-bold mt-0.5",
+                                    filtroConcepto === 'alojamiento' ? "text-blue-700 dark:text-blue-400" : "text-zinc-900 dark:text-zinc-100"
+                                  )}>
+                                    {fmtEur(alojamiento?.importe || 0)}
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronRight size={15} className={cn("shrink-0 ml-1.5", filtroConcepto === 'alojamiento' ? "text-blue-600" : "text-zinc-400")} />
+                            </button>
 
-                            {inscripcion && (
-                              <button
-                                type="button"
-                                onClick={() => setFiltroConcepto('inscripcion')}
-                                className={cn(
-                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
-                                  filtroConcepto === 'inscripcion'
-                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
-                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
-                                )}
-                              >
-                                <Building2 size={14} />
-                                <span>Inscripción</span>
-                                <span className={cn(
-                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
-                                  filtroConcepto === 'inscripcion'
-                                    ? "bg-white/20 text-white"
-                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-                                )}>
-                                  {(inscripcion.reembolsable_al_investigador ? inscripcion.importe_reembolsable : 0).toFixed(2)} €
-                                </span>
-                              </button>
-                            )}
+                            {/* 5. Inscripción */}
+                            <button
+                              type="button"
+                              onClick={() => setFiltroConcepto('inscripcion')}
+                              className={cn(
+                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                filtroConcepto === 'inscripcion'
+                                  ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
+                                  : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
+                              )}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <FileText size={18} className={filtroConcepto === 'inscripcion' ? "text-blue-600 shrink-0" : "text-zinc-500 shrink-0"} />
+                                <div className="truncate">
+                                  <div className="text-xs font-semibold leading-tight truncate">Inscripción</div>
+                                  <div className={cn(
+                                    "text-sm font-mono font-bold mt-0.5",
+                                    filtroConcepto === 'inscripcion' ? "text-blue-700 dark:text-blue-400" : "text-zinc-900 dark:text-zinc-100"
+                                  )}>
+                                    {fmtEur(inscripcion ? (inscripcion.reembolsable_al_investigador ? inscripcion.importe_reembolsable : 0) : 0)}
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronRight size={15} className={cn("shrink-0 ml-1.5", filtroConcepto === 'inscripcion' ? "text-blue-600" : "text-zinc-400")} />
+                            </button>
+
                           </div>
                         </div>
 
@@ -2120,6 +2168,7 @@ export function ViewProcesar({
                 </div>
               )}
 
+              </div>
             </div>
           </div>
 

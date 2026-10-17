@@ -13,3 +13,12 @@ export async function pollTask<T>(taskId: string, maxWaitMs = 180000, intervalMs
   }
   throw new Error('Tiempo de espera agotado')
 }
+
+export function fmtEur(val: number | string | undefined | null): string {
+  const num = typeof val === 'number' ? val : parseFloat(String(val ?? 0));
+  if (isNaN(num)) return '0,00 €';
+  const parts = Math.abs(num).toFixed(2).split('.');
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const sign = num < 0 ? '-' : '';
+  return `${sign}${intPart},${parts[1]} €`;
+}
