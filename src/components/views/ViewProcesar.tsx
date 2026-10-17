@@ -4,7 +4,8 @@ import {
   ChevronLeft, RotateCcw, Check, Eye, CheckCircle2, FileText, FolderOpen, Printer, Info, ShieldCheck,
   Scale, FileCheck, Building2, HelpCircle, ExternalLink, Copy, Terminal, ChevronDown, ChevronUp, ZoomIn,
   Calendar, Car, BedDouble, MapPin, Navigation, Gauge, Fuel, CreditCard, Clock, Sparkles, Route, ArrowRightLeft,
-  ShieldAlert, Wallet, CalendarDays, Compass, Receipt, Calculator, ArrowDownRight, ArrowUpRight
+  ShieldAlert, Wallet, CalendarDays, Compass, Receipt, Calculator, ArrowDownRight, ArrowUpRight,
+  ArrowLeft, Table, Layers, Filter
 } from 'lucide-react';
 import { ViewGrafo } from './ViewGrafo';
 import { cn, pollTask } from '../../lib/utils';
@@ -16,7 +17,7 @@ import { AlertErr, RunningInfo } from '../ui/Alerts';
 import { LogViewer } from '../ui/LogViewer';
 
 // =========================================================================
-// COMPONENTE: CALENDARIO MENSUAL CON PALETA PASTEL MINIMALISTA Y ELEGANTE
+// COMPONENTE: CÓMPUTO Y FISCALIZACIÓN DE DIETAS DE MANUTENCIÓN (R.D. 462/2002)
 // =========================================================================
 function CalendarioDietas({ 
   detalleDias, 
@@ -30,6 +31,7 @@ function CalendarioDietas({
   importeTotal: number;
 }) {
   const [selectedDay, setSelectedDay] = useState<string | null>(detalleDias?.[0]?.dia || null);
+  const [vistaModo, setVistaModo] = useState<'calendario' | 'tabla'>('calendario');
 
   // Mapeo de días de la comisión
   const daysMap = useMemo(() => {
@@ -86,204 +88,302 @@ function CalendarioDietas({
 
   return (
     <div className="space-y-4 font-sans">
-      {/* Encabezado Pastel Minimalista */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200/60 dark:border-zinc-800">
+      {/* Encabezado Institucional y Selector de Vista (Calendario vs Tabla) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-[#EEF4F8] dark:bg-[#1E293B]/60 text-[#3B6282] dark:text-[#93C5FD] flex items-center justify-center border border-[#DDE7F0] dark:border-[#334155]/60 shadow-xs">
-            <Calendar size={16} />
+          <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs shrink-0">
+            <CalendarDays size={18} />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 tracking-tight">
-              Calendario de Estancia y Manutención
-              <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800/80 text-[#5C5346] dark:text-[#D1C7B7] border border-[#EBE6DC] dark:border-zinc-700/60 font-mono">
+            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 tracking-tight">
+              Cómputo de Dietas y Manutención
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono">
                 {monthName} {year}
               </span>
             </h4>
-            <span className="text-[11px] text-zinc-400">
-              Tarifa regulada: {tarifaDia.toFixed(2)} €/día · {factorTotal.toFixed(1)} jornadas computables
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              R.D. 462/2002 Grupo 2 · Tarifa regulada: {tarifaDia.toFixed(2)} €/día completo · {factorTotal.toFixed(1)} jornadas imputadas
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-1 rounded-xl bg-[#EEF6F0] dark:bg-[#1A2E22]/60 border border-[#D5E8DA] dark:border-[#22543D]/60 flex items-center gap-2 text-xs text-[#285735] dark:text-[#86EFAC]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#3D8252] dark:bg-[#4ADE80]" />
-            <span className="font-mono font-bold">{factorTotal.toFixed(1)} jornadas</span>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Selector de Vista: Calendario vs Tabla */}
+          <div className="flex items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 p-0.5 border border-zinc-200 dark:border-zinc-700">
+            <button
+              type="button"
+              onClick={() => setVistaModo('calendario')}
+              className={cn(
+                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer",
+                vistaModo === 'calendario'
+                  ? "bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 shadow-xs"
+                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+              )}
+            >
+              <Calendar size={13} />
+              Calendario
+            </button>
+            <button
+              type="button"
+              onClick={() => setVistaModo('tabla')}
+              className={cn(
+                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer",
+                vistaModo === 'tabla'
+                  ? "bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 shadow-xs"
+                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+              )}
+            >
+              <Table size={13} />
+              Cuadro Oficial
+            </button>
           </div>
 
-          <div className="px-3.5 py-1 rounded-xl bg-[#EEF4F8] dark:bg-[#1E293B]/70 border border-[#D0E2F0] dark:border-[#3B82F6]/30 text-[#274B6B] dark:text-[#93C5FD] font-mono font-bold text-xs shadow-xs">
+          <div className="px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
             {importeTotal.toFixed(2)} €
           </div>
         </div>
       </div>
 
-      {/* Grid Calendario + Inspector Lateral */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        
-        {/* Cuadrícula del Calendario Mensual (8 cols) */}
-        <div className="lg:col-span-8 p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-[#161618] border border-[#EFECE6] dark:border-zinc-800/80 space-y-4 shadow-xs">
+      {/* VISTA 1: CALENDARIO MENSUAL + INSPECTOR */}
+      {vistaModo === 'calendario' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-mono">
-              {monthName} {year}
-            </span>
-            <div className="flex items-center gap-3 text-[11px]">
-              <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <span className="w-2 h-2 rounded-full bg-[#7BA7C7] dark:bg-[#60A5FA]" /> Salida (100%)
+          {/* Cuadrícula del Calendario Mensual (8 cols) */}
+          <div className="lg:col-span-8 p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-mono">
+                {monthName} {year}
               </span>
-              <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <span className="w-2 h-2 rounded-full bg-[#75B889] dark:bg-[#4ADE80]" /> Estancia (100%)
-              </span>
-              <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                <span className="w-2 h-2 rounded-full bg-[#E5A86E] dark:bg-[#FB923C]" /> Regreso (50%)
-              </span>
-            </div>
-          </div>
-
-          {/* Días de la semana */}
-          <div className="grid grid-cols-7 gap-1 text-center font-medium text-xs text-zinc-400 dark:text-zinc-500 pb-1">
-            {weekDayHeaders.map((d, idx) => (
-              <div key={idx} className="py-1">{d}</div>
-            ))}
-          </div>
-
-          {/* Celdas del mes con tonos pastel suaves */}
-          <div className="grid grid-cols-7 gap-2">
-            {Array.from({ length: startDayOffset }).map((_, idx) => (
-              <div key={`empty-${idx}`} className="h-15 sm:h-16 rounded-2xl bg-transparent" />
-            ))}
-
-            {Array.from({ length: totalDaysInMonth }).map((_, idx) => {
-              const dayNum = idx + 1;
-              const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-              const tripDay = daysMap.get(dateKey);
-              const isSelected = selectedDay === dateKey;
-
-              if (tripDay) {
-                const isSalida = tripDay.tipo === 'salida';
-                const isRegreso = tripDay.tipo === 'regreso';
-                
-                return (
-                  <button
-                    key={dateKey}
-                    type="button"
-                    onClick={() => setSelectedDay(dateKey)}
-                    className={cn(
-                      "h-15 sm:h-16 rounded-2xl p-2.5 flex flex-col justify-between transition-all duration-150 cursor-pointer text-left border relative group shadow-xs",
-                      isSalida && "bg-[#EDF4F9] dark:bg-[#1E293B]/70 border-[#D2E4F2] dark:border-[#38BDF8]/40 hover:bg-[#E2EFF7]",
-                      isRegreso && "bg-[#FDF7ED] dark:bg-[#342416]/70 border-[#F7E5CB] dark:border-[#FB923C]/40 hover:bg-[#F9EFE0]",
-                      !isSalida && !isRegreso && "bg-[#EDF6F1] dark:bg-[#172E22]/70 border-[#CFE7D7] dark:border-[#4ADE80]/40 hover:bg-[#E1F2E8]",
-                      isSelected && "ring-2 ring-zinc-700 dark:ring-zinc-200 shadow-md scale-[1.02] z-10"
-                    )}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className={cn(
-                        "font-mono font-bold text-xs",
-                        isSalida && "text-[#285073] dark:text-[#BAE6FD]",
-                        isRegreso && "text-[#754E20] dark:text-[#FED7AA]",
-                        !isSalida && !isRegreso && "text-[#265E39] dark:text-[#BBF7D0]"
-                      )}>
-                        {dayNum}
-                      </span>
-                      <span className={cn(
-                        "w-1.5 h-1.5 rounded-full",
-                        isSalida && "bg-[#5B8FB9] dark:bg-[#38BDF8]",
-                        isRegreso && "bg-[#D9914D] dark:bg-[#FB923C]",
-                        !isSalida && !isRegreso && "bg-[#5AA672] dark:bg-[#4ADE80]"
-                      )} />
-                    </div>
-                    
-                    <div className="w-full">
-                      <span className={cn(
-                        "text-[9px] font-medium block truncate",
-                        isSalida && "text-[#3D6E94] dark:text-[#7DD3FC]",
-                        isRegreso && "text-[#94652F] dark:text-[#FDBA74]",
-                        !isSalida && !isRegreso && "text-[#36794D] dark:text-[#86EFAC]"
-                      )}>
-                        {isSalida ? 'Salida' : isRegreso ? 'Regreso (50%)' : 'Congreso'}
-                      </span>
-                      <span className="text-[11px] font-mono font-bold text-zinc-900 dark:text-zinc-100 block">
-                        {tripDay.importe.toFixed(2)} €
-                      </span>
-                    </div>
-                  </button>
-                );
-              }
-
-              // Días fuera de comisión
-              return (
-                <div
-                  key={dateKey}
-                  className="h-15 sm:h-16 rounded-2xl p-2.5 flex flex-col justify-start bg-white/70 dark:bg-zinc-900/30 border border-[#F2EFE9] dark:border-zinc-800/40 text-zinc-300 dark:text-zinc-700 select-none"
-                >
-                  <span className="font-mono text-xs font-normal">{dayNum}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Panel Lateral de Detalle del Día Inspeccionado (4 cols) */}
-        <div className="lg:col-span-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-[#161618] border border-[#EFECE6] dark:border-zinc-800 flex flex-col justify-between shadow-xs space-y-4">
-          {selectedDayInfo ? (
-            <div className="space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block">
-                    Jornada Seleccionada
-                  </span>
-                  <h5 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-                    {selectedDayInfo.diaStr}
-                  </h5>
-                </div>
-                <span className={cn(
-                  "text-xs px-2.5 py-1 rounded-xl font-bold font-mono border",
-                  selectedDayInfo.tipo === 'salida' && "bg-[#EDF4F9] text-[#285073] dark:bg-[#1E293B] dark:text-[#93C5FD] border-[#D2E4F2] dark:border-[#38BDF8]/30",
-                  selectedDayInfo.tipo === 'regreso' && "bg-[#FDF7ED] text-[#754E20] dark:bg-[#342416] dark:text-[#FDBA74] border-[#F7E5CB] dark:border-[#FB923C]/30",
-                  selectedDayInfo.tipo !== 'salida' && selectedDayInfo.tipo !== 'regreso' && "bg-[#EDF6F1] text-[#265E39] dark:bg-[#172E22] dark:text-[#86EFAC] border-[#CFE7D7] dark:border-[#4ADE80]/30"
-                )}>
-                  {selectedDayInfo.factor * 100}% Manutención
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-slate-400 dark:bg-slate-500" /> Salida (100%)
+                </span>
+                <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#176B52] dark:bg-emerald-500" /> Estancia (100%)
+                </span>
+                <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 dark:bg-amber-400" /> Regreso (50%)
                 </span>
               </div>
+            </div>
 
-              <div className="space-y-2.5 text-xs">
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#1E1E20] border border-[#ECE7DD] dark:border-zinc-800">
-                  <span className="text-[10px] text-zinc-400 block mb-0.5">Concepto Liquidado</span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                    {selectedDayInfo.tipo === 'salida' ? 'Jornada de Ida y Desplazamiento' : selectedDayInfo.tipo === 'regreso' ? 'Jornada de Retorno a Origen' : 'Estancia Oficial en Comisión de Servicio'}
+            {/* Días de la semana */}
+            <div className="grid grid-cols-7 gap-1 text-center font-semibold text-xs text-zinc-400 dark:text-zinc-500 pb-1">
+              {weekDayHeaders.map((d, idx) => (
+                <div key={idx} className="py-1">{d}</div>
+              ))}
+            </div>
+
+            {/* Celdas del mes */}
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({ length: startDayOffset }).map((_, idx) => (
+                <div key={`empty-${idx}`} className="h-16 rounded-xl bg-transparent" />
+              ))}
+
+              {Array.from({ length: totalDaysInMonth }).map((_, idx) => {
+                const dayNum = idx + 1;
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                const tripDay = daysMap.get(dateKey);
+                const isSelected = selectedDay === dateKey;
+
+                if (tripDay) {
+                  const isSalida = tripDay.tipo === 'salida';
+                  const isRegreso = tripDay.tipo === 'regreso';
+                  
+                  return (
+                    <button
+                      key={dateKey}
+                      type="button"
+                      onClick={() => setSelectedDay(dateKey)}
+                      className={cn(
+                        "h-16 rounded-xl p-2 flex flex-col justify-between transition-all duration-150 cursor-pointer text-left border relative group shadow-2xs",
+                        isSalida && "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700/60 hover:border-slate-400",
+                        isRegreso && "bg-amber-50/50 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/40 hover:border-amber-400",
+                        !isSalida && !isRegreso && "bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/40 hover:border-emerald-400",
+                        isSelected && "ring-2 ring-[#176B52] dark:ring-emerald-400 shadow-sm z-10"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-mono font-bold text-xs text-zinc-800 dark:text-zinc-100">
+                          {dayNum}
+                        </span>
+                        <span className={cn(
+                          "w-2 h-2 rounded-full",
+                          isSalida && "bg-slate-400 dark:bg-slate-500",
+                          isRegreso && "bg-amber-500 dark:bg-amber-400",
+                          !isSalida && !isRegreso && "bg-[#176B52] dark:bg-emerald-500"
+                        )} />
+                      </div>
+                      
+                      <div className="w-full">
+                        <span className="text-[10px] font-medium block truncate text-zinc-500 dark:text-zinc-400">
+                          {isSalida ? 'Salida' : isRegreso ? 'Retorno (50%)' : 'Estancia'}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 block">
+                          {tripDay.importe.toFixed(2)} €
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
+
+                // Días fuera de comisión
+                return (
+                  <div
+                    key={dateKey}
+                    className="h-16 rounded-xl p-2 flex flex-col justify-start bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-100 dark:border-zinc-800/50 text-zinc-300 dark:text-zinc-700 select-none"
+                  >
+                    <span className="font-mono text-xs font-normal">{dayNum}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Panel Lateral de Detalle del Día Inspeccionado (4 cols) */}
+          <div className="lg:col-span-4 p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between shadow-xs space-y-4">
+            {selectedDayInfo ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Jornada Auditada
+                    </span>
+                    <h5 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">
+                      {selectedDayInfo.diaStr}
+                    </h5>
+                  </div>
+                  <span className={cn(
+                    "text-xs px-2.5 py-1 rounded-lg font-bold font-mono border",
+                    selectedDayInfo.tipo === 'salida' && "bg-slate-50 text-slate-800 dark:bg-slate-900/60 dark:text-slate-200 border-slate-200 dark:border-slate-700",
+                    selectedDayInfo.tipo === 'regreso' && "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200 border-amber-200 dark:border-amber-800",
+                    selectedDayInfo.tipo !== 'salida' && selectedDayInfo.tipo !== 'regreso' && "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800"
+                  )}>
+                    {selectedDayInfo.factor * 100}% Manutención
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#1E1E20] border border-[#ECE7DD] dark:border-zinc-800">
-                  <span className="text-[10px] text-zinc-400 block mb-0.5">Fórmula de Liquidación</span>
-                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
-                    {selectedDayInfo.factor.toFixed(1)}x × {tarifaDia.toFixed(2)} €/día = {selectedDayInfo.importe.toFixed(2)} €
-                  </span>
-                </div>
+                <div className="space-y-2.5 text-xs">
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                    <span className="text-[10px] text-zinc-400 block mb-0.5">Concepto Computado</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                      {selectedDayInfo.tipo === 'salida' ? 'Jornada de Salida y Desplazamiento de Ida' : selectedDayInfo.tipo === 'regreso' ? 'Jornada de Retorno a Residencia Oficial' : 'Estancia Oficial en Comisión de Servicio'}
+                    </span>
+                  </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#1E1E20] border border-[#ECE7DD] dark:border-zinc-800">
-                  <span className="text-[10px] text-zinc-400 block mb-0.5">Régimen Tributario</span>
-                  <span className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-snug block">
-                    100% Exento de retención a cuenta del IRPF según RD 462/2002 y Art. 9 del Reglamento del IRPF.
-                  </span>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                    <span className="text-[10px] text-zinc-400 block mb-0.5">Fórmula de Liquidación Económica</span>
+                    <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                      {selectedDayInfo.factor.toFixed(1)}x × {tarifaDia.toFixed(2)} €/día = {selectedDayInfo.importe.toFixed(2)} €
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                    <span className="text-[10px] text-zinc-400 block mb-0.5">Régimen Jurídico y Tributario</span>
+                    <span className="text-zinc-600 dark:text-zinc-400 text-xs leading-snug block">
+                      Art. 12 R.D. 462/2002. Renta 100% exenta de retención a cuenta del IRPF (Art. 9 RIRPF).
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="py-12 text-center text-zinc-400 text-xs">
-              Seleccione un día en el calendario para consultar su desglose.
-            </div>
-          )}
+            ) : (
+              <div className="py-12 text-center text-zinc-400 text-xs">
+                Seleccione un día en el calendario para consultar su justificación fiscal.
+              </div>
+            )}
 
-          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs">
-            <span className="text-zinc-400">Total Manutención:</span>
-            <span className="text-base font-bold font-mono text-zinc-900 dark:text-zinc-100">
-              {importeTotal.toFixed(2)} €
-            </span>
+            <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs">
+              <span className="text-zinc-500">Total Manutención Liquidada:</span>
+              <span className="text-base font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                {importeTotal.toFixed(2)} €
+              </span>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* VISTA 2: CUADRO OFICIAL DE JORNADAS (TABLA ADMINISTRATIVA) */}
+      {vistaModo === 'tabla' && (
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 uppercase text-[10px] font-bold tracking-wider border-b border-zinc-200 dark:border-zinc-800">
+                <tr>
+                  <th className="py-3 px-4">Fecha</th>
+                  <th className="py-3 px-4">Tipo de Jornada</th>
+                  <th className="py-3 px-4">Cómputo Horario</th>
+                  <th className="py-3 px-4 text-center">Coeficiente</th>
+                  <th className="py-3 px-4 text-right">Tarifa Diaria</th>
+                  <th className="py-3 px-4 text-right">Importe Reconocido</th>
+                  <th className="py-3 px-4">Fundamento Normativo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                {detalleDias?.map((d, idx) => {
+                  const factor = typeof d.factor === 'number' ? d.factor : (d.tipo === 'regreso' ? 0.5 : 1.0);
+                  const importe = typeof d.importe === 'number' ? d.importe : factor * tarifaDia;
+                  const isSalida = d.tipo === 'salida';
+                  const isRegreso = d.tipo === 'regreso';
+
+                  return (
+                    <tr key={idx} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                        {d.dia}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                          {isSalida ? 'Jornada de Salida' : isRegreso ? 'Jornada de Retorno' : 'Estancia en Destino'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500 dark:text-zinc-400">
+                        {isSalida ? 'Salida anterior a las 14:00h' : isRegreso ? 'Llegada posterior a las 14:00h' : 'Jornada completa de comisión'}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded font-mono font-bold text-[11px]",
+                          factor === 1 ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                        )}>
+                          {(factor * 100).toFixed(0)}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-zinc-600 dark:text-zinc-400">
+                        {tarifaDia.toFixed(2)} €
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                        {importe.toFixed(2)} €
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500 dark:text-zinc-400 text-[11px]">
+                        R.D. 462/2002 Art. 12 (Exento IRPF)
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-200 dark:border-zinc-800 font-bold">
+                <tr>
+                  <td colSpan={3} className="py-3 px-4 text-zinc-700 dark:text-zinc-300">
+                    Total Dietas de Manutención Computadas:
+                  </td>
+                  <td className="py-3 px-4 text-center font-mono text-zinc-900 dark:text-zinc-100">
+                    {factorTotal.toFixed(1)} jornadas
+                  </td>
+                  <td className="py-3 px-4 text-right text-zinc-500 text-[11px]">
+                    Tarifa Oficial Grupo 2
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono text-sm text-[#176B52] dark:text-[#86EFAC]">
+                    {importeTotal.toFixed(2)} €
+                  </td>
+                  <td className="py-3 px-4 text-zinc-400 text-[10px] uppercase">
+                    Liquidado al 100%
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }
@@ -319,6 +419,7 @@ export function ViewProcesar({
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('desglose');
+  const [filtroConcepto, setFiltroConcepto] = useState<'todos' | 'manutencion' | 'transporte' | 'alojamiento' | 'inscripcion'>('todos');
   const [jsonTab, setJsonTab] = useState<'extraccion' | 'liquidacion'>('liquidacion');
   const [copied, setCopied] = useState(false);
 
@@ -409,6 +510,7 @@ export function ViewProcesar({
     setCasoSel('');
     setFiles([]);
     setTipoProyecto('');
+    setFiltroConcepto('todos');
   };
 
   const copyJsonToClipboard = (data: any) => {
@@ -1010,7 +1112,7 @@ export function ViewProcesar({
             
             <div className="flex border-b border-zinc-200/80 dark:border-zinc-800/80 gap-2 overflow-x-auto pb-px">
               {[
-                { id: 'desglose', label: 'Desglose Visual de Liquidación' },
+                { id: 'desglose', label: 'Desglose Oficial de Liquidación' },
                 { id: 'balance', label: 'Balance y Reconciliación de Gastos' },
                 { id: 'fundamentacion', label: 'Régimen Fiscal y Fundamento Jurídico' },
                 { id: 'json', label: 'Esquema JSON' },
@@ -1035,10 +1137,10 @@ export function ViewProcesar({
             <div className="mt-8">
               
               {/* =============================================================== */}
-              {/* TAB 1: DESGLOSE VISUAL PASTEL ELEGANTE */}
+              {/* TAB 1: DESGLOSE OFICIAL DE LIQUIDACIÓN CON FILTRO POR CONCEPTO */}
               {/* =============================================================== */}
               {activeTab === 'desglose' && (
-                <div className="space-y-8 animate-fade-in">
+                <div className="space-y-6 animate-fade-in">
                   {result.liquidacion && (result.liquidacion as any).conceptos ? (() => {
                     const liq = result.liquidacion as any;
                     const manutencion = liq.conceptos.manutencion;
@@ -1049,351 +1151,692 @@ export function ViewProcesar({
                     const origen = liq.identificacion?.origen || 'Cáceres';
                     const destino = liq.identificacion?.destino || 'Alicante';
 
+                    const showManutencion = filtroConcepto === 'todos' || filtroConcepto === 'manutencion';
+                    const showTransporte = filtroConcepto === 'todos' || filtroConcepto === 'transporte';
+                    const showAlojamiento = filtroConcepto === 'todos' || filtroConcepto === 'alojamiento';
+                    const showInscripcion = Boolean(inscripcion) && (filtroConcepto === 'todos' || filtroConcepto === 'inscripcion');
+
+                    const totalKm = transporte?.detalle?.[0]?.km || 0;
+                    const mitadKm = totalKm > 0 ? (totalKm / 2).toFixed(0) : 0;
+                    const tarifaKm = transporte?.detalle?.[0]?.tarifa_km || liq.tarifas_aplicadas?.km_vehiculo || 0.26;
+                    const vehiculoDesc = [transporte?.detalle?.[0]?.marca, transporte?.detalle?.[0]?.modelo].filter(Boolean).join(' ') || 'Vehículo particular';
+                    const matriculaDesc = transporte?.detalle?.[0]?.matricula ? `[${transporte.detalle[0].matricula}]` : '';
+
                     return (
-                      <>
-                        {/* 1. MANUTENCIÓN: CALENDARIO MENSUAL DINÁMICO */}
-                        <CalendarioDietas 
-                          detalleDias={manutencion?.detalle_dias}
-                          tarifaDia={manutencion?.tarifa_dia || liq.tarifas_aplicadas?.manutencion_dia || 37.70}
-                          factorTotal={manutencion?.factor_total || 0}
-                          importeTotal={manutencion?.importe || 0}
-                        />
-
-                        {/* 2. TRANSPORTE: RUTA & ODÓMETRO */}
-                        <div className="space-y-4 pt-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-[#EEF6F0] dark:bg-[#1A2E22]/60 text-[#285735] dark:text-[#86EFAC] flex items-center justify-center border border-[#D5E8DA] dark:border-[#22543D]/60 shadow-xs">
-                                <Route size={16} />
-                              </div>
-                              <div>
+                      <div className="space-y-6">
+                        {/* 1. SELECTOR Y FILTRADO INTERACTIVO DE CONCEPTOS */}
+                        <div className="p-4 sm:p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
                                 <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                  Desplazamiento e Itinerario de Viaje
+                                  Partidas y Conceptos de la Comisión
                                 </h4>
-                                <span className="text-[11px] text-zinc-400">
-                                  Orden HFP/792/2023 · Tarifa oficial: {(liq.tarifas_aplicadas?.km_vehiculo || 0.26).toFixed(2)} €/km
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                                  R.D. 462/2002
                                 </span>
                               </div>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                Seleccione la partida que desee examinar individualmente o consulte el resumen contable consolidado.
+                              </p>
                             </div>
-                            <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-[#EEF6F0] text-[#285735] dark:bg-[#1A2E22] dark:text-[#86EFAC] border border-[#D5E8DA] dark:border-[#22543D]/60 shadow-xs">
-                              {(transporte?.importe || 0).toFixed(2)} €
-                            </span>
+
+                            {filtroConcepto !== 'todos' && (
+                              <button
+                                type="button"
+                                onClick={() => setFiltroConcepto('todos')}
+                                className="text-xs font-semibold text-[#176B52] dark:text-[#86EFAC] hover:underline flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                              >
+                                <ArrowLeft size={13} />
+                                Mostrar todas las partidas
+                              </button>
+                            )}
                           </div>
 
-                          {transporte?.detalle?.map((t: any, i: number) => {
-                            const isCoche = t.tipo === 'vehiculo_particular' || Boolean(t.km);
-                            const tarifaKm = t.tarifa_km || liq.tarifas_aplicadas?.km_vehiculo || 0.26;
-                            const totalKm = t.km || 0;
-                            const mitadKm = totalKm > 0 ? (totalKm / 2).toFixed(0) : 0;
-                            const vehiculoDesc = [t.marca, t.modelo].filter(Boolean).join(' ') || 'Vehículo particular';
-                            const matriculaDesc = t.matricula ? `[${t.matricula}]` : '';
+                          {/* Botones de Selección */}
+                          <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setFiltroConcepto('todos')}
+                              className={cn(
+                                "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
+                                filtroConcepto === 'todos'
+                                  ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100 shadow-xs"
+                                  : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                              )}
+                            >
+                              <Layers size={14} />
+                              <span>Resumen Global</span>
+                              <span className={cn(
+                                "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
+                                filtroConcepto === 'todos'
+                                  ? "bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900"
+                                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                              )}>
+                                {(result.liquido_ag || 0).toFixed(2)} €
+                              </span>
+                            </button>
 
-                            if (isCoche) {
-                              return (
-                                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-5">
-                                  
-                                  {/* RUTA VISUAL SOBRIA */}
-                                  <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
-                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-                                      
-                                      {/* Origen */}
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shrink-0 border border-[#ECE7DD] dark:border-zinc-700/60 shadow-xs">
-                                          <MapPin size={18} />
-                                        </div>
-                                        <div>
-                                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Punto de Origen</span>
-                                          <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{origen}</span>
-                                        </div>
-                                      </div>
-
-                                      {/* Trayecto Central con Odómetro */}
-                                      <div className="flex-1 max-w-md w-full px-4">
-                                        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 mb-1.5">
-                                          <span>Ida ({mitadKm} km)</span>
-                                          <span className="font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-1">
-                                            <Car size={13} /> {totalKm} km Totales
-                                          </span>
-                                          <span>Vuelta ({mitadKm} km)</span>
-                                        </div>
-                                        <div className="relative flex items-center">
-                                          <div className="h-2 w-full bg-[#EBE7DF] dark:bg-zinc-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#4A7055] dark:bg-[#86EFAC] w-full rounded-full" />
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Destino */}
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-[#EEF6F0] dark:bg-[#1A2E22] flex items-center justify-center text-[#285735] dark:text-[#86EFAC] shrink-0 border border-[#D5E8DA] dark:border-[#22543D]/60 shadow-xs">
-                                          <Navigation size={18} />
-                                        </div>
-                                        <div>
-                                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Destino Oficial</span>
-                                          <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{destino}</span>
-                                        </div>
-                                      </div>
-
-                                    </div>
-                                  </div>
-
-                                  {/* FICHAS DEL VEHÍCULO Y CÁLCULO */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 flex items-center gap-3 shadow-xs">
-                                      <Car size={18} className="text-zinc-400" />
-                                      <div>
-                                        <span className="text-[10px] text-zinc-400 block">Vehículo Autorizado</span>
-                                        <span className="font-bold text-zinc-800 dark:text-zinc-200">{vehiculoDesc} {matriculaDesc}</span>
-                                      </div>
-                                    </div>
-
-                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 flex items-center gap-3 shadow-xs">
-                                      <Gauge size={18} className="text-zinc-400" />
-                                      <div>
-                                        <span className="text-[10px] text-zinc-400 block">Odómetro Oficial</span>
-                                        <span className="font-bold font-mono text-zinc-800 dark:text-zinc-200">{totalKm} km recorridos</span>
-                                      </div>
-                                    </div>
-
-                                    <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 flex items-center gap-3 shadow-xs">
-                                      <Wallet size={18} className="text-[#285735] dark:text-[#86EFAC]" />
-                                      <div>
-                                        <span className="text-[10px] text-zinc-400 block">Cálculo de Indemnización</span>
-                                        <span className="font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                                          {totalKm} km × {tarifaKm.toFixed(2)} €/km = {((typeof t.importe === 'number' ? t.importe : totalKm * tarifaKm)).toFixed(2)} €
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                                    <Fuel size={13} />
-                                    La indemnización por kilometraje cubre de forma íntegra los gastos de combustible, seguro y amortización conforme a la Orden HFP/792/2023.
-                                  </p>
-
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div key={i} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-3">
-                                  <CreditCard size={18} className="text-zinc-400" />
-                                  <div>
-                                    <span className="font-bold text-zinc-900 dark:text-zinc-100 capitalize">{t.medio || t.tipo || 'Transporte Público'}</span>
-                                    <span className="text-[11px] text-zinc-400 block">{t.itinerario || 'Billete oficial'}</span>
-                                  </div>
-                                </div>
-                                <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                                  {(t.importe_abonable || t.importe || 0).toFixed(2)} €
+                            {manutencion && (
+                              <button
+                                type="button"
+                                onClick={() => setFiltroConcepto('manutencion')}
+                                className={cn(
+                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
+                                  filtroConcepto === 'manutencion'
+                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
+                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                                )}
+                              >
+                                <CalendarDays size={14} />
+                                <span>Manutención</span>
+                                <span className={cn(
+                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
+                                  filtroConcepto === 'manutencion'
+                                    ? "bg-white/20 text-white"
+                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                                )}>
+                                  {(manutencion.importe || 0).toFixed(2)} €
                                 </span>
-                              </div>
-                            );
-                          })}
+                              </button>
+                            )}
+
+                            {transporte && (
+                              <button
+                                type="button"
+                                onClick={() => setFiltroConcepto('transporte')}
+                                className={cn(
+                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
+                                  filtroConcepto === 'transporte'
+                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
+                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                                )}
+                              >
+                                <Car size={14} />
+                                <span>Transporte</span>
+                                <span className={cn(
+                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
+                                  filtroConcepto === 'transporte'
+                                    ? "bg-white/20 text-white"
+                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                                )}>
+                                  {(transporte.importe || 0).toFixed(2)} €
+                                </span>
+                              </button>
+                            )}
+
+                            {alojamiento && (
+                              <button
+                                type="button"
+                                onClick={() => setFiltroConcepto('alojamiento')}
+                                className={cn(
+                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
+                                  filtroConcepto === 'alojamiento'
+                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
+                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                                )}
+                              >
+                                <BedDouble size={14} />
+                                <span>Alojamiento</span>
+                                <span className={cn(
+                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
+                                  filtroConcepto === 'alojamiento'
+                                    ? "bg-white/20 text-white"
+                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                                )}>
+                                  {(alojamiento.importe || 0).toFixed(2)} €
+                                </span>
+                              </button>
+                            )}
+
+                            {inscripcion && (
+                              <button
+                                type="button"
+                                onClick={() => setFiltroConcepto('inscripcion')}
+                                className={cn(
+                                  "px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer border",
+                                  filtroConcepto === 'inscripcion'
+                                    ? "bg-[#176B52] text-white border-[#176B52] shadow-xs"
+                                    : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100/80 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                                )}
+                              >
+                                <Building2 size={14} />
+                                <span>Inscripción</span>
+                                <span className={cn(
+                                  "text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold",
+                                  filtroConcepto === 'inscripcion'
+                                    ? "bg-white/20 text-white"
+                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                                )}>
+                                  {(inscripcion.reembolsable_al_investigador ? inscripcion.importe_reembolsable : 0).toFixed(2)} €
+                                </span>
+                              </button>
+                            )}
+                          </div>
                         </div>
 
-                        {/* 3. ALOJAMIENTO: FICHA DE HOSPEDAJE & BARRA COMPARADORA */}
-                        <div className="space-y-4 pt-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-[#F4EEF8] dark:bg-[#2A1D33]/60 text-[#6B3E82] dark:text-[#E9D5FF] flex items-center justify-center border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
-                                <BedDouble size={16} />
-                              </div>
+                        {/* 2. CUADRO RESUMEN CONTABLE CONSOLIDADO (VISIBLE EN 'TODOS') */}
+                        {filtroConcepto === 'todos' && (
+                          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
+                            <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                               <div>
                                 <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                  Hospedaje y Alojamiento Fiscalizado
+                                  Cuadro Resumen de Liquidación Económica
                                 </h4>
-                                <span className="text-[11px] text-zinc-400">
-                                  Tope máximo oficial: {(liq.tarifas_aplicadas?.alojamiento_max_dia || 65.97).toFixed(2)} €/noche (Grupo 2)
+                                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                  Reconciliación contable por conceptos indemnizables según R.D. 462/2002
                                 </span>
                               </div>
+                              <span className="text-xs font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
+                                {result.liquido_ag.toFixed(2)} € Líquido
+                              </span>
                             </div>
-                            <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-[#F4EEF8] text-[#6B3E82] dark:bg-[#2A1D33] dark:text-[#E9D5FF] border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
-                              {(alojamiento?.importe || 0).toFixed(2)} €
-                            </span>
+
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-xs">
+                                <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 uppercase text-[10px] font-bold tracking-wider border-b border-zinc-200 dark:border-zinc-800">
+                                  <tr>
+                                    <th className="py-3 px-4">Concepto</th>
+                                    <th className="py-3 px-4">Base Normativa</th>
+                                    <th className="py-3 px-4">Justificantes y Detalle</th>
+                                    <th className="py-3 px-4 text-right">Gasto Justificado</th>
+                                    <th className="py-3 px-4 text-right">Exceso / Deducción</th>
+                                    <th className="py-3 px-4 text-right">Líquido Abonable</th>
+                                    <th className="py-3 px-4 text-center">Acción</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                                  {/* Fila Manutención */}
+                                  {manutencion && (
+                                    <tr className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                                        <CalendarDays size={14} className="text-[#176B52] dark:text-[#86EFAC]" />
+                                        Manutención y Dietas
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-500 dark:text-zinc-400 text-[11px]">
+                                        R.D. 462/2002 Art. 12 (Grupo 2)
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-300">
+                                        {(manutencion.factor_total || 2.5).toFixed(1)} jornadas ({manutencion.tarifa_dia || 37.70} €/día)
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                        {(manutencion.importe || 0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-zinc-400">
+                                        0,00 €
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                                        {(manutencion.importe || 0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => setFiltroConcepto('manutencion')}
+                                          className="text-[11px] font-semibold text-[#176B52] dark:text-[#86EFAC] hover:underline cursor-pointer"
+                                        >
+                                          Ver Detalle
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  )}
+
+                                  {/* Fila Transporte */}
+                                  {transporte && (
+                                    <tr className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                                        <Car size={14} className="text-[#176B52] dark:text-[#86EFAC]" />
+                                        Desplazamiento y Transporte
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-500 dark:text-zinc-400 text-[11px]">
+                                        Orden HFP/792/2023 ({tarifaKm.toFixed(2)} €/km)
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-300">
+                                        {origen} ⇄ {destino} ({totalKm} km)
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                        {(transporte.importe || 0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-zinc-400">
+                                        0,00 €
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                                        {(transporte.importe || 0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => setFiltroConcepto('transporte')}
+                                          className="text-[11px] font-semibold text-[#176B52] dark:text-[#86EFAC] hover:underline cursor-pointer"
+                                        >
+                                          Ver Detalle
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  )}
+
+                                  {/* Fila Alojamiento */}
+                                  {alojamiento && (
+                                    <tr className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                                        <BedDouble size={14} className="text-[#176B52] dark:text-[#86EFAC]" />
+                                        Alojamiento y Hospedaje
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-500 dark:text-zinc-400 text-[11px]">
+                                        R.D. 462/2002 Grupo 2 (65,97 €/noche)
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-300">
+                                        {alojamiento.detalle?.[0]?.establecimiento || 'Hotel'} ({alojamiento.detalle?.[0]?.noches || 2} noches)
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                        {(alojamiento.detalle?.[0]?.importe_real || alojamiento.importe || 0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-amber-600 dark:text-amber-400">
+                                        {(alojamiento.detalle?.[0]?.exceso_no_abonable || 0) > 0 ? `-${(alojamiento.detalle[0].exceso_no_abonable).toFixed(2)} €` : '0,00 €'}
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                                        {(alojamiento.importe || 0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => setFiltroConcepto('alojamiento')}
+                                          className="text-[11px] font-semibold text-[#176B52] dark:text-[#86EFAC] hover:underline cursor-pointer"
+                                        >
+                                          Ver Detalle
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  )}
+
+                                  {/* Fila Inscripción */}
+                                  {inscripcion && (
+                                    <tr className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                                      <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                                        <Building2 size={14} className="text-[#176B52] dark:text-[#86EFAC]" />
+                                        Inscripción al Congreso
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-500 dark:text-zinc-400 text-[11px]">
+                                        Factura CIF UEx (Tarjeta Corporativa)
+                                      </td>
+                                      <td className="py-3 px-4 text-zinc-600 dark:text-zinc-300">
+                                        Abonado directamente por UEx (no transferible)
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                        {(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono text-zinc-500 text-[11px]">
+                                        Pagado UEx
+                                      </td>
+                                      <td className="py-3 px-4 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                                        {(inscripcion.reembolsable_al_investigador ? inscripcion.importe_reembolsable : 0).toFixed(2)} €
+                                      </td>
+                                      <td className="py-3 px-4 text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => setFiltroConcepto('inscripcion')}
+                                          className="text-[11px] font-semibold text-[#176B52] dark:text-[#86EFAC] hover:underline cursor-pointer"
+                                        >
+                                          Ver Detalle
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                                <tfoot className="bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-200 dark:border-zinc-800 font-bold">
+                                  <tr>
+                                    <td colSpan={3} className="py-3 px-4 text-zinc-900 dark:text-zinc-100">
+                                      Líquido Total Reconocido a Transferir en Cuenta Bancaria:
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-mono text-zinc-600 dark:text-zinc-400">
+                                      {(balanceFinanciero?.gastoTotalMision || result.liquido_ag).toFixed(2)} €
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-mono text-amber-600 dark:text-amber-400">
+                                      {(balanceFinanciero?.aloExceso || 0) > 0 ? `-${(balanceFinanciero?.aloExceso || 0).toFixed(2)} €` : '0,00 €'}
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-mono text-sm text-[#176B52] dark:text-[#86EFAC]">
+                                      {result.liquido_ag.toFixed(2)} €
+                                    </td>
+                                    <td className="py-3 px-4 text-center text-zinc-400 text-[10px] uppercase">
+                                      Conforme
+                                    </td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
                           </div>
+                        )}
 
-                          {(!alojamiento?.detalle || alojamiento.detalle.length === 0) ? (
-                            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 text-xs text-center text-zinc-400 italic">
-                              No constan gastos de hospedaje imputados al expediente.
+                        {/* BANNER INFORMATIVO CUANDO UN CONCEPTO INDIVIDUAL ESTÁ SELECCIONADO */}
+                        {filtroConcepto !== 'todos' && (
+                          <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 text-xs">
+                            <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                              <span className="font-semibold">Mostrando únicamente la partida:</span>
+                              <span className="font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
+                                {filtroConcepto === 'manutencion' ? 'Manutención y Dietas' : filtroConcepto === 'transporte' ? 'Desplazamiento y Transporte' : filtroConcepto === 'alojamiento' ? 'Alojamiento y Hospedaje' : 'Inscripción al Congreso'}
+                              </span>
                             </div>
-                          ) : (
-                            alojamiento.detalle.map((a: any, i: number) => {
-                              const importeReal = a.importe_real || 0;
-                              const importeAbonable = a.importe_abonable || 0;
-                              const exceso = a.exceso_no_abonable || 0;
-                              const porcentajeAbonable = importeReal > 0 ? Math.min(100, (importeAbonable / importeReal) * 100) : 100;
-                              const porcentajeExceso = 100 - porcentajeAbonable;
+                            <button
+                              type="button"
+                              onClick={() => setFiltroConcepto('todos')}
+                              className="font-semibold text-[#176B52] dark:text-[#86EFAC] hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <ArrowLeft size={13} />
+                              Ver resumen general
+                            </button>
+                          </div>
+                        )}
 
-                              return (
-                                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-4">
-                                  
-                                  {/* Encabezado del Hotel */}
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 flex items-center justify-center shrink-0 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
-                                        <BedDouble size={18} />
-                                      </div>
-                                      <div>
-                                        <h5 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                                          {a.establecimiento || 'Hotel Maya Alicante'}
-                                        </h5>
-                                        <span className="text-[11px] text-zinc-400">
-                                          Estancia oficial: {a.noches || 2} noches ({((a.limite_aplicable || 65.97) / (a.noches || 2)).toFixed(2)} €/noche de límite)
-                                        </span>
-                                      </div>
-                                    </div>
+                        {/* PARTIDA 1: MANUTENCIÓN Y DIETAS */}
+                        {showManutencion && (
+                          <div className="space-y-4">
+                            <CalendarioDietas 
+                              detalleDias={manutencion?.detalle_dias}
+                              tarifaDia={manutencion?.tarifa_dia || liq.tarifas_aplicadas?.manutencion_dia || 37.70}
+                              factorTotal={manutencion?.factor_total || 0}
+                              importeTotal={manutencion?.importe || 0}
+                            />
+                          </div>
+                        )}
 
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium border border-[#EBE6DC] dark:border-zinc-700">
-                                        {a.noches || 2} noches
-                                      </span>
-                                      {exceso > 0 && (
-                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FDF6ED] dark:bg-amber-950/40 text-[#7C4F1A] dark:text-[#FDBA74] border border-[#F5E0C7] dark:border-amber-900/60 font-medium flex items-center gap-1">
-                                          <ShieldAlert size={12} /> Exceso no abonable: -{exceso.toFixed(2)} €
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* BARRA COMPARATIVA CON TONOS PASTEL */}
-                                  <div className="space-y-2.5 p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
-                                    <div className="flex justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                                      <span>Distribución del Gasto de Factura ({importeReal.toFixed(2)} €)</span>
-                                      <span className="font-mono text-[#285735] dark:text-[#86EFAC]">
-                                        {porcentajeAbonable.toFixed(0)}% Abonable
-                                      </span>
-                                    </div>
-
-                                    <div className="h-3 w-full bg-[#F3EFE9] dark:bg-zinc-800 rounded-full overflow-hidden flex border border-[#E5E0D6] dark:border-zinc-700/60">
-                                      <div 
-                                        className="h-full bg-[#75B889] dark:bg-[#4ADE80] rounded-l-full transition-all duration-500" 
-                                        style={{ width: `${porcentajeAbonable}%` }}
-                                        title={`Subvencionado: ${importeAbonable.toFixed(2)} €`}
-                                      />
-                                      {porcentajeExceso > 0 && (
-                                        <div 
-                                          className="h-full bg-[#E5A86E] dark:bg-[#FB923C] rounded-r-full transition-all duration-500" 
-                                          style={{ width: `${porcentajeExceso}%` }}
-                                          title={`Exceso no imputable: ${exceso.toFixed(2)} €`}
-                                        />
-                                      )}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                                      <div className="p-3 rounded-xl bg-[#EEF6F0] dark:bg-[#1A2E22]/50 border border-[#D5E8DA] dark:border-[#22543D]/60">
-                                        <div className="flex items-center gap-1.5 text-[#285735] dark:text-[#86EFAC] text-[10px] font-bold uppercase">
-                                          <div className="w-2 h-2 rounded-full bg-[#75B889] dark:bg-[#4ADE80]" />
-                                          Límite Abonable UEx
-                                        </div>
-                                        <span className="text-sm font-extrabold font-mono text-[#285735] dark:text-[#86EFAC] mt-0.5 block">
-                                          {importeAbonable.toFixed(2)} €
-                                        </span>
-                                      </div>
-
-                                      <div className="p-3 rounded-xl bg-[#FDF7ED] dark:bg-[#342416]/50 border border-[#F7E5CB] dark:border-[#FB923C]/30">
-                                        <div className="flex items-center gap-1.5 text-[#754E20] dark:text-[#FDBA74] text-[10px] font-bold uppercase">
-                                          <div className="w-2 h-2 rounded-full bg-[#E5A86E] dark:bg-[#FB923C]" />
-                                          Exceso no Imputable
-                                        </div>
-                                        <span className="text-sm font-extrabold font-mono text-[#754E20] dark:text-[#FDBA74] mt-0.5 block">
-                                          -{exceso.toFixed(2)} €
-                                        </span>
-                                      </div>
-
-                                      <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
-                                        <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
-                                          <FileText size={11} />
-                                          Total Factura Presentada
-                                        </div>
-                                        <span className="text-sm font-extrabold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5 block">
-                                          {importeReal.toFixed(2)} €
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-
-                        {/* 4. INSCRIPCIÓN / CUOTAS DE CONGRESO (REFLEJO CLARO DE LOS 475 €) */}
-                        {inscripcion && (
+                        {/* PARTIDA 2: TRANSPORTE Y DESPLAZAMIENTO */}
+                        {showTransporte && (
                           <div className="space-y-4 pt-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-[#F4EEF8] dark:bg-[#2A1D33]/60 text-[#6B3E82] dark:text-[#E9D5FF] flex items-center justify-center border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
-                                  <Building2 size={16} />
+                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                  <Car size={18} />
                                 </div>
                                 <div>
                                   <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                    Inscripción al Congreso / Seminario Científico
+                                    Desplazamiento y Gastos de Locomoción
                                   </h4>
-                                  <span className="text-[11px] text-zinc-400">
-                                    Factura justificada e imputada a fondos del proyecto
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Orden HFP/792/2023 · Módulo oficial de kilometraje: {tarifaKm.toFixed(2)} €/km
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-sm font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                {(transporte?.importe || 0).toFixed(2)} €
+                              </span>
+                            </div>
+
+                            {transporte?.detalle?.map((t: any, i: number) => {
+                              const isCoche = t.tipo === 'vehiculo_particular' || Boolean(t.km);
+
+                              if (isCoche) {
+                                return (
+                                  <div key={i} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-5 shadow-xs">
+                                    
+                                    {/* FICHA TÉCNICA DEL ITINERARIO */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800 text-xs">
+                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                          Itinerario Oficial
+                                        </span>
+                                        <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm block">
+                                          {origen} ⇄ {destino}
+                                        </span>
+                                        <span className="text-zinc-500 dark:text-zinc-400 text-[11px] mt-0.5 block">
+                                          Ida ({mitadKm} km) + Vuelta ({mitadKm} km)
+                                        </span>
+                                      </div>
+
+                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                          Vehículo Autorizado
+                                        </span>
+                                        <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm block">
+                                          {vehiculoDesc}
+                                        </span>
+                                        <span className="text-zinc-500 dark:text-zinc-400 font-mono text-[11px] mt-0.5 block">
+                                          Matrícula: {matriculaDesc || 'Declarada en solicitud'}
+                                        </span>
+                                      </div>
+
+                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                          Cálculo de la Indemnización
+                                        </span>
+                                        <span className="font-bold font-mono text-zinc-900 dark:text-zinc-100 text-sm block">
+                                          {totalKm} km × {tarifaKm.toFixed(2)} €/km
+                                        </span>
+                                        <span className="text-[#176B52] dark:text-[#86EFAC] font-mono font-bold text-xs mt-0.5 block">
+                                          = {((typeof t.importe === 'number' ? t.importe : totalKm * tarifaKm)).toFixed(2)} € a percibir
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* OBSERVACIONES NORMATIVAS Y TRIBUTARIAS */}
+                                    <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5">
+                                      <div className="flex items-center gap-2 font-semibold text-zinc-800 dark:text-zinc-200">
+                                        <ShieldCheck size={15} className="text-[#176B52] dark:text-[#86EFAC]" />
+                                        <span>Certificación Reglamentaria y Cobertura Integral</span>
+                                      </div>
+                                      <p className="text-[11px] leading-relaxed">
+                                        La cuantía de {((typeof t.importe === 'number' ? t.importe : totalKm * tarifaKm)).toFixed(2)} € compensa íntegramente los gastos de combustible, desgaste mecánico, seguro obligatorio y amortización del vehículo conforme a la <strong>Orden HFP/792/2023</strong>.
+                                      </p>
+                                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        <strong>Régimen Fiscal:</strong> Renta 100% exenta de retención e ingreso a cuenta en el IRPF de acuerdo con el Art. 9.A.2 del Reglamento del IRPF (RD 439/2007).
+                                      </p>
+                                    </div>
+
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div key={i} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs shadow-xs">
+                                  <div className="flex items-center gap-3">
+                                    <CreditCard size={18} className="text-zinc-400" />
+                                    <div>
+                                      <span className="font-bold text-zinc-900 dark:text-zinc-100 capitalize">{t.medio || t.tipo || 'Transporte Público Colectivo'}</span>
+                                      <span className="text-[11px] text-zinc-400 block">{t.itinerario || 'Billete / Justificante oficial'}</span>
+                                    </div>
+                                  </div>
+                                  <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                                    {(t.importe_abonable || t.importe || 0).toFixed(2)} €
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* PARTIDA 3: ALOJAMIENTO Y HOSPEDAJE */}
+                        {showAlojamiento && (
+                          <div className="space-y-4 pt-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                  <BedDouble size={18} />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                    Alojamiento y Fiscalización de Topes Máximos
+                                  </h4>
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    R.D. 462/2002 Grupo 2 · Límite máximo oficial: {(liq.tarifas_aplicadas?.alojamiento_max_dia || 65.97).toFixed(2)} €/noche
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-sm font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                {(alojamiento?.importe || 0).toFixed(2)} €
+                              </span>
+                            </div>
+
+                            {(!alojamiento?.detalle || alojamiento.detalle.length === 0) ? (
+                              <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-center text-zinc-400 italic">
+                                No constan gastos de hospedaje imputados al expediente.
+                              </div>
+                            ) : (
+                              alojamiento.detalle.map((a: any, i: number) => {
+                                const importeReal = a.importe_real || 0;
+                                const importeAbonable = a.importe_abonable || 0;
+                                const exceso = a.exceso_no_abonable || 0;
+
+                                return (
+                                  <div key={i} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-5 shadow-xs">
+                                    
+                                    {/* CUADRO COMPARATIVO DE FISCALIZACIÓN */}
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-left text-xs">
+                                        <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 uppercase text-[10px] font-bold tracking-wider border-b border-zinc-200 dark:border-zinc-800">
+                                          <tr>
+                                            <th className="py-2.5 px-3">Establecimiento</th>
+                                            <th className="py-2.5 px-3 text-center">Pernoctaciones</th>
+                                            <th className="py-2.5 px-3 text-right">Factura Aportada</th>
+                                            <th className="py-2.5 px-3 text-right">Límite Oficial Grupo 2</th>
+                                            <th className="py-2.5 px-3 text-right">Exceso no Indemnizable</th>
+                                            <th className="py-2.5 px-3 text-right">Importe Liquidado</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                          <tr>
+                                            <td className="py-3 px-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                                              {a.establecimiento || 'Hotel Maya Alicante'}
+                                            </td>
+                                            <td className="py-3 px-3 text-center font-mono font-medium text-zinc-700 dark:text-zinc-300">
+                                              {a.noches || 2} noches
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                              {importeReal.toFixed(2)} €
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                              {((a.limite_aplicable || 65.97)).toFixed(2)} €
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
+                                              {exceso > 0 ? `-${exceso.toFixed(2)} €` : '0,00 €'}
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono font-bold text-sm text-[#176B52] dark:text-[#86EFAC]">
+                                              {importeAbonable.toFixed(2)} €
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+
+                                    {/* 3 FICHAS ECONÓMICAS CLARAS */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                          Límite Abonable Reconocido
+                                        </span>
+                                        <span className="text-base font-extrabold font-mono text-[#176B52] dark:text-[#86EFAC] block">
+                                          {importeAbonable.toFixed(2)} €
+                                        </span>
+                                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+                                          Tope legal: {(importeAbonable / (a.noches || 2)).toFixed(2)} €/noche
+                                        </span>
+                                      </div>
+
+                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                          Exceso a Cargo del Interesado
+                                        </span>
+                                        <span className="text-base font-extrabold font-mono text-amber-600 dark:text-amber-400 block">
+                                          -{exceso.toFixed(2)} €
+                                        </span>
+                                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+                                          Supera el tope del Grupo 2
+                                        </span>
+                                      </div>
+
+                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                          Total Factura Presentada
+                                        </span>
+                                        <span className="text-base font-extrabold font-mono text-zinc-900 dark:text-zinc-100 block">
+                                          {importeReal.toFixed(2)} €
+                                        </span>
+                                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+                                          Tarifa media: {(importeReal / (a.noches || 2)).toFixed(2)} €/noche
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* NOTA NORMATIVA */}
+                                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                                      Conforme al R.D. 462/2002 y la normativa de gestión de gasto de la Universidad de Extremadura, el límite de 65,97 €/noche para el Grupo 2 es improrrogable sin resolución expresa de Gerencia. El importe reconocido a transferir es estrictamente de <strong>{importeAbonable.toFixed(2)} €</strong>.
+                                    </p>
+
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+
+                        {/* PARTIDA 4: INSCRIPCIÓN Y CUOTAS DE CONGRESO */}
+                        {showInscripcion && (
+                          <div className="space-y-4 pt-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                  <Building2 size={18} />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                    Inscripción y Matrícula Oficial al Congreso
+                                  </h4>
+                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Transferencia de Conocimiento · Imputación a Proyecto SGTRI
                                   </span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono font-medium border border-[#EBE6DC] dark:border-zinc-700">
-                                  Factura: {(inscripcion.importe_total || inscripcion.importe || 0).toFixed(2)} €
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-medium border border-zinc-200 dark:border-zinc-700">
+                                  Factura: {(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €
                                 </span>
-                                <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl bg-[#F4EEF8] text-[#6B3E82] dark:bg-[#2A1D33] dark:text-[#E9D5FF] border border-[#E8DAEE] dark:border-[#581C87]/60 shadow-xs">
-                                  {inscripcion.reembolsable_al_investigador ? `${(inscripcion.importe_reembolsable || 0).toFixed(2)} €` : '0,00 € (Abonado por UEx)'}
+                                <span className="text-sm font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                  {inscripcion.reembolsable_al_investigador ? `${(inscripcion.importe_reembolsable || 0).toFixed(2)} €` : '0,00 € a transferir'}
                                 </span>
                               </div>
                             </div>
 
-                            <div className="p-5 sm:p-6 rounded-3xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-4">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 text-[#6B3E82] dark:text-[#E9D5FF] flex items-center justify-center shrink-0 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs">
-                                    <Receipt size={18} />
-                                  </div>
-                                  <div>
-                                    <h5 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                                      Cuota de Inscripción y Matrícula Oficial
-                                    </h5>
-                                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                                      XXX Jornadas de Ingeniería del Software y Bases de Datos (JISBD - SISTEDES)
-                                    </p>
-                                  </div>
+                            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-4 shadow-xs text-xs">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                    Actividad Científica
+                                  </span>
+                                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block">
+                                    Jornadas de Ingeniería del Software y BD (JISBD)
+                                  </span>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs px-3 py-1.5 rounded-xl bg-[#F4EEF8] text-[#6B3E82] dark:bg-[#2A1D33] dark:text-[#E9D5FF] border border-[#E8DAEE] dark:border-[#581C87]/40 font-semibold flex items-center gap-1.5">
-                                    <CreditCard size={13} />
+                                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                    Modalidad de Pago
+                                  </span>
+                                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block">
                                     Tarjeta Institucional UEx
+                                  </span>
+                                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+                                    Abono centralizado por la Universidad
+                                  </span>
+                                </div>
+
+                                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+                                    Efecto en Nómina / Transferencia
+                                  </span>
+                                  <span className="font-bold font-mono text-zinc-900 dark:text-zinc-100 block">
+                                    0,00 € a abonar al interesado
+                                  </span>
+                                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+                                    Gasto no adelantado con fondos particulares
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECE7DD] dark:border-zinc-800 shadow-xs space-y-2 text-xs">
-                                <div className="flex justify-between items-center py-1 border-b border-zinc-100 dark:border-zinc-800">
-                                  <span className="text-zinc-500">Importe de la Factura de Inscripción:</span>
-                                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm">
-                                    {(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center py-1 border-b border-zinc-100 dark:border-zinc-800">
-                                  <span className="text-zinc-500">Modalidad de Pago y Cargo Contable:</span>
-                                  <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                                    Abonado previamente con Tarjeta Corporativa de la Universidad
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center py-1 text-[11px]">
-                                  <span className="text-zinc-500">Efecto en la Nómina / Transferencia Personal:</span>
-                                  <span className="font-bold text-[#6B3E82] dark:text-[#E9D5FF]">
-                                    0,00 € a transferir (Gasto ya satisfecho por la UEx, debidamente justificado en el expediente)
-                                  </span>
-                                </div>
+                              <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                                La cuota de <strong>{(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €</strong> se encuentra justificada documentalmente mediante factura oficial emitida a nombre de la <strong>Universidad de Extremadura (CIF Q1018001F)</strong> e imputada a la partida de congresos del proyecto. No procede su abono en la nómina del comisionado al haber sido satisfecha de forma directa y centralizada por la Universidad.
                               </div>
                             </div>
                           </div>
                         )}
-                      </>
+
+                      </div>
                     );
                   })() : (
                     <div className="text-center py-8 text-zinc-400 text-xs">No hay desglose disponible para este trámite.</div>
