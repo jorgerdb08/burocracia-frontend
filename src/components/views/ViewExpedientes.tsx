@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { FolderOpen, Play, Loader2, RefreshCw, ChevronRight, Eye } from 'lucide-react'
-import { AlertErr } from '../ui/Alerts'
-import { DarkBadge } from '../ui/Badges'
-import { cn } from '../../lib/utils'
-import type { DetalleCaso } from '../../lib/types'
-import { StatusBadge } from '../ui/Badges'
-import { Btn } from '../ui/Btn'
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Loader2, RefreshCw, Search } from 'lucide-react';
+import { AlertErr } from '../ui/Alerts';
+import { Btn } from '../ui/Btn';
+import { cn } from '../../lib/utils';
+
 export function ViewExpedientes({
   onProcesar,
   onInspeccionar
@@ -13,138 +11,201 @@ export function ViewExpedientes({
   onProcesar: (id: string) => void;
   onInspeccionar: (id: string) => void;
 }) {
-  const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean }[]>([])
-  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
-  const [search, setSearch] = useState('')
+  const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean }[]>([]);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [search, setSearch] = useState('');
+  const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
 
   const cargar = useCallback(async () => {
-    setStatus('loading')
+    setStatus('loading');
     try {
-      const res = await fetch('/api/casos')
-      const data = await res.json()
-      setCasos(data.casos || [])
-      setStatus('done')
+      const res = await fetch('/api/casos');
+      const data = await res.json();
+      setCasos(data.casos || []);
+      setStatus('done');
     } catch {
-      setStatus('error')
+      setStatus('error');
     }
-  }, [])
+  }, []);
 
-  useEffect(() => { cargar() }, [cargar])
+  useEffect(() => { cargar(); }, [cargar]);
 
   const filteredCasos = useMemo(() => {
-    return casos.filter(c => c.id.toLowerCase().includes(search.toLowerCase()) || c.tipo.toLowerCase().includes(search.toLowerCase()))
-  }, [casos, search])
+    return casos.filter(c => {
+      const matchSearch = c.id.toLowerCase().includes(search.toLowerCase()) || c.tipo.toLowerCase().includes(search.toLowerCase());
+      const matchTipo = tipoFiltro === 'todos' || c.tipo === tipoFiltro;
+      return matchSearch && matchTipo;
+    });
+  }, [casos, search, tipoFiltro]);
+
+  const getTipoNombre = (tipo: string) => {
+    switch (tipo) {
+      case 'dietas': return 'Dietas y Desplazamientos';
+      case 'pago_proveedor': return 'Pago a Proveedor';
+      case 'honorarios': return 'Honorarios de Conferencia';
+      case 'adquisiciones': return 'Contrato Menor';
+      default: return tipo;
+    }
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-[96vw] mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      
+      {/* Encabezado: ¿Dónde estoy? + Acción principal */}
+      <div className="view-header">
         <div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Galería de Expedientes
-          </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Consulte la documentación de cada expediente, verifique requisitos que falten o inicie su tramitación.
+          <div className="view-breadcrumb">
+            <span>Gestión Económica UEx</span>
+            <span>/</span>
+            <span>Catálogo</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+            <h1 className="view-title">Expedientes de gasto</h1>
+            {status === 'done' && (
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                ({filteredCasos.length} registrados)
+              </span>
+            )}
+          </div>
+          <p className="view-desc">
+            Bandeja de expedientes digitalizados para su fiscalización, comprobación de requisitos normativos y liquidación económica.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            placeholder="Buscar expediente..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="px-4 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:outline-none focus:ring-1 focus:ring-zinc-400 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 w-56"
-          />
+        <div className="view-actions">
           <Btn variant="outline" size="sm" onClick={cargar} disabled={status === 'loading'}>
-            {status === 'loading' ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            Actualizar
+            {status === 'loading' ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+            <span>Actualizar</span>
           </Btn>
         </div>
       </div>
 
+      {/* Zona compacta de filtros y búsqueda */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'todos', label: 'Todos' },
+            { id: 'dietas', label: 'Dietas y Viajes' },
+            { id: 'pago_proveedor', label: 'Proveedores' },
+            { id: 'honorarios', label: 'Honorarios' },
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setTipoFiltro(f.id)}
+              className={cn("filter-btn", tipoFiltro === f.id && "active")}
+              type="button"
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="search-input-box" style={{ minWidth: '220px' }}>
+          <Search size={14} className="search-icon" />
+          <input
+            type="text"
+            placeholder="Buscar por código..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="search-input"
+          />
+        </div>
+      </div>
+
       {status === 'loading' && (
-        <div className="flex flex-col items-center justify-center gap-3 py-20 text-zinc-400">
-          <Loader2 size={24} className="animate-spin" />
-          <span className="text-xs">Cargando catálogo de expedientes y verificando checklist...</span>
+        <div className="panel" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+          <span>Cargando expedientes...</span>
         </div>
       )}
 
       {status === 'error' && (
-        <AlertErr msg="Fallo de conexión con el motor Flask (http://localhost:5000)." />
+        <AlertErr msg="Error al conectar con el servicio administrativo. Compruebe la conexión con el servidor local." />
       )}
 
       {status === 'done' && (
-        <div className="flex flex-wrap justify-center gap-5">
-          {filteredCasos.map((c, i) => (
-            <div
-              key={c.id}
-              onClick={() => onInspeccionar(c.id)}
-              className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/90 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 p-6 shadow-sm hover:shadow-xl flex flex-col justify-between transition-all duration-300 cursor-pointer group"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-zinc-400 font-mono">#{String(i + 1).padStart(2, '0')}</span>
-                  <div className="flex items-center gap-1.5">
-                    <DarkBadge label={c.tipo} />
-                  </div>
-                </div>
-
-                <h3 className="font-bold text-xs text-zinc-900 dark:text-zinc-100 font-mono tracking-tight break-all">
-                  {c.id}
-                </h3>
-
-                {/* Indicador de completitud y archivos */}
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-500">
-                      {c.total_archivos || 0} archivo(s) digitalizado(s)
-                    </span>
-                    <span className={cn(
-                      "font-bold",
-                      c.completo ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-                    )}>
-                      {c.porcentaje || 0}% completo
-                    </span>
-                  </div>
-
-                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all",
-                        c.completo ? "bg-emerald-500" : "bg-amber-500"
-                      )}
-                      style={{ width: `${c.porcentaje || 0}%` }}
-                    />
-                  </div>
-                </div>
-
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onInspeccionar(c.id) }}
-                  className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 inline-flex items-center gap-1.5 cursor-pointer py-1.5 px-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <Eye size={13} />
-                  <span>Ver docs</span>
-                </button>
-
-                <Btn
-                  size="sm"
-                  onClick={(e?: React.MouseEvent) => {
-                    if (e) e.stopPropagation();
-                    onProcesar(c.id)
-                  }}
-                >
-                  <Play size={11} fill="currentColor" /> Tramitar
-                </Btn>
-              </div>
-            </div>
-          ))}
+        <div className="admin-table-container">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th style={{ width: '280px' }}>Código de Expediente</th>
+                <th>Procedimiento</th>
+                <th style={{ width: '140px' }}>Documentos</th>
+                <th style={{ width: '200px' }}>Estado documental</th>
+                <th style={{ width: '160px', textAlign: 'right' }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCasos.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                    No hay expedientes que coincidan con el criterio seleccionado.
+                  </td>
+                </tr>
+              ) : (
+                filteredCasos.map((c) => (
+                  <tr key={c.id}>
+                    <td>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {c.id}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text-secondary)' }}>
+                      {getTipoNombre(c.tipo)}
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                      {c.total_archivos || 0} archivo(s)
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                        <span 
+                          style={{
+                            width: '7px',
+                            height: '7px',
+                            borderRadius: '50%',
+                            backgroundColor: c.completo ? 'var(--color-success)' : 'var(--color-warning)',
+                            flexShrink: 0
+                          }}
+                        />
+                        <span style={{ color: c.completo ? 'var(--color-success-text)' : 'var(--color-warning-text)', fontWeight: 500 }}>
+                          {c.completo ? 'Documentación completa' : 'Pendiente de completar'}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          onClick={() => onInspeccionar(c.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            padding: '4px 6px',
+                            textDecoration: 'underline'
+                          }}
+                          type="button"
+                        >
+                          Ver detalle
+                        </button>
+                        <Btn
+                          size="sm"
+                          variant="primary"
+                          onClick={() => onProcesar(c.id)}
+                        >
+                          Tramitar
+                        </Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
-  )
-}
 
+    </div>
+  );
+}

@@ -5,18 +5,21 @@ import { ChatWidget } from './ChatWidget'
 import { ViewHeroLayout } from './components/views/ViewHeroLayout'
 import { ViewProcesar } from './components/views/ViewProcesar'
 import { ViewExpedientes } from './components/views/ViewExpedientes'
+import { ViewLotesBatch } from './components/views/ViewLotesBatch'
 import { ExpedienteInspectorModal } from './components/modals/ExpedienteInspectorModal'
 
-type View = 'inicio' | 'procesar' | 'expedientes'
+type View = 'inicio' | 'procesar' | 'expedientes' | 'lotes'
 
 export default function App() {
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark')
+      document.documentElement.setAttribute('data-theme', 'dark')
       document.documentElement.style.colorScheme = 'dark'
     } else {
       document.documentElement.classList.remove('dark')
+      document.documentElement.setAttribute('data-theme', 'light')
       document.documentElement.style.colorScheme = 'light'
     }
   }, [isDark])
@@ -26,71 +29,86 @@ export default function App() {
   const [templateParam, setTemplate] = useState<string | undefined>()
   const [inspectCasoId, setInspectCasoId] = useState<string | null>(null)
 
-  const irProcesar = (casoId?: string) => {
+  const irProcesar = (casoId?: string, templateId?: string) => {
     setCaso(casoId)
-    setTemplate(undefined)
+    setTemplate(templateId)
     setView('procesar')
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-100 dark:bg-black text-zinc-900 dark:text-zinc-100 font-sans">
+    <div className="uex-shell">
       
-      {/* Header Minimalista: Solo Inicio y Expedientes */}
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border-b border-zinc-200/80 dark:border-zinc-800/80">
-        <div className="max-w-[96vw] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-6">
+      {/* Header Institucional: UEx SGTRI / Intervención Económica */}
+      <header className="uex-header">
+        <div className="uex-header-inner">
+          <div className="uex-header-left">
             <button 
               onClick={() => setView('inicio')}
-              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              className="uex-header-brand"
             >
-              <div className="w-8 h-8 rounded-xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-sm">
-                <span className="text-white dark:text-zinc-900 font-bold text-xs">UEx</span>
+              <img src="/logo_v2.jpg" alt="UEx" className="uex-logo-img" />
+              <div className="uex-brand-info">
+                <span className="uex-brand-title">Universidad de Extremadura</span>
+                <span className="uex-brand-sub">SGTRI · Gestión Económica</span>
               </div>
-              <span className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100 tracking-tight">Sede UEx</span>
             </button>
             
-            <nav className="flex items-center gap-1.5 ml-2">
+            <nav className="uex-nav">
               <button 
                 onClick={() => setView('inicio')}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-2xl transition-all cursor-pointer select-none',
-                  view === 'inicio' 
-                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' 
-                    : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100'
-                )}
+                className={cn('uex-nav-link', view === 'inicio' && 'active')}
               >
-                <span>Inicio</span>
+                Inicio
               </button>
 
               <button 
                 onClick={() => setView('expedientes')}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-2xl transition-all cursor-pointer select-none',
-                  view === 'expedientes' 
-                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' 
-                    : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100'
-                )}
+                className={cn('uex-nav-link', view === 'expedientes' && 'active')}
               >
-                <span>Expedientes</span>
+                Expedientes
+              </button>
+
+              <button 
+                onClick={() => irProcesar()}
+                className={cn('uex-nav-link', view === 'procesar' && 'active')}
+              >
+                Tramitar expediente
+              </button>
+
+              <button 
+                onClick={() => setView('lotes')}
+                className={cn('uex-nav-link', view === 'lotes' && 'active')}
+              >
+                Lotes masivos
               </button>
             </nav>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="uex-header-right">
+            <span className="uex-fiscal-year">Bases 2026</span>
+
             <button 
               onClick={() => setIsDark(!isDark)} 
-              className="p-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              title="Cambiar tema"
+              className="uex-theme-btn"
+              title="Alternar tema claro / oscuro"
+              type="button"
             >
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-[96vw] mx-auto w-full px-6 py-8">
+      <main className="uex-main">
         {view === 'inicio' && (
-          <ViewHeroLayout onComenzar={() => setView('procesar')} />
+          <ViewHeroLayout 
+            onComenzar={() => irProcesar()} 
+            onComenzarConPlantilla={(tId) => irProcesar(undefined, tId)}
+            onIrLotes={() => setView('lotes')}
+            onIrExpedientes={() => setView('expedientes')}
+            onTramitarCaso={(casoId) => irProcesar(casoId)}
+            onInspeccionarCaso={(id) => setInspectCasoId(id)}
+          />
         )}
         {view === 'procesar' && (
           <ViewProcesar 
@@ -106,6 +124,9 @@ export default function App() {
             onProcesar={irProcesar} 
             onInspeccionar={(id) => setInspectCasoId(id)}
           />
+        )}
+        {view === 'lotes' && (
+          <ViewLotesBatch />
         )}
       </main>
 

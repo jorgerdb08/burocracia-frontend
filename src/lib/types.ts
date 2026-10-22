@@ -9,6 +9,7 @@ export interface CasoResult {
   logs: string
   extraccion?: any
   liquidacion?: any
+  memoria_fiscalizacion?: string
 }
 
 export interface ArchivoCaso {
@@ -22,6 +23,7 @@ export interface ArchivoCaso {
 export interface RequisitoCaso {
   id: string
   label: string
+  obligatorio: boolean
   cumplido: boolean
 }
 
@@ -33,4 +35,7 @@ export interface DetalleCaso {
   requisitos: RequisitoCaso[]
   porcentaje: number
   completo: boolean
+  estado_validacion?: 'error' | 'valido_con_advertencias' | 'valido_completo'
+  errores_obligatorios?: string[]
+  warnings_opcionales?: string[]
 }

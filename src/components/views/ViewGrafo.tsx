@@ -24,34 +24,39 @@ export function ViewGrafo({ taskId }: { taskId?: string }) {
     : ''
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between p-6 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div className="panel" style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h4 className="text-xs font-bold uppercase text-zinc-800 dark:text-zinc-200">Grafo de pasos LangGraph</h4>
-          <p className="text-[11px] text-zinc-500">Visualice la ruta de nodos y transiciones ejecutada por el agente.</p>
+          <h4 style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-bold)', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
+            Grafo de pasos LangGraph
+          </h4>
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            Visualización de la ruta de nodos y transiciones ejecutadas por el agente de fiscalización.
+          </p>
         </div>
         <Btn size="sm" onClick={generar} disabled={running}>
-          {running ? <><Loader2 size={13} className="animate-spin" /> Renderizando...</> : <><GitBranch size={13} /> Generar grafo</>}
+          {running ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Renderizando...</> : <><GitBranch size={13} /> Generar grafo</>}
         </Btn>
       </div>
 
       {!running && !mermaid && !error && (
-        <div className="py-12 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
-          Haga clic en «Generar grafo» para consultar el autómata de estados.
+        <div className="panel" style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-xs)', borderStyle: 'dashed' }}>
+          Haga clic en «Generar grafo» para consultar el autómata de estados de liquidación.
         </div>
       )}
 
       {running && (
-        <div className="py-12 flex items-center justify-center gap-2 text-zinc-500 text-xs">
-          <Loader2 size={16} className="animate-spin" /> Generando representación gráfica...
+        <div style={{ padding: 'var(--space-8)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)', color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>
+          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+          <span>Generando representación visual del grafo de fiscalización...</span>
         </div>
       )}
 
       {error && <AlertErr msg={error} />}
 
       {mermaid && (
-        <div className="border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden bg-white">
-          <iframe srcDoc={src} className="w-full h-[500px] border-none" title="LangGraph" />
+        <div className="panel" style={{ overflow: 'hidden' }}>
+          <iframe srcDoc={src} style={{ width: '100%', height: '500px', border: 'none' }} title="LangGraph" />
         </div>
       )}
     </div>

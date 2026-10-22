@@ -1,290 +1,344 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { FolderOpen, X, Download, FileText, CheckCircle2, XCircle, FileSpreadsheet, Plus, HelpCircle, Loader2, CheckCircle, AlertTriangle, Trash2, Play } from 'lucide-react'
-import { AlertErr } from '../ui/Alerts'
-import type { DetalleCaso } from '../../lib/types'
-import { StatusBadge, DarkBadge } from '../ui/Badges'
-import { Btn } from '../ui/Btn'
-import { cn } from '../../lib/utils'
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  X, FileText, Download, Trash2, Plus, Loader2, Play
+} from 'lucide-react';
+import { AlertErr } from '../ui/Alerts';
+import { Btn } from '../ui/Btn';
+import type { DetalleCaso } from '../../lib/types';
+
 export function ExpedienteInspectorModal({
   casoId,
   onClose,
   onTramitar
 }: {
-  casoId: string
-  onClose: () => void
-  onTramitar: (id: string) => void
+  casoId: string;
+  onClose: () => void;
+  onTramitar: (id: string) => void;
 }) {
-  const [detalle, setDetalle] = useState<DetalleCaso | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [detalle, setDetalle] = useState<DetalleCaso | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const cargarDetalle = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`/api/caso/${casoId}/detalle`)
-      if (!res.ok) throw new Error("No se pudo cargar el expediente")
-      const data = await res.json()
-      setDetalle(data)
-    } catch (e: any) {
-      setError(e.message)
+      const res = await fetch(`/api/caso/${encodeURIComponent(casoId)}/detalle`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setDetalle(data);
+    } catch (err: any) {
+      setError(err.message || 'Error al cargar los detalles del expediente');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [casoId])
+  }, [casoId]);
 
   useEffect(() => {
-    cargarDetalle()
-  }, [cargarDetalle])
+    cargarDetalle();
+  }, [cargarDetalle]);
 
   const handleUploadMissing = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return
-    const files = Array.from(e.target.files)
-    setUploading(true)
-    setError('')
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+    setUploading(true);
+    setError('');
     try {
-      const fd = new FormData()
-      files.forEach(f => fd.append('files', f))
+      const fd = new FormData();
+      files.forEach(f => fd.append('files', f));
       const res = await fetch(`/api/caso/${casoId}/adjuntar`, {
         method: 'POST',
         body: fd
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setDetalle(data.detalle)
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setDetalle(data.detalle);
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }
+  };
 
   const handleEliminarArchivo = async (filename: string) => {
-    if (!window.confirm(`¿Desea eliminar el archivo "${filename}" del expediente?`)) return
+    if (!window.confirm(`¿Desea eliminar el archivo "${filename}" del expediente?`)) return;
     try {
       const res = await fetch(`/api/caso/${casoId}/archivo/${encodeURIComponent(filename)}`, {
         method: 'DELETE'
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setDetalle(data.detalle)
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setDetalle(data.detalle);
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     }
-  }
+  };
+
+  const getProcedimientoNombre = (tipo?: string) => {
+    switch (tipo) {
+      case 'dietas': return 'Dietas y Comisiones de Servicio';
+      case 'pago_proveedor': return 'Pago a Proveedor y Facturas';
+      case 'honorarios': return 'Abono de Honorarios Docentes';
+      case 'adquisiciones': return 'Contratos Menores y Suministros';
+      default: return tipo || 'General';
+    }
+  };
+
+  const getNormativaNombre = (tipo?: string) => {
+    switch (tipo) {
+      case 'dietas': return 'R.D. 462/2002 · Art. 32 Bases Ejecución Presupuestos UEx 2026';
+      case 'pago_proveedor': return 'Normativa SGTRI · Instrucción de Pagos con Tarjeta Investigador UEx';
+      case 'honorarios': return 'Art. 19.4 Bases de Ejecución UEx 2026 (Límite 300 €/h) · Ley IRPF';
+      case 'adquisiciones': return 'Art. 30 Bases UEx · LCSP (< 15.000 € en servicios y suministros)';
+      default: return 'Bases de Ejecución Presupuestos UEx 2026';
+    }
+  };
 
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 max-w-3xl w-full p-6 sm:p-8 shadow-2xl flex flex-col max-h-[92vh]"
-      >
+    <div onClick={onClose} className="modal-backdrop">
+      <div onClick={e => e.stopPropagation()} className="modal-dialog" style={{ maxWidth: '780px' }}>
 
-        {/* Cabecera del Modal */}
-        <div className="flex items-start justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800">
+        {/* 1. CABECERA: IDENTIFICACIÓN Y ESTADO */}
+        <div className="modal-header">
           <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Inspección Documental</span>
-              {detalle && (
-                <DarkBadge label={detalle.tipo.toUpperCase()} />
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Expediente de gasto</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>·</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{getProcedimientoNombre(detalle?.tipo)}</span>
             </div>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 font-mono">
+            <h3 style={{ fontSize: '16px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', margin: 0 }}>
               {casoId}
             </h3>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer"
+            className="uex-theme-btn"
+            title="Cerrar modal"
+            type="button"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-400">
-            <Loader2 size={24} className="animate-spin" />
-            <span className="text-xs">Analizando contenido y checklist del expediente...</span>
-          </div>
-        ) : error ? (
-          <div className="py-10">
+        {/* CUERPO AGRUPADO EN SECCIONES CLARAS */}
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {loading ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+              <span style={{ fontSize: '13px' }}>Cargando datos y cotejo normativo...</span>
+            </div>
+          ) : error ? (
             <AlertErr msg={error} />
-          </div>
-        ) : detalle && (
-          <div className="flex-1 overflow-y-auto space-y-6 py-4 pr-1">
-
-            {/* 1. CHECKLIST DE REQUISITOS NORMATIVOS */}
-            <div className="p-5 rounded-3xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3.5">
-              <div className="flex items-center justify-between">
+          ) : detalle && (
+            <>
+              {/* SECCIÓN 1: DATOS ADMINISTRATIVOS Y MARCO NORMATIVO */}
+              <div style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                    <CheckCircle size={14} className="text-zinc-500" />
-                    Estado y Checklist de Requisitos
-                  </h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
-                    Verificación automática de componentes necesarios para la liquidación oficial.
-                  </p>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Órgano gestor</div>
+                  <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', marginTop: '2px' }}>
+                    SGTRI · Universidad de Extremadura
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className={cn(
-                    "text-xs font-bold px-3 py-1 rounded-full border",
-                    detalle.completo
-                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
-                  )}>
-                    {detalle.porcentaje}% Completado
-                  </span>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                {detalle.requisitos.map((req) => (
-                  <div
-                    key={req.id}
-                    className={cn(
-                      "p-3 rounded-2xl border text-xs flex items-center justify-between transition-colors",
-                      req.cumplido
-                        ? "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200"
-                        : "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      {req.cumplido ? (
-                        <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      ) : (
-                        <AlertTriangle size={15} className="text-amber-500 shrink-0" />
-                      )}
-                      <span className="font-medium text-[11px]">{req.label}</span>
-                    </div>
-                    <span className={cn("text-[10px] font-bold uppercase", req.cumplido ? "text-emerald-600" : "text-amber-600")}>
-                      {req.cumplido ? "Presente" : "Falta"}
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Estado preceptivo</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', fontSize: '13px', fontWeight: 500 }}>
+                    <span 
+                      style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        backgroundColor: detalle.estado_validacion === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
+                        flexShrink: 0
+                      }}
+                    />
+                    <span style={{ color: detalle.estado_validacion === 'error' ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
+                      {detalle.estado_validacion === 'error' ? 'Incompleto (Faltan obligatorios)' : 'Conforme para liquidación'}
                     </span>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* 2. LISTA DE ARCHIVOS DIGITALIZADOS */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
-                  Archivos en el expediente ({detalle.archivos.length})
-                </h4>
-                <span className="text-[11px] text-zinc-400">PDFs y tablas de cálculo</span>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Normativa de aplicación</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    {getNormativaNombre(detalle.tipo)}
+                  </div>
+                </div>
               </div>
 
-              {detalle.archivos.length === 0 ? (
-                <div className="p-8 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl text-xs text-zinc-400">
-                  No hay archivos en este expediente. Puede añadirlos a continuación.
+              {/* SECCIÓN 2: DOCUMENTACIÓN APORTADA */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', margin: 0 }}>
+                    Documentación aportada ({detalle.archivos.length})
+                  </h4>
+                  <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>Digitalizada en servidor</span>
                 </div>
-              ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {detalle.archivos.map((archivo, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex items-center justify-between text-xs hover:border-zinc-300 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 truncate pr-3">
-                        <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0">
-                          {archivo.ext === 'xlsx' || archivo.ext === 'xls' ? (
-                            <FileSpreadsheet size={15} className="text-zinc-500" />
-                          ) : (
-                            <FileText size={15} className="text-zinc-500" />
-                          )}
-                        </div>
-                        <div className="truncate">
-                          <p className="font-bold text-zinc-900 dark:text-zinc-100 truncate">{archivo.name}</p>
-                          <p className="text-[10px] text-zinc-400">
-                            {archivo.categoria} â€¢ {(archivo.size / 1024).toFixed(0)} KB
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <a
-                          href={`/api/caso/${casoId}/archivo/${encodeURIComponent(archivo.name)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                          title="Ver / Descargar archivo"
-                        >
-                          <Download size={13} />
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleEliminarArchivo(archivo.name)}
-                          className="p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors cursor-pointer"
-                          title="Eliminar archivo"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 3. ZONA PARA AÑADIR DOCUMENTOS FALTANTES */}
-            <div className="space-y-2">
-              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">
-                Añadir justificante que falte a este expediente
-              </span>
-
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="p-4 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/50 hover:border-zinc-400 hover:bg-zinc-50 flex items-center justify-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 cursor-pointer transition-colors"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls"
-                  onChange={handleUploadMissing}
-                  className="hidden"
-                />
-                {uploading ? (
-                  <><Loader2 size={15} className="animate-spin" /> Subiendo y actualizando expediente...</>
+                {detalle.archivos.length === 0 ? (
+                  <div style={{ padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    No hay documentos asociados a este expediente.
+                  </div>
                 ) : (
-                  <><Plus size={15} /> Seleccionar archivos para añadir a {casoId}</>
+                  <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                    {detalle.archivos.map((archivo, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '8px 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '12px',
+                          borderBottom: idx < detalle.archivos.length - 1 ? '1px solid var(--border-color)' : 'none',
+                          backgroundColor: idx % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-subtle)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, paddingRight: '8px' }}>
+                          <FileText size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{archivo.name}</span>
+                            <span style={{ color: 'var(--text-faint)', marginLeft: '8px', fontSize: '11px' }}>
+                              {(archivo.size / 1024).toFixed(0)} KB · {archivo.categoria}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          <a
+                            href={`/api/caso/${casoId}/archivo/${encodeURIComponent(archivo.name)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-outline btn-sm"
+                            style={{ padding: '2px 6px', fontSize: '11px' }}
+                            title="Descargar documento"
+                          >
+                            <Download size={11} />
+                            <span>Descargar</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleEliminarArchivo(archivo.name)}
+                            className="btn btn-outline btn-sm"
+                            style={{ padding: '2px 6px', fontSize: '11px', color: 'var(--color-danger)' }}
+                            title="Eliminar archivo"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
+
+                {/* Zona discreta para adjuntar */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    padding: '8px 12px',
+                    border: '1px dashed var(--border-hover)',
+                    borderRadius: '4px',
+                    backgroundColor: 'var(--bg-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls"
+                    onChange={handleUploadMissing}
+                    style={{ display: 'none' }}
+                  />
+                  {uploading ? (
+                    <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Subiendo archivo...</>
+                  ) : (
+                    <><Plus size={13} /> Adjuntar documento complementario a este expediente</>
+                  )}
+                </div>
               </div>
-            </div>
 
-          </div>
-        )}
+              {/* SECCIÓN 3: CHECKLIST Y VALIDACIONES PRECEPTIVAS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', margin: 0 }}>
+                  Comprobaciones normativas y preceptivas
+                </h4>
 
-        {/* Footer del Modal */}
-        <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2.5 text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
-          >
+                <div className="admin-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Requisito preceptivo</th>
+                        <th style={{ width: '120px' }}>Carácter</th>
+                        <th style={{ width: '120px', textAlign: 'right' }}>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detalle.requisitos.map((req) => (
+                        <tr key={req.id}>
+                          <td style={{ color: 'var(--text-primary)' }}>
+                            {req.label}
+                          </td>
+                          <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {req.obligatorio ? 'Obligatorio' : 'Opcional'}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                              <span 
+                                style={{
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  backgroundColor: req.cumplido ? 'var(--color-success)' : req.obligatorio ? 'var(--color-danger)' : 'var(--color-warning)',
+                                  flexShrink: 0
+                                }}
+                              />
+                              <span style={{ color: req.cumplido ? 'var(--color-success-text)' : req.obligatorio ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>
+                                {req.cumplido ? 'Acreditado' : req.obligatorio ? 'Ausente' : 'Pendiente'}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* PIE: ACCIONES DISPONIBLES */}
+        <div className="modal-footer">
+          <Btn variant="outline" size="sm" onClick={onClose}>
             Cerrar
-          </button>
+          </Btn>
 
           <Btn
-            size="md"
             variant="primary"
+            size="sm"
             onClick={() => {
-              onClose()
-              onTramitar(casoId)
+              onClose();
+              onTramitar(casoId);
             }}
             disabled={loading}
           >
-            <Play size={13} fill="currentColor" /> Tramitar este expediente
+            <Play size={12} style={{ fill: 'currentColor' }} />
+            <span>Tramitar este expediente</span>
           </Btn>
         </div>
 
       </div>
     </div>
-  )
+  );
 }
-

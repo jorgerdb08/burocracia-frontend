@@ -1,0 +1,138 @@
+/* =========================================================================
+   ESTILOS DE VISTA MINIMALISTAS
+   Universidad de Extremadura - Catálogo, Expedientes y Tramitación
+   ========================================================================= */
+
+/* 1. ENCABEZADOS DE PÁGINA */
+.view-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-color);
+}
+
+@media (min-width: 768px) {
+  .view-header {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
+.view-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.view-title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin: 0;
+}
+
+.view-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  max-width: 750px;
+  line-height: 1.45;
+}
+
+.view-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* 2. BOTONES DE FILTRO PLANOS */
+.filter-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.filter-btn.active {
+  background-color: var(--bg-surface);
+  color: var(--uex-burgundy);
+  border-color: var(--uex-burgundy);
+  font-weight: 600;
+}
+
+.dark .filter-btn.active {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+  border-color: var(--uex-burgundy);
+}
+
+/* 3. CAMPO DE BÚSQUEDA COMPACTO */
+.search-input-box {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 6px 10px 6px 28px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--uex-burgundy);
+}
+
+/* 4. TARJETAS DE SELECCIÓN SOBRIAS */
+.selection-card {
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.selection-card:hover {
+  border-color: var(--border-hover);
+}
+
+.selection-card.selected {
+  border-color: var(--uex-burgundy);
+  background-color: var(--uex-burgundy-subtle);
+}
+
+.dark .selection-card.selected {
+  border-color: var(--uex-burgundy-border);
+  background-color: var(--uex-burgundy-subtle);
+}

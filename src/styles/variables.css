@@ -1,0 +1,158 @@
+/* =========================================================================
+   UNIVERSIDAD DE EXTREMADURA (UEx) - SISTEMA DE DISEÑO INSTITUCIONAL
+   Minimalismo Profesional: Sobrio, ordenado y tipográficamente riguroso
+   ========================================================================= */
+
+:root {
+  /* 1. Identidad Institucional UEx */
+  --uex-burgundy:        #8A1538;
+  --uex-burgundy-hover:  #73112E;
+  --uex-burgundy-dark:   #5B0C23;
+  --uex-burgundy-subtle: #FDF2F4;
+  --uex-burgundy-border: #F3C4CE;
+
+  /* 2. Escala Neutra Profesional */
+  --slate-50:  #FAFAFA;
+  --slate-100: #F4F4F5;
+  --slate-200: #E4E4E7;
+  --slate-300: #D4D4D8;
+  --slate-400: #A1A1AA;
+  --slate-500: #71717A;
+  --slate-600: #52525B;
+  --slate-700: #3F3F46;
+  --slate-800: #27272A;
+  --slate-900: #18181B;
+  --slate-950: #09090B;
+
+  /* 3. Colores Semánticos Discretos (Solo para estados reales) */
+  --color-success:        #15803D;
+  --color-success-bg:     #F0FDF4;
+  --color-success-border: #DCFCE7;
+  --color-success-text:   #166534;
+
+  --color-warning:        #B45309;
+  --color-warning-bg:     #FFFBEB;
+  --color-warning-border: #FEF3C7;
+  --color-warning-text:   #92400E;
+
+  --color-danger:         #B91C1C;
+  --color-danger-bg:      #FEF2F2;
+  --color-danger-border:  #FEE2E2;
+  --color-danger-text:    #991B1B;
+
+  --color-info:           #1D4ED8;
+  --color-info-bg:        #EFF6FF;
+  --color-info-border:    #DBEAFE;
+  --color-info-text:      #1E40AF;
+
+  /* 4. Asignación de Superficies y Textos (Modo Claro) */
+  --bg-app:        #FAFAFA;
+  --bg-surface:    #FFFFFF;
+  --bg-subtle:     #F4F4F5;
+  --bg-muted:      #F8FAFC;
+  
+  --text-primary:   #18181B;
+  --text-secondary: #52525B;
+  --text-muted:     #71717A;
+  --text-faint:     #A1A1AA;
+  --text-on-dark:   #FFFFFF;
+
+  --border-color:  #E4E4E7;
+  --border-subtle: #F4F4F5;
+  --border-hover:  #D4D4D8;
+
+  /* 5. Tipografía Institucional */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --text-2xs:  11px;
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 14px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  22px;
+  --text-3xl:  26px;
+
+  --font-normal:    400;
+  --font-medium:    500;
+  --font-semibold:  600;
+  --font-bold:      700;
+
+  /* 6. Espaciado Consistente */
+  --space-1:   4px;
+  --space-1-5: 6px;
+  --space-2:   8px;
+  --space-2-5: 10px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+
+  /* 7. Radios Discretos (Sin tarjetas hiper-redondeadas) */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+
+  /* 8. Sombras Mínimas (Prácticamente planas) */
+  --shadow-2xs: none;
+  --shadow-xs:  0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm:  0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md:  0 2px 6px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg:  0 8px 18px -4px rgba(0, 0, 0, 0.08);
+  --shadow-xl:  0 16px 28px -6px rgba(0, 0, 0, 0.12);
+
+  /* 9. Transiciones */
+  --transition-fast: 0.12s ease-out;
+  --transition-normal: 0.18s ease-out;
+}
+
+/* Modo Oscuro Sobrio y Accesible */
+:root.dark,
+html.dark,
+:root[data-theme="dark"],
+html[data-theme="dark"],
+.dark,
+[data-theme="dark"] {
+  --bg-app:        #09090B;
+  --bg-surface:    #121215;
+  --bg-subtle:     #18181B;
+  --bg-muted:      #1F1F23;
+  
+  --text-primary:   #F4F4F5;
+  --text-secondary: #A1A1AA;
+  --text-muted:     #71717A;
+  --text-faint:     #52525B;
+
+  --border-color:  #27272A;
+  --border-subtle: #1F1F23;
+  --border-hover:  #3F3F46;
+
+  --color-success:        #22C55E;
+  --color-success-bg:     rgba(34, 197, 94, 0.1);
+  --color-success-border: rgba(34, 197, 94, 0.25);
+  --color-success-text:   #86EFAC;
+
+  --color-warning:        #F59E0B;
+  --color-warning-bg:     rgba(245, 158, 11, 0.1);
+  --color-warning-border: rgba(245, 158, 11, 0.25);
+  --color-warning-text:   #FDE68A;
+
+  --color-danger:         #EF4444;
+  --color-danger-bg:      rgba(239, 68, 68, 0.12);
+  --color-danger-border:  rgba(239, 68, 68, 0.25);
+  --color-danger-text:    #FCA5A5;
+
+  --color-info:           #3B82F6;
+  --color-info-bg:        rgba(59, 130, 246, 0.1);
+  --color-info-border:    rgba(59, 130, 246, 0.25);
+  --color-info-text:      #93C5FD;
+
+  --uex-burgundy-subtle: rgba(138, 21, 56, 0.2);
+  --uex-burgundy-border: rgba(138, 21, 56, 0.4);
+}

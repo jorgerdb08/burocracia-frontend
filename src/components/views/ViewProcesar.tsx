@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ChevronRight, ArrowRight, Play, Loader2, AlertTriangle, CheckCircle, RefreshCw, UploadCloud, X, Trash2,
-  ChevronLeft, RotateCcw, Check, Eye, CheckCircle2, FileText, FolderOpen, Printer, Info, ShieldCheck,
+  ChevronLeft, RotateCcw, Check, Eye, CheckCircle2, XCircle, FileText, FolderOpen, Printer, Info, ShieldCheck,
   Scale, FileCheck, Building2, HelpCircle, ExternalLink, Copy, Terminal, ChevronDown, ChevronUp, ZoomIn,
   Calendar, Car, BedDouble, MapPin, Navigation, Gauge, Fuel, CreditCard, Clock, Sparkles, Route, ArrowRightLeft,
   ShieldAlert, Wallet, CalendarDays, Compass, Receipt, Calculator, ArrowDownRight, ArrowUpRight,
@@ -91,7 +91,7 @@ function CalendarioDietas({
       {/* Encabezado Institucional y Selector de Vista (Calendario vs Tabla) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs shrink-0">
+          <div className="w-9 h-9 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs shrink-0">
             <CalendarDays size={18} />
           </div>
           <div>
@@ -109,7 +109,7 @@ function CalendarioDietas({
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {/* Selector de Vista: Calendario vs Tabla */}
-          <div className="flex items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 p-0.5 border border-zinc-200 dark:border-zinc-700">
+          <div className="flex items-center rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 border border-zinc-200 dark:border-zinc-700">
             <button
               type="button"
               onClick={() => setVistaModo('calendario')}
@@ -138,7 +138,7 @@ function CalendarioDietas({
             </button>
           </div>
 
-          <div className="px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+          <div className="px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
             {importeTotal.toFixed(2)} €
           </div>
         </div>
@@ -149,7 +149,7 @@ function CalendarioDietas({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           
           {/* Cuadrícula del Calendario Mensual (8 cols) */}
-          <div className="lg:col-span-8 p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
+          <div className="lg:col-span-8 p-5 sm:p-6 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-4 shadow-xs">
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-mono">
@@ -178,7 +178,7 @@ function CalendarioDietas({
             {/* Celdas del mes */}
             <div className="grid grid-cols-7 gap-2">
               {Array.from({ length: startDayOffset }).map((_, idx) => (
-                <div key={`empty-${idx}`} className="h-16 rounded-xl bg-transparent" />
+                <div key={`empty-${idx}`} className="h-16 rounded-md bg-transparent" />
               ))}
 
               {Array.from({ length: totalDaysInMonth }).map((_, idx) => {
@@ -197,7 +197,7 @@ function CalendarioDietas({
                       type="button"
                       onClick={() => setSelectedDay(dateKey)}
                       className={cn(
-                        "h-16 rounded-xl p-2 flex flex-col justify-between transition-all duration-150 cursor-pointer text-left border relative group shadow-2xs",
+                        "h-16 rounded-md p-2 flex flex-col justify-between transition-all duration-150 cursor-pointer text-left border relative group shadow-2xs",
                         isSalida && "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700/60 hover:border-slate-400",
                         isRegreso && "bg-amber-50/50 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/40 hover:border-amber-400",
                         !isSalida && !isRegreso && "bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/40 hover:border-emerald-400",
@@ -232,7 +232,7 @@ function CalendarioDietas({
                 return (
                   <div
                     key={dateKey}
-                    className="h-16 rounded-xl p-2 flex flex-col justify-start bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-100 dark:border-zinc-800/50 text-zinc-300 dark:text-zinc-700 select-none"
+                    className="h-16 rounded-md p-2 flex flex-col justify-start bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-100 dark:border-zinc-800/50 text-zinc-300 dark:text-zinc-700 select-none"
                   >
                     <span className="font-mono text-xs font-normal">{dayNum}</span>
                   </div>
@@ -242,7 +242,7 @@ function CalendarioDietas({
           </div>
 
           {/* Panel Lateral de Detalle del Día Inspeccionado (4 cols) */}
-          <div className="lg:col-span-4 p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between shadow-xs space-y-4">
+          <div className="lg:col-span-4 p-5 sm:p-6 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between shadow-xs space-y-4">
             {selectedDayInfo ? (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
@@ -265,21 +265,21 @@ function CalendarioDietas({
                 </div>
 
                 <div className="space-y-2.5 text-xs">
-                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                  <div className="p-3 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                     <span className="text-[10px] text-zinc-400 block mb-0.5">Concepto Computado</span>
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">
                       {selectedDayInfo.tipo === 'salida' ? 'Jornada de Salida y Desplazamiento de Ida' : selectedDayInfo.tipo === 'regreso' ? 'Jornada de Retorno a Residencia Oficial' : 'Estancia Oficial en Comisión de Servicio'}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                  <div className="p-3 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                     <span className="text-[10px] text-zinc-400 block mb-0.5">Fórmula de Liquidación Económica</span>
                     <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                       {selectedDayInfo.factor.toFixed(1)}x × {tarifaDia.toFixed(2)} €/día = {selectedDayInfo.importe.toFixed(2)} €
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                  <div className="p-3 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                     <span className="text-[10px] text-zinc-400 block mb-0.5">Régimen Jurídico y Tributario</span>
                     <span className="text-zinc-600 dark:text-zinc-400 text-xs leading-snug block">
                       Art. 12 R.D. 462/2002. Renta 100% exenta de retención a cuenta del IRPF (Art. 9 RIRPF).
@@ -306,7 +306,7 @@ function CalendarioDietas({
 
       {/* VISTA 2: CUADRO OFICIAL DE JORNADAS (TABLA ADMINISTRATIVA) */}
       {vistaModo === 'tabla' && (
-        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
+        <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 uppercase text-[10px] font-bold tracking-wider border-b border-zinc-200 dark:border-zinc-800">
@@ -409,7 +409,23 @@ export function ViewProcesar({
 
   const [casoSel, setCasoSel] = useState(initialCaso || '');
   const [tipoProyecto, setTipoProyecto] = useState('');
-  const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean }[]>([]);
+  const [organica, setOrganica] = useState('');
+  const [referenciaProyecto, setReferenciaProyecto] = useState('');
+  const [proyectosCatalogo, setProyectosCatalogo] = useState<any[]>([]);
+  const [procedimientosConfig, setProcedimientosConfig] = useState<Record<string, any>>({});
+  const [schemasList, setSchemasList] = useState<any[]>([]);
+  const [plantillasList, setPlantillasList] = useState<any[]>([]);
+  const [promptsCatalog, setPromptsCatalog] = useState<{ extraccion: any[], proyectos: any[], liquidacion: any[] }>({ extraccion: [], proyectos: [], liquidacion: [] });
+  const [selectedPromptExtraccion, setSelectedPromptExtraccion] = useState<string>('');
+  const [selectedPromptLiquidacion, setSelectedPromptLiquidacion] = useState<string>('');
+  const [selectedPromptProyecto, setSelectedPromptProyecto] = useState<string>('');
+  const [selectedCasoEspecifico, setSelectedCasoEspecifico] = useState<string>('');
+  const [selectedSchemaPath, setSelectedSchemaPath] = useState<string>('');
+  const [selectedPlantilla, setSelectedPlantilla] = useState<string>('');
+  const [mostrarConfigAvanzada, setMostrarConfigAvanzada] = useState<boolean>(false);
+  const [casoDetalle, setCasoDetalle] = useState<any>(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean, estado_validacion?: string, errores_obligatorios?: string[], warnings_opcionales?: string[] }[]>([]);
   const [showExpedientes, setShowExpedientes] = useState(true);
   const [running, setRunning] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | undefined>();
@@ -417,6 +433,7 @@ export function ViewProcesar({
   const [result, setResult] = useState<CasoResult | null>(null);
   const [error, setError] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('desglose');
   const [filtroConcepto, setFiltroConcepto] = useState<'todos' | 'manutencion' | 'transporte' | 'alojamiento' | 'inscripcion'>('todos');
@@ -430,7 +447,82 @@ export function ViewProcesar({
 
   useEffect(() => {
     fetch('/api/casos').then(r => r.json()).then(d => setCasos(d.casos || [])).catch(() => { });
+    fetch('/api/config/proyectos').then(r => r.json()).then(d => {
+      if (d && d.proyectos && d.proyectos.length > 0) {
+        setProyectosCatalogo(d.proyectos);
+      }
+    }).catch(() => {});
+    fetch('/api/config/procedimientos').then(r => r.json()).then(d => {
+      if (d && !d.error) setProcedimientosConfig(d);
+    }).catch(() => {});
+    fetch('/api/config/schemas').then(r => r.json()).then(d => {
+      if (d && d.schemas) setSchemasList(d.schemas);
+    }).catch(() => {});
+    fetch('/api/config/plantillas').then(r => r.json()).then(d => {
+      if (d && d.plantillas) setPlantillasList(d.plantillas);
+    }).catch(() => {});
+    fetch('/api/config/prompts').then(r => r.json()).then(d => {
+      if (d && !d.error) setPromptsCatalog(d);
+    }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (promptsCatalog.liquidacion && promptsCatalog.liquidacion.length > 0) {
+      const match = promptsCatalog.liquidacion.find((l: any) => l.id.includes(selectedTemplate));
+      if (match) setSelectedPromptLiquidacion(match.path);
+    }
+  }, [selectedTemplate, promptsCatalog]);
+
+  useEffect(() => {
+    if (promptsCatalog.proyectos && promptsCatalog.proyectos.length > 0) {
+      if (tipoProyecto) {
+        const pMatch = promptsCatalog.proyectos.find((p: any) => p.id.toLowerCase().includes(tipoProyecto.toLowerCase()));
+        if (pMatch) setSelectedPromptProyecto(pMatch.path);
+      } else {
+        setSelectedPromptProyecto('');
+      }
+    }
+  }, [tipoProyecto, promptsCatalog]);
+
+  useEffect(() => {
+    if (procedimientosConfig && procedimientosConfig[selectedTemplate]) {
+      const proc = procedimientosConfig[selectedTemplate];
+      setSelectedSchemaPath(proc.esquema_extraccion || '');
+      setSelectedPlantilla(proc.plantillas_generacion?.[0] || '');
+      const firstCase = proc.casos ? Object.keys(proc.casos)[0] : '';
+      setSelectedCasoEspecifico(firstCase || '');
+    }
+  }, [selectedTemplate, procedimientosConfig]);
+
+  const handleSelectCasoEspecifico = (caseKey: string) => {
+    setSelectedCasoEspecifico(caseKey);
+    const proc = procedimientosConfig[selectedTemplate];
+    if (proc && proc.casos && proc.casos[caseKey]) {
+      const cObj = proc.casos[caseKey];
+      if (cObj.esquema_extraccion) setSelectedSchemaPath(cObj.esquema_extraccion);
+      if (cObj.plantillas_generacion && cObj.plantillas_generacion.length > 0) {
+        setSelectedPlantilla(cObj.plantillas_generacion[0]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (casoSel) {
+      setLoadingDetalle(true);
+      fetch(`/api/caso/${encodeURIComponent(casoSel)}/detalle?tipo=${encodeURIComponent(selectedTemplate || '')}`)
+        .then(r => r.json())
+        .then(d => {
+          setCasoDetalle(d);
+          setLoadingDetalle(false);
+          if (d && d.tipo && ['dietas', 'pago_proveedor', 'honorarios'].includes(d.tipo)) {
+            setSelectedTemplate(d.tipo);
+          }
+        })
+        .catch(() => setLoadingDetalle(false));
+    } else {
+      setCasoDetalle(null);
+    }
+  }, [casoSel, selectedTemplate]);
 
   const casosFiltrados = useMemo(() => {
     if (!selectedTemplate) return casos;
@@ -443,23 +535,51 @@ export function ViewProcesar({
     }
   }, [result]);
 
+  const subirArchivos = async (nuevosArchivos: File[]) => {
+    if (nuevosArchivos.length === 0) return;
+    setUploadingFiles(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      nuevosArchivos.forEach(f => fd.append('files', f));
+      if (selectedTemplate) {
+        fd.append('tipo', selectedTemplate);
+      }
+      const res = await fetch(`/api/caso/upload?tipo=${encodeURIComponent(selectedTemplate || '')}`, {
+        method: 'POST',
+        body: fd
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setCasoSel(data.caso_id);
+      setCasoDetalle(data.detalle);
+      if (data.detalle?.tipo && ['dietas', 'pago_proveedor', 'honorarios'].includes(data.detalle.tipo)) {
+        setSelectedTemplate(data.detalle.tipo);
+      }
+      // Actualizar listado de casos para incluir la nueva subida
+      fetch('/api/casos').then(r => r.json()).then(d => setCasos(d.casos || [])).catch(() => {});
+    } catch (err: any) {
+      setError(err.message || 'Error al subir los archivos del expediente.');
+    } finally {
+      setUploadingFiles(false);
+    }
+  };
+
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const dropped = Array.from(e.dataTransfer.files);
-      setFiles(prev => [...prev, ...dropped]);
-      setCasoSel('');
-      setError('');
+      setFiles(dropped);
+      subirArchivos(dropped);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...selected]);
-      setCasoSel('');
-      setError('');
+      setFiles(selected);
+      subirArchivos(selected);
     }
   };
 
@@ -472,7 +592,7 @@ export function ViewProcesar({
     setRunning(true);
     setError('');
     setResult(null);
-    setTaskLogs('Iniciando procesamiento del expediente mediante agente...');
+    setTaskLogs('Iniciando cotejo documental y fiscalización del expediente...');
     try {
       if (!targetCaso) {
         if (files.length === 0) throw new Error("Debe seleccionar un expediente o subir los archivos para justificar el gasto.");
@@ -485,12 +605,23 @@ export function ViewProcesar({
         setCasoSel(targetCaso);
       }
 
-      const reqTipoProyecto = isDietas ? tipoProyecto : '';
+      const reqTipoProyecto = tipoProyecto || '';
 
       const s = await fetch('/api/caso/iniciar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caso_id: targetCaso, tipo_proyecto: reqTipoProyecto }),
+        body: JSON.stringify({
+          caso_id: targetCaso,
+          tipo_proyecto: reqTipoProyecto,
+          tipo_procedimiento: selectedTemplate,
+          caso_especifico: selectedCasoEspecifico,
+          schema_path: selectedSchemaPath,
+          prompt_path: selectedPromptExtraccion,
+          prompt_liquidacion_path: selectedPromptLiquidacion,
+          prompt_proyecto_path: selectedPromptProyecto,
+          organica: organica,
+          referencia_proyecto: referenciaProyecto,
+        }),
       });
       const { task_id } = await s.json();
       setActiveTaskId(task_id);
@@ -501,7 +632,7 @@ export function ViewProcesar({
     } finally {
       setRunning(false);
     }
-  }, [casoSel, files, tipoProyecto, isDietas]);
+  }, [casoSel, files, tipoProyecto, selectedTemplate, organica, referenciaProyecto, selectedCasoEspecifico, selectedSchemaPath, selectedPromptExtraccion, selectedPromptLiquidacion, selectedPromptProyecto]);
 
   const reiniciarTramite = () => {
     setResult(null);
@@ -510,6 +641,14 @@ export function ViewProcesar({
     setCasoSel('');
     setFiles([]);
     setTipoProyecto('');
+    setOrganica('');
+    setReferenciaProyecto('');
+    setSelectedCasoEspecifico('');
+    setSelectedSchemaPath('');
+    setSelectedPlantilla('');
+    setSelectedPromptExtraccion('');
+    setSelectedPromptLiquidacion('');
+    setSelectedPromptProyecto('');
     setFiltroConcepto('todos');
   };
 
@@ -558,145 +697,168 @@ export function ViewProcesar({
     };
   }, [result]);
 
-  const STEPS = isDietas ? [
+  const STEPS = [
     { num: 1, label: 'Procedimiento' },
     { num: 2, label: 'Documentación' },
-    { num: 3, label: 'Régimen Normativo' },
+    { num: 3, label: 'Proyecto y Normativa' },
     { num: 4, label: 'Confirmación' },
-  ] : [
-    { num: 1, label: 'Procedimiento' },
-    { num: 2, label: 'Documentación' },
-    { num: 3, label: 'Confirmación' },
   ];
 
   const totalSteps = STEPS.length;
+  const templateActivo = TEMPLATES.find(t => t.id === selectedTemplate);
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-[90vw] mx-auto pb-16 font-sans">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1200px', margin: '0 auto', paddingBottom: '3rem' }}>
 
       {/* Cabecera del Proceso */}
-      <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 pb-4">
-        <div className="flex items-center gap-3">
+      <div className="view-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button 
             onClick={onVolver}
-            className="p-2 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer"
+            className="uex-theme-btn"
             title="Volver"
+            type="button"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} />
           </button>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Liquidación Oficial de Gastos e Investigación
-            </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Servicio de Gestión y Transferencia de Resultados de la Investigación (SGTRI) — Universidad de Extremadura
+            <div className="view-breadcrumb">
+              <span>Gestión Económica UEx</span>
+              <span>/</span>
+              <span>Tramitación</span>
+            </div>
+            <h1 className="view-title">Liquidación y fiscalización de gastos</h1>
+            <p className="view-desc">
+              Cumplimentación de modelos oficiales SGTRI y verificación de requisitos de justificación económica.
             </p>
           </div>
         </div>
 
-        {result && (
-          <Btn size="sm" variant="outline" onClick={reiniciarTramite} className="flex items-center gap-1.5 shadow-xs cursor-pointer rounded-2xl">
-            <RotateCcw size={14} />
-            Nueva Liquidación
-          </Btn>
-        )}
+        {/* Indicador discreto del trámite activo */}
+        <div className="view-actions">
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '4px 10px', backgroundColor: 'var(--bg-subtle)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            Trámite: <strong style={{ color: 'var(--text-primary)' }}>{templateActivo?.titulo || selectedTemplate}</strong>
+          </div>
+
+          {result && (
+            <Btn size="sm" variant="outline" onClick={reiniciarTramite}>
+              <RotateCcw size={13} />
+              <span>Nueva liquidación</span>
+            </Btn>
+          )}
+        </div>
       </div>
 
-      {/* STEPPER DINÁMICO */}
+      {/* STEPPER HORIZONTAL MINIMALISTA */}
       {!result && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-4 shadow-sm">
-          <div className="flex items-center justify-between max-w-2xl mx-auto relative">
-            <div className="absolute top-1/2 left-4 right-4 -translate-y-1/2 h-0.5 bg-zinc-100 dark:bg-zinc-800 -z-0" />
-            <div 
-              className="absolute top-1/2 left-4 -translate-y-1/2 h-0.5 bg-zinc-900 dark:bg-zinc-100 transition-all duration-300 -z-0"
-              style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 90}%` }}
-            />
-            {STEPS.map((s) => {
-              const isDone = currentStep > s.num;
-              const isCurrent = currentStep === s.num;
-              return (
-                <div key={s.num} className="flex flex-col items-center gap-1.5 bg-white dark:bg-zinc-900 px-2 z-10">
-                  <button
-                    onClick={() => s.num < currentStep && setCurrentStep(s.num)}
-                    disabled={s.num > currentStep || running}
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 border-2",
-                      isDone && "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 cursor-pointer",
-                      isCurrent && "border-zinc-900 dark:border-zinc-100 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 ring-4 ring-zinc-100 dark:ring-zinc-800",
-                      !isDone && !isCurrent && "border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 bg-white dark:bg-zinc-900 cursor-not-allowed"
-                    )}
-                  >
-                    {isDone ? <Check size={14} strokeWidth={3} /> : s.num}
-                  </button>
-                  <span className={cn(
-                    "text-[11px] font-semibold tracking-tight transition-colors hidden sm:block",
-                    isCurrent ? "text-zinc-900 dark:text-zinc-100 font-bold" : "text-zinc-400 dark:text-zinc-600"
-                  )}>
-                    {s.label}
-                  </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+          {STEPS.map((s, idx) => {
+            const isDone = currentStep > s.num;
+            const isCurrent = currentStep === s.num;
+            return (
+              <div 
+                key={s.num} 
+                onClick={() => s.num < currentStep && setCurrentStep(s.num)}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  cursor: s.num < currentStep ? 'pointer' : 'default',
+                  opacity: s.num > currentStep ? 0.45 : 1
+                }}
+              >
+                <div 
+                  style={{ 
+                    width: '22px', 
+                    height: '22px', 
+                    borderRadius: '50%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: '11px', 
+                    fontWeight: 600,
+                    backgroundColor: isCurrent ? 'var(--uex-burgundy)' : isDone ? 'var(--text-primary)' : 'var(--bg-subtle)',
+                    color: (isCurrent || isDone) ? '#FFFFFF' : 'var(--text-muted)',
+                    border: isCurrent ? 'none' : '1px solid var(--border-color)'
+                  }}
+                >
+                  {isDone ? <Check size={12} /> : s.num}
                 </div>
-              );
-            })}
-          </div>
+                <span style={{ fontSize: '13px', fontWeight: isCurrent ? 600 : 500, color: isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                  {s.label}
+                </span>
+                {idx < STEPS.length - 1 && (
+                  <span style={{ color: 'var(--text-faint)', marginLeft: '12px' }}>—</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* CONTENIDO DEL WIZARD */}
       {!result && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div className="panel" style={{ padding: '1.75rem' }}>
           
           {/* PASO 1: SELECCIONAR PLANTILLA */}
           {currentStep === 1 && (
-            <div className="space-y-6 animate-fade-in">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">1. Seleccione el Tipo de Trámite o Procedimiento</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  El sistema adaptará el motor de cálculo y los modelos normativos según el formulario oficial.
+                <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                  1. Seleccione el tipo de procedimiento a liquidar
+                </h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  El sistema adaptará el motor de cálculo y los modelos normativos según el formulario oficial correspondiente.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
                 {TEMPLATES.map((t) => {
                   const isSel = selectedTemplate === t.id;
                   return (
                     <div
                       key={t.id}
                       onClick={() => setSelectedTemplate(t.id)}
-                      className={cn(
-                        "p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between relative group",
-                        isSel 
-                          ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/40 shadow-xs" 
-                          : "border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900"
-                      )}
+                      className={`selection-card ${isSel ? 'selected' : ''}`}
+                      style={{ padding: '1.25rem', minHeight: '160px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
                     >
                       <div>
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold border border-zinc-200/60 dark:border-zinc-700/60">
-                            {t.badge || 'Oficial'}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                            {t.badge || 'Oficial UEx'}
                           </span>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); setPreviewTemplateModal(t); }}
-                            className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-zinc-100/80 dark:bg-zinc-800/80 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                            title="Ver información del modelo oficial"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--text-secondary)',
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              textDecoration: 'underline'
+                            }}
                           >
-                            <Eye size={13} />
-                            <span className="text-[11px] font-semibold">Ver Plantilla</span>
+                            <Eye size={12} />
+                            <span>Ver modelo</span>
                           </button>
                         </div>
-                        <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 mb-1">{t.titulo}</h4>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{t.desc}</p>
+                        <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                          {t.titulo}
+                        </h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                          {t.desc}
+                        </p>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px]">
-                        <span className="text-zinc-400 font-medium">Procedimiento Oficial UEx</span>
-                        {isSel ? (
-                          <span className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
-                            <CheckCircle2 size={13} /> Seleccionado
-                          </span>
-                        ) : (
-                          <span className="text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300">Seleccionar</span>
-                        )}
+                      <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Modelo normalizado</span>
+                        <span style={{ fontWeight: 600, color: isSel ? 'var(--uex-burgundy)' : 'var(--text-muted)' }}>
+                          {isSel ? '✓ Seleccionado' : 'Elegir'}
+                        </span>
                       </div>
                     </div>
                   );
@@ -717,7 +879,7 @@ export function ViewProcesar({
 
               {/* Selector Desplegable de Casos */}
               {casosFiltrados.length > 0 && (
-                <div className="bg-[#FAF9F7] dark:bg-zinc-950/70 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden transition-all">
+                <div className="bg-[#FAF9F7] dark:bg-zinc-950/70 rounded-md border border-zinc-200/80 dark:border-zinc-800 overflow-hidden transition-all">
                   <div
                     onClick={() => setShowExpedientes(prev => !prev)}
                     className="p-4 flex items-center justify-between cursor-pointer select-none hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60 transition-colors"
@@ -727,7 +889,7 @@ export function ViewProcesar({
                       <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                         Expedientes Registrados en el Servidor
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-bold">
                         {casosFiltrados.length}
                       </span>
                     </div>
@@ -747,19 +909,36 @@ export function ViewProcesar({
                               key={c.id}
                               type="button"
                               onClick={() => { setCasoSel(isSel ? '' : c.id); setFiles([]); }}
-                              className={cn(
-                                "px-3 py-2 rounded-xl text-xs font-mono font-medium transition-all flex items-center gap-2 border cursor-pointer",
-                                isSel 
-                                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs"
-                                  : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
-                              )}
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: 'var(--radius-sm)',
+                                fontSize: '12px',
+                                fontFamily: 'var(--font-mono)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                border: isSel ? '1px solid var(--uex-burgundy)' : '1px solid var(--border-color)',
+                                backgroundColor: isSel ? 'var(--bg-subtle)' : 'var(--bg-surface)',
+                                color: isSel ? 'var(--uex-burgundy)' : 'var(--text-primary)',
+                                fontWeight: isSel ? 600 : 400,
+                                cursor: 'pointer'
+                              }}
                             >
-                              <FolderOpen size={13} />
+                              <FolderOpen size={13} style={{ color: isSel ? 'var(--uex-burgundy)' : 'var(--text-muted)' }} />
                               <span>{c.id}</span>
                               {c.total_archivos !== undefined && (
-                                <span className={cn("text-[10px] px-1.5 py-0.2 rounded-md", isSel ? "bg-zinc-800 text-zinc-300 dark:bg-zinc-200 dark:text-zinc-800" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500")}>
-                                  {c.total_archivos} docs
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                  ({c.total_archivos})
                                 </span>
+                              )}
+                              {c.estado_validacion === 'error' && (
+                                <span className="status-dot status-dot-danger" title="Faltan documentos obligatorios" />
+                              )}
+                              {c.estado_validacion === 'valido_con_advertencias' && (
+                                <span className="status-dot status-dot-warning" title="Obligatorios completos (avisos opcionales)" />
+                              )}
+                              {c.estado_validacion === 'valido_completo' && (
+                                <span className="status-dot status-dot-success" title="Expediente conforme" />
                               )}
                             </button>
                           );
@@ -770,6 +949,179 @@ export function ViewProcesar({
                 </div>
               )}
 
+              {/* Listado y Checklist de Documentos del Expediente Seleccionado */}
+              {casoSel && (
+                <div className="p-5 rounded-lg bg-[#FAF9F7] dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 space-y-4 animate-fade-in shadow-2xs">
+                  {/* Cabecera del expediente */}
+                  <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <FolderOpen size={16} style={{ color: 'var(--text-secondary)' }} />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                            {casoSel}
+                          </span>
+                          {casoDetalle?.tipo && (
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                              [{casoDetalle.tipo === 'dietas' ? 'Liquidación / Dietas' : casoDetalle.tipo === 'pago_proveedor' ? 'Pago a Proveedor' : casoDetalle.tipo === 'honorarios' ? 'Honorarios' : casoDetalle.tipo}]
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {casoDetalle?.archivos?.length || 0} documentos identificados
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      {casoDetalle?.estado_validacion === 'error' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-danger)' }}>
+                          <span className="status-dot status-dot-danger" />
+                          <span>Faltan obligatorios</span>
+                        </div>
+                      ) : casoDetalle?.estado_validacion === 'valido_con_advertencias' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-warning)' }}>
+                          <span className="status-dot status-dot-warning" />
+                          <span>Avisos opcionales</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-success)' }}>
+                          <span className="status-dot status-dot-success" />
+                          <span>Expediente conforme</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Banner Explicativo de Estado de Validación */}
+                  {casoDetalle?.estado_validacion === 'error' && (
+                    <div className="alert alert-error">
+                      <XCircle size={15} style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontWeight: 600 }}>
+                          Faltan documentos obligatorios para tramitar este expediente:
+                        </span>
+                        <ul style={{ margin: '2px 0 0 16px', padding: 0, fontSize: '11px' }}>
+                          {casoDetalle.errores_obligatorios?.map((err: string, i: number) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {casoDetalle?.estado_validacion === 'valido_con_advertencias' && (
+                    <div className="alert alert-warning">
+                      <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontWeight: 600 }}>
+                          Documentos obligatorios completos (Faltan justificantes opcionales):
+                        </span>
+                        <p style={{ margin: 0, fontSize: '11px' }}>
+                          El expediente es conforme para su tramitación. Los justificantes no aportados generarán advertencias en la fiscalización.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {casoDetalle?.estado_validacion === 'valido_completo' && (
+                    <div className="alert alert-success">
+                      <CheckCircle2 size={15} style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <span style={{ fontWeight: 600 }}>Expediente completo y acreditado</span>
+                        <p style={{ margin: '2px 0 0', fontSize: '11px' }}>
+                          Todos los documentos obligatorios y justificantes opcionales han sido detectados satisfactoriamente.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Checklist de Requisitos Normativos */}
+                  {casoDetalle?.requisitos && casoDetalle.requisitos.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                        Requisitos documentales verificados
+                      </span>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '8px' }}>
+                        {casoDetalle.requisitos.map((req: any) => (
+                          <div
+                            key={req.id}
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: 'var(--radius-sm)',
+                              border: '1px solid var(--border-color)',
+                              backgroundColor: 'var(--bg-surface)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              fontSize: '12px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden' }}>
+                              <span className={`status-dot ${req.cumplido ? 'status-dot-success' : req.obligatorio ? 'status-dot-danger' : 'status-dot-warning'}`} />
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{req.label}</span>
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                                  ({req.obligatorio ? "Obligatorio" : "Opcional"})
+                                </span>
+                              </div>
+                            </div>
+                            <span style={{
+                              fontSize: '11px',
+                              fontFamily: 'var(--font-mono)',
+                              color: req.cumplido ? 'var(--color-success-text)' : req.obligatorio ? 'var(--color-danger-text)' : 'var(--color-warning-text)',
+                              fontWeight: 500,
+                              flexShrink: 0
+                            }}>
+                              {req.cumplido ? "Presente" : req.obligatorio ? "Falta" : "Aviso"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Listado de Archivos Físicos del Caso */}
+                  {loadingDetalle ? (
+                    <div className="flex items-center gap-2 text-xs text-zinc-400 py-3 animate-pulse">
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Inspeccionando y auditando archivos del caso...</span>
+                    </div>
+                  ) : casoDetalle?.archivos && casoDetalle.archivos.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Archivos Digitales Asociados ({casoDetalle.archivos.length})
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {casoDetalle.archivos.map((a: any, idx: number) => (
+                          <div key={idx} className="p-2.5 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between text-xs gap-2">
+                            <div className="flex items-center gap-2 truncate">
+                              <FileText size={14} className="text-zinc-500 shrink-0" />
+                              <span className="truncate font-medium text-zinc-800 dark:text-zinc-200" title={a.name}>
+                                {a.name}
+                              </span>
+                            </div>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium shrink-0 font-mono">
+                              {a.categoria || a.ext}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-400 py-2">No se encontraron archivos en este expediente.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Estado de Subida en Progreso */}
+              {uploadingFiles && (
+                <div className="p-4 rounded-md bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-200 animate-pulse font-medium">
+                  <Loader2 size={16} className="animate-spin text-emerald-600" />
+                  <span>Subiendo y evaluando requisitos documentales del expediente...</span>
+                </div>
+              )}
+
               {/* Zona de Arrastre de Archivos */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -777,14 +1129,14 @@ export function ViewProcesar({
                 onDrop={handleFileDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                  "p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-3",
+                  "p-8 rounded-md border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-3",
                   isDragging 
                     ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/40" 
                     : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-[#FAF8F5]/40 dark:bg-zinc-950/30"
                 )}
               >
                 <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx" onChange={handleFileSelect} className="hidden" />
-                <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                <div className="w-12 h-12 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
                   <UploadCloud size={24} />
                 </div>
                 <div>
@@ -792,19 +1144,19 @@ export function ViewProcesar({
                     Haga clic para subir archivos o arrástrelos aquí
                   </p>
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
-                    Facturas de hotel, billetes de transporte, tickets de autopista, certificados de asistencia o mapas
+                    Facturas de proveedor, tickets, certificados de asistencia o documentos justificativos
                   </p>
                 </div>
               </div>
 
-              {files.length > 0 && (
+              {files.length > 0 && !casoSel && (
                 <div className="space-y-2">
                   <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
                     Documentos Adjuntados ({files.length})
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {files.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-800 text-xs">
+                      <div key={i} className="flex items-center justify-between p-2.5 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-800 text-xs">
                         <div className="flex items-center gap-2 truncate pr-2">
                           <FileText size={14} className="text-zinc-400 shrink-0" />
                           <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">{f.name}</span>
@@ -821,87 +1173,373 @@ export function ViewProcesar({
             </div>
           )}
 
-          {/* PASO 3: RÉGIMEN NORMATIVO */}
-          {currentStep === 3 && isDietas && (
+          {/* PASO 3: PROYECTO Y NORMATIVA */}
+          {currentStep === 3 && (
             <div className="space-y-6 animate-fade-in">
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">3. Marco Normativo y Fuente de Financiación</h3>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">3. Datos del Proyecto e Imputación Presupuestaria</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  El sistema detectará automáticamente la fuente según los documentos, pero puede fijarla manualmente si lo desea.
+                  Indique la referencia del proyecto y la orgánica de gasto. Los datos personales y de proyecto son obligatorios para la tramitación oficial.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {[
-                  { id: '', title: 'Detección Automática (IA)', tag: 'IA Auto', desc: 'El agente identifica la fuente oficial mediante los logos y el proyecto.', badge: 'Auto' },
-                  { id: 'PEI', title: 'Plan Estatal de Investigación', tag: 'RD 462/2002', desc: 'Dietas estatales (37,70 €/día, 65,97 €/noche, 0,26 €/km). 100% Exento de IRPF.', badge: 'Estatal' },
-                  { id: 'G24', title: 'Ayudas a grupos o proyectos GR24/IB24', tag: 'Decreto 42/2025', desc: 'Dietas autonómicas (60,00 €/día, 120,00 €/noche, 0,26 €/km). Aplica 15% IRPF sobre exceso.', badge: 'Junta' },
-                  { id: 'JEX', title: 'Otros proyectos Decreto 42/2025', tag: 'Decreto 42/2025', desc: 'Proyectos autonómicos Junta de Extremadura (60,00 €/día, 120,00 €/noche). IRPF 15%.', badge: 'Junta' },
-                  { id: 'UEX', title: 'Contratos y convenios UEx', tag: 'RD 462/2002', desc: 'Contratos Art. 60 / OTRI y convenios de colaboración suscritos por la UEx.', badge: 'UEx' },
-                  { id: 'PCO', title: 'Planes Complementarios', tag: 'RD 462/2002', desc: 'Proyectos cofinanciados mediante Planes Complementarios de I+D+i.', badge: 'Estatal' },
-                  { id: 'NAL', title: 'Otros proyectos R.D. 462/2002', tag: 'RD 462/2002', desc: 'Otros proyectos sujetos al régimen general de indemnizaciones del Estado.', badge: 'Estatal' }
-                ].map((m: { id: string; title: string; tag: string; desc: string; badge: string }) => {
-                  const isSel = tipoProyecto === m.id;
-                  return (
-                    <div
-                      key={m.id}
-                      onClick={() => setTipoProyecto(m.id)}
-                      className={cn(
-                        "p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between",
-                        isSel 
-                          ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/50 shadow-xs" 
-                          : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300"
-                      )}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <h4 className="font-bold text-xs text-zinc-900 dark:text-zinc-100">{m.title}</h4>
-                          <span className={cn(
-                            "text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase",
-                            m.badge === 'Junta' ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" :
-                            m.badge === 'Estatal' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" :
-                            m.badge === 'UEx' ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" :
-                            "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                          )}>
-                            {m.tag}
+              {/* Inputs Explícitos de Referencia y Orgánica */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', padding: '1.25rem', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FileText size={13} style={{ color: 'var(--text-secondary)' }} />
+                      Referencia / Código del Proyecto
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Obligatorio</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={referenciaProyecto}
+                    onChange={e => setReferenciaProyecto(e.target.value)}
+                    placeholder="Ej: 256/21 o PID2021-123456OB"
+                    className="form-input"
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    Si no se indica, se extraerá de los documentos aportados.
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Building2 size={13} style={{ color: 'var(--text-secondary)' }} />
+                      Orgánica Presupuestaria UEx
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Obligatorio</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={organica}
+                    onChange={e => setOrganica(e.target.value)}
+                    placeholder="Ej: 18.IW.97.89"
+                    className="form-input"
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    Código orgánico de la unidad de gasto (18.XX.XX).
+                  </span>
+                </div>
+              </div>
+
+              {/* Catálogo de Financiación y Proyectos */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', margin: 0 }}>
+                    Régimen Normativo de Financiación
+                  </h4>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                  <div
+                    onClick={() => setTipoProyecto('')}
+                    className={`selection-card ${tipoProyecto === '' ? 'selected' : ''}`}
+                    style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                          Detección Automática por Expediente
+                        </h4>
+                        <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>Auto</span>
+                      </div>
+                      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                        El sistema coteja la fuente oficial mediante sellos, logotipos y referencias acreditadas.
+                      </p>
+                    </div>
+                    <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '11px', fontWeight: 600, color: tipoProyecto === '' ? 'var(--uex-burgundy)' : 'var(--text-muted)' }}>
+                      {tipoProyecto === '' ? '✓ Seleccionado' : 'Seleccionar'}
+                    </div>
+                  </div>
+
+                  {(proyectosCatalogo.length > 0 ? proyectosCatalogo : [
+                    { id: 'PEI', nombre: 'Plan Estatal de Investigación', normativa: 'RD 462/2002', desc: 'Dietas estatales (37,70 €/día, 65,97 €/noche, 0,26 €/km). Exento de IRPF.', badge: 'Estatal' },
+                    { id: 'G24', nombre: 'Ayudas a grupos GR24/IB24', normativa: 'Decreto 42/2025', desc: 'Dietas autonómicas (60,00 €/día, 120,00 €/noche, 0,26 €/km). Aplica 15% IRPF sobre exceso.', badge: 'Junta' },
+                    { id: 'JEX', nombre: 'Otros proyectos Junta de Extremadura', normativa: 'Decreto 42/2025', desc: 'Proyectos autonómicos Junta de Extremadura (60,00 €/día, 120,00 €/noche).', badge: 'Junta' },
+                    { id: 'UEX', nombre: 'Contratos y convenios UEx', normativa: 'RD 462/2002', desc: 'Contratos Art. 60 / OTRI y convenios suscritos por la UEx.', badge: 'UEx' },
+                    { id: 'PCO', nombre: 'Planes Complementarios', normativa: 'RD 462/2002', desc: 'Proyectos cofinanciados mediante Planes Complementarios de I+D+i.', badge: 'Estatal' },
+                    { id: 'NAL', nombre: 'Otros proyectos R.D. 462/2002', normativa: 'RD 462/2002', desc: 'Otros proyectos sujetos al régimen general de indemnizaciones del Estado.', badge: 'Estatal' }
+                  ]).map((m: any) => {
+                    const isSel = tipoProyecto === m.id;
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => setTipoProyecto(m.id)}
+                        className={`selection-card ${isSel ? 'selected' : ''}`}
+                        style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                              {m.nombre || m.title}
+                            </h4>
+                            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                              {m.normativa || m.tag}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                            {m.desc}
+                          </p>
+                        </div>
+
+                        <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                          <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                            {m.tarifas ? `${m.tarifas.km_vehiculo || 0.26} €/km` : 'Presupuestos 2026'}
+                          </span>
+                          <span style={{ fontWeight: 600, color: isSel ? 'var(--uex-burgundy)' : 'var(--text-muted)' }}>
+                            {isSel ? '✓ Seleccionado' : 'Seleccionar'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">{m.desc}</p>
                       </div>
-                      <div className="mt-3 text-[10px] font-bold text-zinc-400">
-                        {isSel ? <span className="text-zinc-900 dark:text-zinc-100 font-bold">✓ Seleccionado</span> : 'Seleccionar'}
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Casos Específicos del Procedimiento (Cargados dinámicamente) */}
+              {procedimientosConfig[selectedTemplate]?.casos && Object.keys(procedimientosConfig[selectedTemplate].casos).length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+                      <Layers size={14} className="text-zinc-600 dark:text-zinc-300" />
+                      Modalidad o Caso del Trámite
+                    </h4>
+                    <span className="text-[10px] text-zinc-400">Seleccione el supuesto concreto para asignar el esquema idóneo</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {Object.entries(procedimientosConfig[selectedTemplate].casos).map(([caseKey, cObj]: [string, any]) => {
+                      const isSel = selectedCasoEspecifico === caseKey;
+                      return (
+                        <div
+                          key={caseKey}
+                          onClick={() => handleSelectCasoEspecifico(caseKey)}
+                          className={`selection-card ${isSel ? 'selected' : ''}`}
+                          style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <h5 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                                {cObj.nombre}
+                              </h5>
+                              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                                {caseKey.replace('caso_', '').toUpperCase()}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                              {cObj.descripcion}
+                            </p>
+                          </div>
+                          <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                              {cObj.esquema_extraccion?.split('/').pop()}
+                            </span>
+                            <span style={{ fontWeight: 600, color: isSel ? 'var(--uex-burgundy)' : 'var(--text-muted)' }}>
+                              {isSel ? '✓ Seleccionado' : 'Seleccionar'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Panel Desplegable de Configuración Avanzada: Prompts, Esquemas y Plantillas */}
+              <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfigAvanzada(!mostrarConfigAvanzada)}
+                  className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Code2 size={14} className="text-[#176B52] dark:text-[#86EFAC]" />
+                    Configuración Avanzada: Prompts Normativos (Presupuestos UEx 2026), Esquemas y Plantillas
+                  </span>
+                  <div className="flex items-center gap-2 text-zinc-400 text-[11px] font-normal">
+                    <span>{selectedPromptLiquidacion ? selectedPromptLiquidacion.split('/').pop() : 'Prompts por defecto'}</span>
+                    {mostrarConfigAvanzada ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                  </div>
+                </button>
+
+                {mostrarConfigAvanzada && (
+                  <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 space-y-4 bg-zinc-50/50 dark:bg-zinc-950/40 animate-fade-in text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Selector de Prompt de Liquidación */}
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Scale size={13} className="text-[#176B52] dark:text-[#86EFAC]" />
+                            Prompt de Liquidación y Fiscalización
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-mono">extractor/prompts/liquidacion/</span>
+                        </label>
+                        <select
+                          value={selectedPromptLiquidacion}
+                          onChange={(e) => setSelectedPromptLiquidacion(e.target.value)}
+                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
+                        >
+                          <option value="">Automático por Procedimiento ({selectedTemplate})</option>
+                          {promptsCatalog.liquidacion?.map((l: any) => (
+                            <option key={l.path} value={l.path}>
+                              {l.nombre} ({l.archivo})
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-zinc-400 mt-1">
+                          Aplica auditoría y fiscalización de PRESUPUESTO-2026.pdf (0,26 €/km, topes DOE/BOE, retención IRPF).
+                        </p>
+                      </div>
+
+                      {/* Selector de Prompt de Proyecto */}
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Building2 size={13} className="text-blue-600 dark:text-blue-400" />
+                            Prompt de Normativa de Proyecto
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-mono">extractor/prompts/proyectos/</span>
+                        </label>
+                        <select
+                          value={selectedPromptProyecto}
+                          onChange={(e) => setSelectedPromptProyecto(e.target.value)}
+                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
+                        >
+                          <option value="">Directrices UEx 2026 ({tipoProyecto || 'Detección Auto'})</option>
+                          {promptsCatalog.proyectos?.map((p: any) => (
+                            <option key={p.path} value={p.path}>
+                              {p.nombre} ({p.archivo})
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-zinc-400 mt-1">
+                          Directrices normativas de financiación (RD 462/2002, Decreto 42/2025, Art. 60 LOSU).
+                        </p>
+                      </div>
+
+                      {/* Selector de Esquema de Extracción */}
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
+                          <span>Esquema de Extracción JSON</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">schemas/</span>
+                        </label>
+                        <select
+                          value={selectedSchemaPath}
+                          onChange={(e) => setSelectedSchemaPath(e.target.value)}
+                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
+                        >
+                          <option value="">Automático por Procedimiento</option>
+                          {schemasList.map((s) => (
+                            <option key={s.path} value={s.path}>
+                              {s.nombre} ({s.path.split('/').pop()})
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-zinc-400 mt-1">
+                          Valida los datos devueltos por el LLM antes de la generación documental.
+                        </p>
+                      </div>
+
+                      {/* Selector de Plantilla de Generación */}
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
+                          <span>Plantilla PDF de Salida</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">templates/</span>
+                        </label>
+                        <select
+                          value={selectedPlantilla}
+                          onChange={(e) => setSelectedPlantilla(e.target.value)}
+                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
+                        >
+                          <option value="">Pack Oficial Completo del Procedimiento</option>
+                          {plantillasList.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-zinc-400 mt-1">
+                          Formulario oficial interactivo de la Universidad de Extremadura a cumplimentar.
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+
+                    <div className="flex items-center justify-between pt-2 text-[11px] text-zinc-400 border-t border-zinc-200/60 dark:border-zinc-800">
+                      <span>Catálogos centralizados en: <code className="font-mono text-zinc-600 dark:text-zinc-300">extractor/prompts/</code> & <code className="font-mono text-zinc-600 dark:text-zinc-300">config_data/</code></span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">✓ Validación PRESUPUESTO-2026.pdf Activa</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* PASO FINAL: CONFIRMACIÓN */}
-          {((currentStep === 4 && isDietas) || (currentStep === 3 && !isDietas)) && (
+          {/* PASO 4: CONFIRMACIÓN */}
+          {currentStep === 4 && (
             <div className="space-y-6 animate-fade-in">
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Confirmación y Lanzamiento del Agente</h3>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">4. Resumen e Inicio de la Fiscalización</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Revise los parámetros antes de iniciar el flujo de extracción multimodal y cálculo determinista.
+                  Revise los parámetros antes de iniciar el cotejo documental y el cálculo normativo determinista.
                 </p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
+              <div className="p-5 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
                 <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
                   <span className="text-zinc-500">Procedimiento:</span>
-                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{TEMPLATES.find(t => t.id === selectedTemplate)?.titulo}</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{templateActivo?.titulo}</span>
                 </div>
+                {selectedCasoEspecifico && (
+                  <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                    <span className="text-zinc-500">Caso / Supuesto:</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      {procedimientosConfig[selectedTemplate]?.casos?.[selectedCasoEspecifico]?.nombre || selectedCasoEspecifico}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
                   <span className="text-zinc-500">Expediente / Archivos:</span>
                   <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                     {casoSel ? casoSel : `${files.length} archivos adjuntados`}
                   </span>
                 </div>
+                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <span className="text-zinc-500">Referencia del Proyecto:</span>
+                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                    {referenciaProyecto || 'Extracción Automática'}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <span className="text-zinc-500">Orgánica Presupuestaria:</span>
+                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                    {organica || 'Extracción Automática'}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <span className="text-zinc-500">Normativa Proyecto (Presupuestos 2026):</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                    {tipoProyecto ? (proyectosCatalogo.find(p => p.id === tipoProyecto)?.nombre || tipoProyecto) : 'Clasificación Automática por Expediente'}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <span className="text-zinc-500">Directrices Normativas:</span>
+                  <span className="font-mono text-[11px] text-[#176B52] dark:text-[#86EFAC] font-bold">
+                    {selectedPromptLiquidacion ? selectedPromptLiquidacion.split('/').pop() : 'Automático por procedimiento'}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                  <span className="text-zinc-500">Esquema de Fiscalización:</span>
+                  <span className="font-mono text-[11px] text-zinc-800 dark:text-zinc-200">
+                    {selectedSchemaPath ? selectedSchemaPath.split('/').pop() : 'Automático'}
+                  </span>
+                </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-zinc-500">Motor de Extracción:</span>
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">Google Gemini 2.5 Flash / Groq LPU (1M tokens)</span>
+                  <span className="text-zinc-500">Módulo de Fiscalización y Liquidación:</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">Servicio de Intervención UEx · Motor Determinista Presupuestos 2026</span>
                 </div>
               </div>
 
@@ -911,15 +1549,15 @@ export function ViewProcesar({
                   variant="primary" 
                   disabled={running || !tieneFicheroOExpediente} 
                   onClick={ejecutar}
-                  className="w-full sm:w-auto px-8 shadow-md cursor-pointer rounded-2xl"
+                  className="w-full sm:w-auto px-8 shadow-md cursor-pointer rounded-md"
                 >
                   {running ? (
                     <span className="flex items-center gap-2">
-                      <Loader2 size={16} className="animate-spin" /> Procesando expediente...
+                      <Loader2 size={16} className="animate-spin" /> Fiscalizando expediente...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2 font-bold">
-                      <Play size={16} /> Ejecutar Liquidación Oficial
+                      <Play size={16} /> Ejecutar Liquidación Oficial UEx
                     </span>
                   )}
                 </Btn>
@@ -930,7 +1568,7 @@ export function ViewProcesar({
           {/* BOTONES DE NAVEGACIÓN */}
           <div className="mt-8 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
             {currentStep > 1 ? (
-              <Btn size="sm" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} disabled={running} className="cursor-pointer rounded-2xl">
+              <Btn size="sm" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} disabled={running} className="cursor-pointer rounded-md">
                 <ChevronLeft size={16} className="mr-1" /> Anterior
               </Btn>
             ) : <div />}
@@ -941,7 +1579,7 @@ export function ViewProcesar({
                 variant="primary" 
                 onClick={() => setCurrentStep(prev => prev + 1)} 
                 disabled={currentStep === 2 && !tieneFicheroOExpediente}
-                className="cursor-pointer rounded-2xl"
+                className="cursor-pointer rounded-md"
               >
                 Siguiente <ChevronRight size={16} className="ml-1" />
               </Btn>
@@ -953,7 +1591,7 @@ export function ViewProcesar({
       {/* ESTADO EN EJECUCIÓN CON VISOR DE LOGS */}
       {running && activeTaskId && (
         <div className="space-y-4">
-          <RunningInfo text="Procesando expediente mediante Agente Liquidador..." sub="Extrayendo texto, validando certificados y ejecutando cálculo normativo" />
+          <RunningInfo text="Ejecutando Fiscalización y Liquidación del Expediente..." sub="Cotejando facturas, aplicando límites presupuestarios y generando documentación oficial" />
           <LogViewer raw={taskLogs} />
         </div>
       )}
@@ -965,173 +1603,254 @@ export function ViewProcesar({
       {/* VISTA OFICIAL DE RESULTADOS */}
       {/* ========================================================================= */}
       {result && (
-        <div ref={resultRef} className="space-y-6 animate-fade-in-up">
+        <div ref={resultRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-          {/* 1. HERO BANNER PRINCIPAL CON DICTAMEN OFICIAL */}
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 shadow-xs">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
+          {/* 1. DICTAMEN OFICIAL DE FISCALIZACIÓN */}
+          <div className="panel" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color)' }}>
               <div>
-                <div className="flex items-center gap-2.5 mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Dictamen de Liquidación</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Dictamen de Fiscalización
+                  </span>
                   <StatusBadge ok={result.ok} sinGt={result.sin_ground_truth} />
-                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-lg bg-[#FAF8F5] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold border border-[#ECE7DD] dark:border-zinc-700/60">
-                    {result.liquidacion && (result.liquidacion as any).identificacion?.fuente_financiacion === 'extremadura' 
-                      ? 'Normativa Junta de Extremadura (Decreto 42/2025)' 
-                      : 'Normativa Plan Estatal / UEx (RD 462/2002)'}
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                    · {(result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.normativa_marco || (
+                      result.liquidacion && (result.liquidacion as any).identificacion?.fuente_financiacion === 'extremadura' 
+                        ? 'Decreto 42/2025' 
+                        : 'Presupuestos UEx 2026 / RD 462/2002'
+                    )}
                   </span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 font-mono tracking-tight">
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', margin: 0 }}>
                   Expediente: {result.caso_id}
-                </h3>
+                </h2>
               </div>
 
-              <div className="flex flex-wrap gap-2.5 items-center">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                <button 
+                  type="button"
+                  onClick={() => window.open(`/api/caso/${result.caso_id}/memoria`, '_blank')} 
+                  className="btn btn-outline btn-sm"
+                  title="Memoria oficial de fiscalización según Presupuestos UEx 2026"
+                >
+                  <ShieldCheck size={14} />
+                  <span>Fiscalización UEx 2026</span>
+                </button>
                 <button 
                   type="button"
                   onClick={() => window.open(`/api/txt/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} 
-                  className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white hover:bg-zinc-50 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold flex items-center gap-2 shadow-2xs transition-colors cursor-pointer"
+                  className="btn btn-outline btn-sm"
                 >
-                  <FileText size={15} />
-                  Memoria Justificativa (TXT)
+                  <FileText size={14} />
+                  <span>Memoria Resumen</span>
                 </button>
-                <button 
-                  type="button"
-                  onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} 
-                  className="px-4 py-2.5 rounded-xl bg-[#0b1528] hover:bg-[#152342] text-white text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
-                >
-                  <Download size={15} />
-                  Descargar PDF Oficial UEx
-                </button>
+
+                {selectedTemplate === 'pago_proveedor' ? (
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=anexo2`, '_blank')} 
+                      className="btn btn-secondary btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Anexo II</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=anexo_a`, '_blank')} 
+                      className="btn btn-primary btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Anexo A</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pack/descargar_zip/${result.caso_id}`, '_blank')} 
+                      className="btn btn-outline btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Pack Completo (ZIP)</span>
+                    </button>
+                  </>
+                ) : selectedTemplate === 'honorarios' ? (
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=anexo2`, '_blank')} 
+                      className="btn btn-secondary btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Anexo II</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=declaracion_honorarios`, '_blank')} 
+                      className="btn btn-primary btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Declaración Resp.</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pack/descargar_zip/${result.caso_id}`, '_blank')} 
+                      className="btn btn-outline btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Pack (ZIP)</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pdf/generar/${result.caso_id}?template=${selectedTemplate}`, '_blank')} 
+                      className="btn btn-primary btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Liquidación Oficial UEx (PDF)</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => window.open(`/api/pack/descargar_zip/${result.caso_id}`, '_blank')} 
+                      className="btn btn-outline btn-sm"
+                    >
+                      <Download size={13} />
+                      <span>Pack Completo (ZIP)</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* TARJETAS DE IMPORTES CLAVE (RECONCILIACIÓN DEL GASTO) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-              
-              {/* CARD 1: Coste Total de la Misión */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 flex items-center gap-4 shadow-2xs">
-                <div className="w-11 h-11 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-500 dark:text-zinc-400">
-                  <FileText size={18} />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block truncate">
-                    Coste Total de la Misión
+            {/* CUADRO DE IMPORTES CLAVE (RECONCILIACIÓN DEL GASTO) */}
+            {selectedTemplate === 'pago_proveedor' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginTop: '1.25rem' }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Total Factura</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {fmtEur(result.extraccion?.factura?.importe_total || result.liquidacion?.resumen_economico?.total_factura || result.liquido_ag)}
                   </span>
-                  <p className="text-2xl font-black font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
-                    {fmtEur(balanceFinanciero ? balanceFinanciero.gastoTotalMision : result.liquido_ag)}
-                  </p>
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
-                    Suma de todas las facturas y tickets
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Proveedor: {result.extraccion?.factura?.proveedor || 'Identificado'}
                   </span>
                 </div>
-              </div>
 
-              {/* CARD 2: Tarjeta Institucional UEx */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/30 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 flex items-center gap-4 shadow-2xs">
-                <div className="w-11 h-11 rounded-full bg-blue-100/70 dark:bg-blue-900/40 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400">
-                  <CreditCard size={18} />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 block truncate">
-                    Tarjeta Institucional UEx
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Base Imponible</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {fmtEur(result.extraccion?.factura?.base_imponible || result.liquidacion?.resumen_economico?.base_imponible || 0)}
                   </span>
-                  <p className="text-2xl font-black font-mono text-blue-800 dark:text-blue-300 tracking-tight">
-                    {(balanceFinanciero?.insTotal || 0) > 0 ? `-${fmtEur(balanceFinanciero?.insTotal || 0)}` : '0,00 €'}
-                  </p>
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
-                    Inscripción pagada por UEx (no transferible)
-                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Previo a IVA y retenciones</span>
                 </div>
-              </div>
 
-              {/* CARD 3: Retención IRPF / Exceso Hotel */}
-              {balanceFinanciero && balanceFinanciero.irpfRetencion > 0 ? (
-                <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/30 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 flex items-center gap-4 shadow-2xs">
-                  <div className="w-11 h-11 rounded-full bg-amber-100/70 dark:bg-amber-900/40 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400">
-                    <Scale size={18} />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400 block truncate">
-                      Retención IRPF (15%)
-                    </span>
-                    <p className="text-2xl font-black font-mono text-amber-900 dark:text-amber-300 tracking-tight">
-                      -{fmtEur(balanceFinanciero.irpfRetencion)}
-                    </p>
-                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
-                      Sobre exceso de topes estatales (Base: {fmtEur(balanceFinanciero.irpfBase)})
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className={cn(
-                  "p-4 sm:p-5 rounded-2xl border flex items-center gap-4 shadow-2xs",
-                  balanceFinanciero && balanceFinanciero.aloExceso > 0
-                    ? "bg-amber-50/30 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40"
-                    : "bg-emerald-50/20 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40"
-                )}>
-                  <div className={cn(
-                    "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
-                    balanceFinanciero && balanceFinanciero.aloExceso > 0
-                      ? "bg-amber-100/70 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
-                      : "bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400"
-                  )}>
-                    {balanceFinanciero && balanceFinanciero.aloExceso > 0 ? (
-                      <ShieldAlert size={18} />
-                    ) : (
-                      <ShieldCheck size={18} />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className={cn(
-                      "text-[11px] font-bold uppercase tracking-wider block truncate",
-                      balanceFinanciero && balanceFinanciero.aloExceso > 0
-                        ? "text-amber-800 dark:text-amber-400"
-                        : "text-emerald-700 dark:text-emerald-400"
-                    )}>
-                      {balanceFinanciero && balanceFinanciero.aloExceso > 0 ? 'Exceso Hotel Excluido' : 'Retención IRPF'}
-                    </span>
-                    <p className={cn(
-                      "text-2xl font-black font-mono tracking-tight",
-                      balanceFinanciero && balanceFinanciero.aloExceso > 0
-                        ? "text-amber-900 dark:text-amber-300"
-                        : "text-emerald-800 dark:text-emerald-300"
-                    )}>
-                      {balanceFinanciero && balanceFinanciero.aloExceso > 0
-                        ? `-${fmtEur(balanceFinanciero.aloExceso)}`
-                        : '0,00 €'}
-                    </p>
-                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
-                      {balanceFinanciero && balanceFinanciero.aloExceso > 0
-                        ? 'Supera límite de 65,97 €/noche'
-                        : '100% Exento (RD 462/2002 · Art. 9 RIRPF)'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* CARD 4: Líquido a Transferir */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/30 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex items-center gap-4 shadow-2xs">
-                <div className="w-11 h-11 rounded-full bg-emerald-100/70 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
-                  <Landmark size={18} />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block truncate">
-                    Líquido a Transferir
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Medio de Pago</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                    {result.extraccion?.pago?.forma_pago || 'Tarjeta'}
                   </span>
-                  <p className="text-2xl font-black font-mono text-emerald-800 dark:text-emerald-300 tracking-tight">
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {result.extraccion?.pago?.num_tarjeta ? `Tarjeta: ${result.extraccion.pago.num_tarjeta}` : 'Gestión Central'}
+                  </span>
+                </div>
+
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--uex-burgundy)' }}>Líquido a Tramitar</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                     {fmtEur(result.liquido_ag)}
-                  </p>
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 block truncate mt-0.5">
-                    Abono en cuenta bancaria (IBAN)
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Orgánica: {result.extraccion?.proyecto?.organica || 'UEx'}
                   </span>
                 </div>
               </div>
+            ) : selectedTemplate === 'honorarios' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginTop: '1.25rem' }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Importe Bruto</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {fmtEur(result.extraccion?.honorarios?.importe_total || result.liquidacion?.resumen_economico?.importe_bruto || result.liquido_ag)}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Docente: {result.extraccion?.beneficiario?.nombre || 'Ponente'}
+                  </span>
+                </div>
 
-            </div>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-warning-text)' }}>Retención IRPF (15%)</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    -{fmtEur(result.liquidacion?.resumen_economico?.retencion_irpf || ((result.liquido_ag || 0) * 0.15))}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Retención legal a cuenta</span>
+                </div>
+
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Tope Art. 19.4 UEx 2026</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    Máx 300,00 €/h
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-success-text)' }}>✓ Conforme bases 2026</span>
+                </div>
+
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--uex-burgundy)' }}>Líquido Neto</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {fmtEur(result.liquidacion?.resumen_economico?.liquido_a_abonar || result.liquido_ag)}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Transferencia bancaria</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginTop: '1.25rem' }}>
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Coste Total Comisión</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {fmtEur(balanceFinanciero ? balanceFinanciero.gastoTotalMision : result.liquido_ag)}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total facturas y dietas</span>
+                </div>
+
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Tarjeta Institucional</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {(balanceFinanciero?.insTotal || 0) > 0 ? `-${fmtEur(balanceFinanciero?.insTotal || 0)}` : '0,00 €'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Abonado directamente por UEx</span>
+                </div>
+
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                    {balanceFinanciero && balanceFinanciero.irpfRetencion > 0 ? 'Retención IRPF (15%)' : balanceFinanciero && balanceFinanciero.aloExceso > 0 ? 'Exceso Hotel Excluido' : 'Retención IRPF'}
+                  </span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {balanceFinanciero && balanceFinanciero.irpfRetencion > 0
+                      ? `-${fmtEur(balanceFinanciero.irpfRetencion)}`
+                      : balanceFinanciero && balanceFinanciero.aloExceso > 0
+                      ? `-${fmtEur(balanceFinanciero.aloExceso)}`
+                      : '0,00 €'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {balanceFinanciero && balanceFinanciero.irpfRetencion > 0
+                      ? `Base exceso: ${fmtEur(balanceFinanciero.irpfBase)}`
+                      : balanceFinanciero && balanceFinanciero.aloExceso > 0
+                      ? 'Límite 65,97 €/noche'
+                      : '100% Exento (RD 462/2002)'}
+                  </span>
+                </div>
+
+                <div style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--uex-burgundy)' }}>Líquido a Transferir</span>
+                  <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                    {fmtEur(result.liquido_ag)}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Abono en cuenta corriente</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 2. PESTAÑAS Y CONTENIDO DETALLADO */}
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200/80 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
             
             <div className="flex flex-col lg:flex-row gap-8 items-start">
               
@@ -1139,6 +1858,7 @@ export function ViewProcesar({
               <div className="w-full lg:w-64 shrink-0 flex flex-col space-y-1">
                 {[
                   { id: 'desglose', label: 'Desglose Oficial de Liquidación', icon: Layers },
+                  { id: 'fiscalizacion_uex', label: 'Fiscalización Presupuestos 2026', icon: ShieldCheck },
                   { id: 'balance', label: 'Balance y Reconciliación de Gastos', icon: FileText },
                   { id: 'fundamentacion', label: 'Régimen Fiscal y Fundamento Jurídico', icon: Scale },
                   { id: 'json', label: 'Esquema JSON', icon: Code2 },
@@ -1155,7 +1875,7 @@ export function ViewProcesar({
                         "w-full flex items-center gap-3 px-3.5 py-3 text-xs text-left transition-all cursor-pointer border-l-4",
                         isActive
                           ? "border-blue-600 bg-blue-50/80 text-blue-700 font-bold dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-500 rounded-r-xl"
-                          : "border-transparent text-zinc-600 dark:text-zinc-400 font-medium hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 rounded-xl"
+                          : "border-transparent text-zinc-600 dark:text-zinc-400 font-medium hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 rounded-md"
                       )}
                     >
                       <Icon 
@@ -1174,12 +1894,126 @@ export function ViewProcesar({
                 {/* Título de la sección activa */}
                 <h3 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">
                   {activeTab === 'desglose' && 'Desglose Oficial de Liquidación'}
+                  {activeTab === 'fiscalizacion_uex' && 'Fiscalización Normativa y Presupuestos UEx 2026'}
                   {activeTab === 'balance' && 'Balance y Reconciliación de Gastos'}
                   {activeTab === 'fundamentacion' && 'Régimen Fiscal y Fundamento Jurídico'}
                   {activeTab === 'json' && 'Esquema JSON'}
                   {activeTab === 'auditoria' && 'Auditoría y Trazabilidad'}
                   {activeTab === 'grafo' && 'Grafo de Ejecución'}
                 </h3>
+
+              {/* =============================================================== */}
+              {/* TAB FISCALIZACIÓN OFICIAL PRESUPUESTOS UEx 2026 */}
+              {/* =============================================================== */}
+              {activeTab === 'fiscalizacion_uex' && (
+                <div className="space-y-6 animate-fade-in">
+                  {/* Card Dictamen de Fiscalización */}
+                  <div className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 space-y-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-mono">
+                          Dictamen Económico UEx
+                        </span>
+                        <h4 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mt-0.5">
+                          <ShieldCheck size={20} className="text-emerald-600 dark:text-emerald-400" />
+                          Fiscalización Conforme a PRESUPUESTO-2026.pdf
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "px-3 py-1.5 rounded-md font-bold text-xs flex items-center gap-1.5 shadow-2xs",
+                          (result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.conformidad
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                        )}>
+                          <CheckCircle2 size={14} />
+                          {(result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.conformidad ? 'CONFORME PARA ABONO' : 'DISCONFORMIDAD / ALERTAS'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Artículos de Presupuestos UEx 2026 Aplicados */}
+                    <div>
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2.5">
+                        Artículos Auditados Oficialmente (PRESUPUESTO-2026.pdf):
+                      </h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        {((result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.articulos_verificados || [
+                          "Art. 32.1 & 32.1.c: Kilometraje a 0,26 €/km y justificación documental",
+                          "Art. 32.7: Adaptación a normativa de subvenciones externas",
+                          "Art. 32.8: Plazo de 45 días naturales de liquidación de la comisión"
+                        ]).map((art: string, i: number) => (
+                          <div key={i} className="p-3 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/60 flex items-start gap-2.5">
+                            <CheckCircle size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                            <span className="text-xs text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed">{art}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Alertas Normativas si existieran */}
+                    {(result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.alertas_normativas?.length > 0 && (
+                      <div className="p-4 rounded-md bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-2">
+                        <h5 className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                          <AlertTriangle size={14} />
+                          Observaciones Normativas y Límites:
+                        </h5>
+                        <ul className="list-disc list-inside text-xs text-amber-700 dark:text-amber-400 space-y-1">
+                          {(result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.alertas_normativas?.map((al: string, i: number) => (
+                            <li key={i}>{al}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vista Oficial de la Memoria de Fiscalización */}
+                  <div className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 space-y-4 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                      <div>
+                        <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                          <FileText size={16} className="text-[#176B52] dark:text-[#86EFAC]" />
+                          Memoria Oficial de Fiscalización Económica (SGTRI UEx)
+                        </h4>
+                        <span className="text-xs text-zinc-400 font-mono">memoria_fiscalizacion_uex.txt</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Btn 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            if (result.memoria_fiscalizacion) {
+                              navigator.clipboard.writeText(result.memoria_fiscalizacion);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }
+                          }}
+                          className="cursor-pointer rounded-md"
+                        >
+                          <Copy size={13} className="mr-1" />
+                          {copied ? '¡Copiado!' : 'Copiar Memoria'}
+                        </Btn>
+                        <button 
+                          type="button"
+                          onClick={() => window.open(`/api/caso/${result.caso_id}/memoria`, '_blank')} 
+                          className="px-3 py-1.5 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold flex items-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
+                        >
+                          <Download size={13} />
+                          Descargar TXT
+                        </button>
+                      </div>
+                    </div>
+
+                    <pre className="p-5 rounded-md bg-zinc-950 text-zinc-200 font-mono text-xs overflow-x-auto max-h-[420px] border border-zinc-800 shadow-inner whitespace-pre-wrap leading-relaxed">
+                      {result.memoria_fiscalizacion || (
+                        (result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.normativa_marco
+                          ? `MEMORIA DE FISCALIZACIÓN ECONÓMICA Y PRESUPUESTARIA\nUNIVERSIDAD DE EXTREMADURA\n\nNormativa Marco: ${(result.liquidacion as any).fiscalizacion_presupuestos_2026.normativa_marco}\nConformidad: ${(result.liquidacion as any).fiscalizacion_presupuestos_2026.conformidad ? 'CONFORME PARA ABONO' : 'REQUIERE RECTIFICACIÓN'}`
+                          : 'Memoria de fiscalización oficial generada en backend.'
+                      )}
+                    </pre>
+                  </div>
+                </div>
+              )}
               
               {/* =============================================================== */}
               {/* TAB 1: DESGLOSE OFICIAL DE LIQUIDACIÓN CON FILTRO POR CONCEPTO */}
@@ -1210,7 +2044,7 @@ export function ViewProcesar({
                     return (
                       <div className="space-y-6">
                         {/* 1. PARTIDAS Y CONCEPTOS DE LA COMISIÓN (SELECTOR INTERACTIVO) */}
-                        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 space-y-4 shadow-2xs">
+                        <div className="p-4 sm:p-5 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 space-y-4 shadow-2xs">
                           <div>
                             <div className="flex items-center gap-2">
                               <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -1235,7 +2069,7 @@ export function ViewProcesar({
                               type="button"
                               onClick={() => setFiltroConcepto('todos')}
                               className={cn(
-                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                "p-3.5 rounded-md border transition-all text-left flex items-center justify-between cursor-pointer",
                                 filtroConcepto === 'todos'
                                   ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
                                   : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
@@ -1261,7 +2095,7 @@ export function ViewProcesar({
                               type="button"
                               onClick={() => setFiltroConcepto('manutencion')}
                               className={cn(
-                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                "p-3.5 rounded-md border transition-all text-left flex items-center justify-between cursor-pointer",
                                 filtroConcepto === 'manutencion'
                                   ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
                                   : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
@@ -1287,7 +2121,7 @@ export function ViewProcesar({
                               type="button"
                               onClick={() => setFiltroConcepto('transporte')}
                               className={cn(
-                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                "p-3.5 rounded-md border transition-all text-left flex items-center justify-between cursor-pointer",
                                 filtroConcepto === 'transporte'
                                   ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
                                   : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
@@ -1313,7 +2147,7 @@ export function ViewProcesar({
                               type="button"
                               onClick={() => setFiltroConcepto('alojamiento')}
                               className={cn(
-                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                "p-3.5 rounded-md border transition-all text-left flex items-center justify-between cursor-pointer",
                                 filtroConcepto === 'alojamiento'
                                   ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
                                   : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
@@ -1339,7 +2173,7 @@ export function ViewProcesar({
                               type="button"
                               onClick={() => setFiltroConcepto('inscripcion')}
                               className={cn(
-                                "p-3.5 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer",
+                                "p-3.5 rounded-md border transition-all text-left flex items-center justify-between cursor-pointer",
                                 filtroConcepto === 'inscripcion'
                                   ? "border-blue-600 bg-blue-50/50 text-blue-900 dark:bg-blue-950/30 dark:border-blue-500 ring-1 ring-blue-600 shadow-2xs"
                                   : "border-zinc-200/90 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 shadow-2xs"
@@ -1365,7 +2199,7 @@ export function ViewProcesar({
 
                         {/* 2. CUADRO RESUMEN CONTABLE CONSOLIDADO (VISIBLE EN 'TODOS') */}
                         {filtroConcepto === 'todos' && (
-                          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
+                          <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-xs">
                             <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                               <div>
                                 <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -1375,7 +2209,7 @@ export function ViewProcesar({
                                   Reconciliación contable por conceptos indemnizables según R.D. 462/2002
                                 </span>
                               </div>
-                              <span className="text-xs font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
+                              <span className="text-xs font-mono font-bold px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
                                 {result.liquido_ag.toFixed(2)} € Líquido
                               </span>
                             </div>
@@ -1556,7 +2390,7 @@ export function ViewProcesar({
 
                         {/* BANNER INFORMATIVO CUANDO UN CONCEPTO INDIVIDUAL ESTÁ SELECCIONADO */}
                         {filtroConcepto !== 'todos' && (
-                          <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 text-xs">
+                          <div className="flex items-center justify-between p-3.5 rounded-md bg-zinc-100 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 text-xs">
                             <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
                               <span className="font-semibold">Mostrando únicamente la partida:</span>
                               <span className="font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-tight">
@@ -1591,7 +2425,7 @@ export function ViewProcesar({
                           <div className="space-y-4 pt-2">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                <div className="w-9 h-9 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
                                   <Car size={18} />
                                 </div>
                                 <div>
@@ -1603,7 +2437,7 @@ export function ViewProcesar({
                                   </span>
                                 </div>
                               </div>
-                              <span className="text-sm font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                              <span className="text-sm font-mono font-bold px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
                                 {(transporte?.importe || 0).toFixed(2)} €
                               </span>
                             </div>
@@ -1613,11 +2447,11 @@ export function ViewProcesar({
 
                               if (isCoche) {
                                 return (
-                                  <div key={i} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-5 shadow-xs">
+                                  <div key={i} className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-5 shadow-xs">
                                     
                                     {/* FICHA TÉCNICA DEL ITINERARIO */}
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800 text-xs">
-                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                      <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                           Itinerario Oficial
                                         </span>
@@ -1629,7 +2463,7 @@ export function ViewProcesar({
                                         </span>
                                       </div>
 
-                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                      <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                           Vehículo Autorizado
                                         </span>
@@ -1641,7 +2475,7 @@ export function ViewProcesar({
                                         </span>
                                       </div>
 
-                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                      <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                           Cálculo de la Indemnización
                                         </span>
@@ -1655,7 +2489,7 @@ export function ViewProcesar({
                                     </div>
 
                                     {/* OBSERVACIONES NORMATIVAS Y TRIBUTARIAS */}
-                                    <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5">
+                                    <div className="p-4 rounded-md bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5">
                                       <div className="flex items-center gap-2 font-semibold text-zinc-800 dark:text-zinc-200">
                                         <ShieldCheck size={15} className="text-[#176B52] dark:text-[#86EFAC]" />
                                         <span>Certificación Reglamentaria y Cobertura Integral</span>
@@ -1673,7 +2507,7 @@ export function ViewProcesar({
                               }
 
                               return (
-                                <div key={i} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs shadow-xs">
+                                <div key={i} className="p-4 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs shadow-xs">
                                   <div className="flex items-center gap-3">
                                     <CreditCard size={18} className="text-zinc-400" />
                                     <div>
@@ -1695,7 +2529,7 @@ export function ViewProcesar({
                           <div className="space-y-4 pt-2">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                <div className="w-9 h-9 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
                                   <BedDouble size={18} />
                                 </div>
                                 <div>
@@ -1707,13 +2541,13 @@ export function ViewProcesar({
                                   </span>
                                 </div>
                               </div>
-                              <span className="text-sm font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                              <span className="text-sm font-mono font-bold px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
                                 {(alojamiento?.importe || 0).toFixed(2)} €
                               </span>
                             </div>
 
                             {(!alojamiento?.detalle || alojamiento.detalle.length === 0) ? (
-                              <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-center text-zinc-400 italic">
+                              <div className="p-6 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-center text-zinc-400 italic">
                                 No constan gastos de hospedaje imputados al expediente.
                               </div>
                             ) : (
@@ -1723,7 +2557,7 @@ export function ViewProcesar({
                                 const exceso = a.exceso_no_abonable || 0;
 
                                 return (
-                                  <div key={i} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-5 shadow-xs">
+                                  <div key={i} className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-5 shadow-xs">
                                     
                                     {/* CUADRO COMPARATIVO DE FISCALIZACIÓN */}
                                     <div className="overflow-x-auto">
@@ -1765,7 +2599,7 @@ export function ViewProcesar({
 
                                     {/* 3 FICHAS ECONÓMICAS CLARAS */}
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                      <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                           Límite Abonable Reconocido
                                         </span>
@@ -1777,7 +2611,7 @@ export function ViewProcesar({
                                         </span>
                                       </div>
 
-                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                      <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                           Exceso a Cargo del Interesado
                                         </span>
@@ -1789,7 +2623,7 @@ export function ViewProcesar({
                                         </span>
                                       </div>
 
-                                      <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                      <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                           Total Factura Presentada
                                         </span>
@@ -1819,7 +2653,7 @@ export function ViewProcesar({
                           <div className="space-y-4 pt-2">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                <div className="w-9 h-9 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
                                   <Building2 size={18} />
                                 </div>
                                 <div>
@@ -1835,15 +2669,15 @@ export function ViewProcesar({
                                 <span className="text-xs px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-medium border border-zinc-200 dark:border-zinc-700">
                                   Factura: {(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €
                                 </span>
-                                <span className="text-sm font-mono font-bold px-3 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                <span className="text-sm font-mono font-bold px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
                                   {inscripcion.reembolsable_al_investigador ? `${(inscripcion.importe_reembolsable || 0).toFixed(2)} €` : '0,00 € a transferir'}
                                 </span>
                               </div>
                             </div>
 
-                            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-4 shadow-xs text-xs">
+                            <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-4 shadow-xs text-xs">
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                   <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                     Actividad Científica
                                   </span>
@@ -1852,7 +2686,7 @@ export function ViewProcesar({
                                   </span>
                                 </div>
 
-                                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                   <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                     Modalidad de Pago
                                   </span>
@@ -1864,7 +2698,7 @@ export function ViewProcesar({
                                   </span>
                                 </div>
 
-                                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+                                <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
                                   <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
                                     Efecto en Nómina / Transferencia
                                   </span>
@@ -1877,7 +2711,7 @@ export function ViewProcesar({
                                 </div>
                               </div>
 
-                              <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                              <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
                                 La cuota de <strong>{(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €</strong> se encuentra justificada documentalmente mediante factura oficial emitida a nombre de la <strong>Universidad de Extremadura (CIF Q1018001F)</strong> e imputada a la partida de congresos del proyecto. No procede su abono en la nómina del comisionado al haber sido satisfecha de forma directa y centralizada por la Universidad.
                               </div>
                             </div>
@@ -1895,7 +2729,7 @@ export function ViewProcesar({
               {/* TAB 2: BALANCE Y RECONCILIACIÓN DE GASTOS */}
               {activeTab === 'balance' && balanceFinanciero && (
                 <div className="space-y-6 animate-fade-in text-xs leading-relaxed">
-                  <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-6">
+                  <div className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-6">
                     <div className="flex items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                       <Calculator size={18} className="text-zinc-700 dark:text-zinc-300" />
                       <div>
@@ -1916,7 +2750,7 @@ export function ViewProcesar({
                           1. Desglose Integral de Justificantes Aportados
                         </span>
 
-                        <div className="p-4 rounded-2xl bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-2 text-xs">
+                        <div className="p-4 rounded-md bg-[#FCFBFA] dark:bg-zinc-950/60 border border-[#EFECE6] dark:border-zinc-800 space-y-2 text-xs">
                           <div className="flex justify-between items-center py-1.5 border-b border-zinc-100 dark:border-zinc-800">
                             <span className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
                               <Car size={14} className="text-zinc-400" /> Kilometraje Vehículo Particular (1.340 km)
@@ -1965,7 +2799,7 @@ export function ViewProcesar({
                           2. Deducciones y Exclusiones Normativas
                         </span>
 
-                        <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 space-y-2 text-xs">
+                        <div className="p-4 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 space-y-2 text-xs">
                           {balanceFinanciero.aloExceso > 0 && (
                             <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#754E20] dark:text-[#FDBA74]">
                               <span className="flex items-center gap-2">
@@ -2007,7 +2841,7 @@ export function ViewProcesar({
                       </div>
 
                       {/* Columna Derecha: Tarjeta de Dictamen Final */}
-                      <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-3xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md space-y-5">
+                      <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md space-y-5">
                         <div className="space-y-3">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-600 block">
                             Resultado de la Liquidación
@@ -2020,7 +2854,7 @@ export function ViewProcesar({
                           </p>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-zinc-800/80 dark:bg-zinc-200/80 border border-zinc-700 dark:border-zinc-300 space-y-2">
+                        <div className="p-4 rounded-md bg-zinc-800/80 dark:bg-zinc-200/80 border border-zinc-700 dark:border-zinc-300 space-y-2">
                           <div className="flex justify-between text-xs text-zinc-300 dark:text-zinc-700">
                             <span>Total Gastos de Misión:</span>
                             <span className="font-mono font-bold">{balanceFinanciero.gastoTotalMision.toFixed(2)} €</span>
@@ -2050,7 +2884,7 @@ export function ViewProcesar({
               {/* TAB 3: FUNDAMENTACIÓN JURÍDICO-TRIBUTARIA */}
               {activeTab === 'fundamentacion' && (
                 <div className="space-y-6 animate-fade-in text-xs leading-relaxed">
-                  <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-5">
+                  <div className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-5">
                     <div className="flex items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
                       <Scale size={18} className="text-zinc-700 dark:text-zinc-300" />
                       <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
@@ -2060,7 +2894,7 @@ export function ViewProcesar({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
                       <div className="space-y-4">
-                        <div className="p-4 rounded-2xl bg-[#EEF6F0]/60 dark:bg-[#1A2E22]/30 border border-[#D5E8DA] dark:border-[#22543D]/50 flex items-start gap-3">
+                        <div className="p-4 rounded-md bg-[#EEF6F0]/60 dark:bg-[#1A2E22]/30 border border-[#D5E8DA] dark:border-[#22543D]/50 flex items-start gap-3">
                           <ShieldCheck size={18} className="text-[#285735] dark:text-[#86EFAC] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
@@ -2072,7 +2906,7 @@ export function ViewProcesar({
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-[#EEF4F8]/60 dark:bg-[#1E293B]/30 border border-[#D0E2F0] dark:border-[#334155]/50 flex items-start gap-3">
+                        <div className="p-4 rounded-md bg-[#EEF4F8]/60 dark:bg-[#1E293B]/30 border border-[#D0E2F0] dark:border-[#334155]/50 flex items-start gap-3">
                           <FileCheck size={18} className="text-[#2B4C6F] dark:text-[#93C5FD] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
@@ -2086,7 +2920,7 @@ export function ViewProcesar({
                       </div>
 
                       <div className="space-y-4">
-                        <div className="p-4 rounded-2xl bg-[#FDF7ED]/60 dark:bg-[#342416]/30 border border-[#F7E5CB] dark:border-[#5C3818]/50 flex items-start gap-3">
+                        <div className="p-4 rounded-md bg-[#FDF7ED]/60 dark:bg-[#342416]/30 border border-[#F7E5CB] dark:border-[#5C3818]/50 flex items-start gap-3">
                           <AlertTriangle size={18} className="text-[#754E20] dark:text-[#FDBA74] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
@@ -2098,7 +2932,7 @@ export function ViewProcesar({
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 flex items-start gap-3">
+                        <div className="p-4 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 flex items-start gap-3">
                           <Building2 size={18} className="text-zinc-500 shrink-0 mt-0.5" />
                           <div>
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
@@ -2122,25 +2956,25 @@ export function ViewProcesar({
                     <div className="flex gap-2">
                       <button
                         onClick={() => setJsonTab('liquidacion')}
-                        className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer", jsonTab === 'liquidacion' ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}
+                        className={cn("px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer", jsonTab === 'liquidacion' ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}
                       >
                         Liquidación Normativa (JSON)
                       </button>
                       <button
                         onClick={() => setJsonTab('extraccion')}
-                        className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer", jsonTab === 'extraccion' ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}
+                        className={cn("px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer", jsonTab === 'extraccion' ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400")}
                       >
                         Extracción Semántica (JSON)
                       </button>
                     </div>
 
-                    <Btn size="sm" variant="outline" onClick={() => copyJsonToClipboard(jsonTab === 'liquidacion' ? result.liquidacion : result.extraccion)} className="cursor-pointer rounded-xl">
+                    <Btn size="sm" variant="outline" onClick={() => copyJsonToClipboard(jsonTab === 'liquidacion' ? result.liquidacion : result.extraccion)} className="cursor-pointer rounded-md">
                       <Copy size={13} className="mr-1" />
                       {copied ? '¡Copiado!' : 'Copiar JSON'}
                     </Btn>
                   </div>
 
-                  <pre className="p-5 rounded-2xl bg-zinc-950 text-zinc-300 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner leading-relaxed">
+                  <pre className="p-5 rounded-md bg-zinc-950 text-zinc-300 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner leading-relaxed">
                     {JSON.stringify(jsonTab === 'liquidacion' ? result.liquidacion : result.extraccion, null, 2)}
                   </pre>
                 </div>
@@ -2155,7 +2989,7 @@ export function ViewProcesar({
                       Registro de Ejecución y Trazabilidad de Nodos
                     </h4>
                   </div>
-                  <pre className="p-5 rounded-2xl bg-zinc-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner whitespace-pre-wrap leading-relaxed">
+                  <pre className="p-5 rounded-md bg-zinc-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner whitespace-pre-wrap leading-relaxed">
                     {result.logs || 'No hay logs de auditoría disponibles.'}
                   </pre>
                 </div>
@@ -2182,7 +3016,7 @@ export function ViewProcesar({
           onClick={() => setPreviewTemplateModal(null)}
         >
           <div 
-            className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-5 sm:p-6 max-w-6xl w-full shadow-2xl space-y-4 animate-pop max-h-[95vh] h-[92vh] flex flex-col"
+            className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-5 sm:p-6 max-w-6xl w-full shadow-2xl space-y-4 animate-pop max-h-[95vh] h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             
@@ -2207,7 +3041,7 @@ export function ViewProcesar({
                     href={previewTemplateModal.img} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                    className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                   >
                     <ZoomIn size={14} /> 
                     <span className="hidden sm:inline">Nueva Pestaña</span>
@@ -2215,7 +3049,7 @@ export function ViewProcesar({
                 )}
                 <button 
                   onClick={() => setPreviewTemplateModal(null)} 
-                  className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                   title="Cerrar"
                 >
                   <X size={20} />
@@ -2226,7 +3060,7 @@ export function ViewProcesar({
             {/* Cuerpo del Modal */}
             <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-hidden">
               
-              <div className="lg:col-span-8 flex flex-col min-h-0 bg-[#FAF8F5] dark:bg-zinc-950/60 rounded-2xl border border-[#ECE7DD] dark:border-zinc-800 overflow-hidden shadow-inner">
+              <div className="lg:col-span-8 flex flex-col min-h-0 bg-[#FAF8F5] dark:bg-zinc-950/60 rounded-md border border-[#ECE7DD] dark:border-zinc-800 overflow-hidden shadow-inner">
                 <div className="px-4 py-2 bg-zinc-200/60 dark:bg-zinc-900/60 border-b border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-500 shrink-0">
                   <span className="flex items-center gap-1.5 font-medium">
                     <FileCheck size={14} className="text-zinc-400" />
@@ -2250,7 +3084,7 @@ export function ViewProcesar({
 
               <div className="lg:col-span-4 flex flex-col justify-between overflow-y-auto space-y-4 pr-1">
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
+                  <div className="p-4 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                       Descripción del Trámite
                     </span>
@@ -2260,7 +3094,7 @@ export function ViewProcesar({
                   </div>
 
                   {(previewTemplateModal as any).normativa && (
-                    <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
+                    <div className="p-4 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                         Marco Normativo y Legal
                       </span>
@@ -2271,7 +3105,7 @@ export function ViewProcesar({
                   )}
 
                   {(previewTemplateModal as any).organismo && (
-                    <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
+                    <div className="p-4 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">
                         Órgano Tramitador y Destino
                       </span>
@@ -2290,7 +3124,7 @@ export function ViewProcesar({
                       setSelectedTemplate(previewTemplateModal.id);
                       setPreviewTemplateModal(null);
                     }}
-                    className="w-full cursor-pointer shadow-md rounded-2xl"
+                    className="w-full cursor-pointer shadow-md rounded-md"
                   >
                     Usar este Procedimiento
                   </Btn>
@@ -2298,7 +3132,7 @@ export function ViewProcesar({
                     size="sm" 
                     variant="outline" 
                     onClick={() => setPreviewTemplateModal(null)} 
-                    className="w-full cursor-pointer rounded-2xl"
+                    className="w-full cursor-pointer rounded-md"
                   >
                     Cerrar
                   </Btn>
