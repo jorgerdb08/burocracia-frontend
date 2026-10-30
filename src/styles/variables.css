@@ -1,85 +1,156 @@
 /* =========================================================================
-   UNIVERSIDAD DE EXTREMADURA (UEx) - SISTEMA DE DISEÑO INSTITUCIONAL
-   Minimalismo Profesional: Sobrio, ordenado y tipográficamente riguroso
+   BUROCRARIA - SISTEMA DE DISEÑO EDITORIAL Y PROFESIONAL
+   Dirección visual: Minimalista, Soberbia, Alta Tipografía, Acento Único
    ========================================================================= */
 
 :root {
-  /* 1. Identidad Institucional UEx */
-  --uex-burgundy:        #8A1538;
-  --uex-burgundy-hover:  #73112E;
-  --uex-burgundy-dark:   #5B0C23;
-  --uex-burgundy-subtle: #FDF2F4;
-  --uex-burgundy-border: #F3C4CE;
+  /* -----------------------------------------------------------------------
+     1. SISTEMA VISUAL SGTRI UEx (TOKENS EXACTOS)
+     ----------------------------------------------------------------------- */
+  /* Colores primarios */
+  --color-navy:          #14213D; /* Azul marino dominante */
+  --color-blue-inst:     #174F91; /* Azul institucional */
+  --color-green:         #39966D; /* Verde acciones y estados */
+  --color-orange:        #D99A20; /* Dorado / naranja de acento puntual */
 
-  /* 2. Escala Neutra Profesional */
-  --slate-50:  #FAFAFA;
-  --slate-100: #F4F4F5;
-  --slate-200: #E4E4E7;
-  --slate-300: #D4D4D8;
-  --slate-400: #A1A1AA;
-  --slate-500: #71717A;
-  --slate-600: #52525B;
-  --slate-700: #3F3F46;
-  --slate-800: #27272A;
-  --slate-900: #18181B;
-  --slate-950: #09090B;
+  /* Fondos y superficies */
+  --bg-app:              #F7F9FC; /* Fondo general */
+  --bg-surface:          #FFFFFF; /* Superficies (tarjetas, tablas, header) */
+  --bg-secondary:        #F1F5FA; /* Superficie secundaria */
+  --bg-subtle:           #F7F9FC; /* Fondos alternos de tabla */
+  --bg-muted:            #DFE4EB; /* Fondos delimitadores */
 
-  /* 3. Colores Semánticos Discretos (Solo para estados reales) */
-  --color-success:        #15803D;
-  --color-success-bg:     #F0FDF4;
-  --color-success-border: #DCFCE7;
-  --color-success-text:   #166534;
+  /* Fondos suaves */
+  --bg-blue-soft:        #F1F5FA; /* Fondo azul suave */
+  --bg-green-soft:       #F0F7F1; /* Fondo verde suave */
+  --bg-orange-soft:      #FBF2E5; /* Fondo naranja suave */
 
-  --color-warning:        #B45309;
-  --color-warning-bg:     #FFFBEB;
-  --color-warning-border: #FEF3C7;
-  --color-warning-text:   #92400E;
+  /* Tipografía y bordes */
+  --text-primary:        #14213D; /* Tinta principal en azul marino */
+  --text-secondary:      #526783; /* Texto secundario y descripciones */
+  --text-muted:          #526783; /* Metadatos, breadcrumbs, fechas */
+  --text-faint:          #8F9EB2; /* Indicadores sutiles */
+  --text-on-dark:        #FFFFFF;
 
-  --color-danger:         #B91C1C;
+  --border-color:        #DFE4EB; /* Borde fino estructural */
+  --border-subtle:       #F1F5FA;
+  --border-hover:        #CBD5E1;
+  --border-focus:        #174F91;
+
+  /* -----------------------------------------------------------------------
+     2. IDENTIDAD INSTITUCIONAL Y ACENTOS
+     ----------------------------------------------------------------------- */
+  --brand-primary:       var(--color-navy);
+  --brand-primary-hover: #0E182D;
+  --brand-primary-dark:  #080E1C;
+  --brand-accent:        var(--color-blue-inst);
+  --brand-accent-hover:  #123F75;
+  --brand-selection:     var(--bg-blue-soft);
+  --brand-selection-border: #D0DFEF;
+
+  /* Alias de compatibilidad total */
+  --ink-950: #080E1C;
+  --ink-900: var(--color-navy);
+  --ink-800: #1D2E52;
+  --ink-700: #293E66;
+  --ink-600: var(--text-secondary);
+  --ink-500: var(--text-secondary);
+  --ink-400: var(--text-faint);
+  --ink-300: #CBD5E1;
+  --ink-200: var(--border-color);
+  --ink-100: var(--bg-blue-soft);
+  --ink-50:  var(--bg-app);
+
+  --accent-900: #0E294B;
+  --accent-800: #123F75;
+  --accent-700: var(--color-blue-inst);
+  --accent-600: #1D63B5;
+  --accent-500: #2B78D8;
+  --accent-200: #BFD7F5;
+  --accent-100: #DEECFA;
+  --accent-50:  var(--bg-blue-soft);
+
+  --petrol-950: var(--color-navy);
+  --petrol-900: var(--color-navy);
+  --petrol-800: var(--color-navy);
+  --petrol-700: #1D2E52;
+  --petrol-600: var(--text-secondary);
+  --petrol-100: var(--bg-blue-soft);
+  --petrol-50:  var(--bg-app);
+
+  --teal-800: #0E294B;
+  --teal-700: #123F75;
+  --teal-600: var(--color-blue-inst);
+  --teal-500: #1D63B5;
+  --teal-400: #2B78D8;
+  --teal-200: #BFD7F5;
+  --teal-100: #DEECFA;
+  --teal-50:  var(--bg-blue-soft);
+
+  --slate-50:  var(--bg-app);
+  --slate-100: var(--bg-blue-soft);
+  --slate-200: var(--border-color);
+  --slate-300: #CBD5E1;
+  --slate-400: var(--text-faint);
+  --slate-500: var(--text-secondary);
+  --slate-600: var(--text-secondary);
+  --slate-700: #293E66;
+  --slate-800: #1D2E52;
+  --slate-900: var(--color-navy);
+
+  --uex-burgundy:        var(--color-navy);
+  --uex-burgundy-hover:  #0E182D;
+  --uex-burgundy-dark:   #080E1C;
+  --uex-burgundy-subtle: var(--bg-blue-soft);
+  --uex-burgundy-border: #D0DFEF;
+
+  /* -----------------------------------------------------------------------
+     3. ESTADOS SEMÁNTICOS (CON LOS TOKENS OFICIALES)
+     ----------------------------------------------------------------------- */
+  --color-success:        var(--color-green);
+  --color-success-bg:     var(--bg-green-soft);
+  --color-success-border: #C8E5D7;
+  --color-success-text:   #25684C;
+
+  --color-warning:        var(--color-orange);
+  --color-warning-bg:     var(--bg-orange-soft);
+  --color-warning-border: #F6E2C6;
+  --color-warning-text:   #9C6C11;
+
+  --color-danger:         #DC2626;
   --color-danger-bg:      #FEF2F2;
   --color-danger-border:  #FEE2E2;
   --color-danger-text:    #991B1B;
 
-  --color-info:           #1D4ED8;
-  --color-info-bg:        #EFF6FF;
-  --color-info-border:    #DBEAFE;
-  --color-info-text:      #1E40AF;
+  --color-info:           var(--color-blue-inst);
+  --color-info-bg:        var(--bg-blue-soft);
+  --color-info-border:    #D0DFEF;
+  --color-info-text:      #0E294B;
 
-  /* 4. Asignación de Superficies y Textos (Modo Claro) */
-  --bg-app:        #FAFAFA;
-  --bg-surface:    #FFFFFF;
-  --bg-subtle:     #F4F4F5;
-  --bg-muted:      #F8FAFC;
-  
-  --text-primary:   #18181B;
-  --text-secondary: #52525B;
-  --text-muted:     #71717A;
-  --text-faint:     #A1A1AA;
-  --text-on-dark:   #FFFFFF;
-
-  --border-color:  #E4E4E7;
-  --border-subtle: #F4F4F5;
-  --border-hover:  #D4D4D8;
-
-  /* 5. Tipografía Institucional */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* -----------------------------------------------------------------------
+     4. TIPOGRAFÍA EDITORIAL
+     ----------------------------------------------------------------------- */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Newsreader", "Lora", Georgia, serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 
   --text-2xs:  11px;
   --text-xs:   12px;
   --text-sm:   13px;
   --text-base: 14px;
-  --text-lg:   16px;
-  --text-xl:   18px;
-  --text-2xl:  22px;
-  --text-3xl:  26px;
+  --text-lg:   15px;
+  --text-xl:   17px;
+  --text-2xl:  20px;
+  --text-3xl:  24px;
 
   --font-normal:    400;
   --font-medium:    500;
   --font-semibold:  600;
-  --font-bold:      700;
+  --font-bold:      600; /* Evitamos pesos 700/800 excesivamente pesados */
 
-  /* 6. Espaciado Consistente */
+  /* -----------------------------------------------------------------------
+     6. ESPACIADO Y ESTRUCTURA
+     ----------------------------------------------------------------------- */
   --space-1:   4px;
   --space-1-5: 6px;
   --space-2:   8px;
@@ -92,67 +163,88 @@
   --space-10:  40px;
   --space-12:  48px;
 
-  /* 7. Radios Discretos (Sin tarjetas hiper-redondeadas) */
+  /* -----------------------------------------------------------------------
+     7. RADIOS DISCRETOS Y LÍNEAS PLANAS (ARQUITECTURAL)
+     ----------------------------------------------------------------------- */
   --radius-xs: 2px;
   --radius-sm: 3px;
   --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
+  --radius-lg: 5px;
+  --radius-xl: 6px;
 
-  /* 8. Sombras Mínimas (Prácticamente planas) */
+  /* -----------------------------------------------------------------------
+     8. SOMBRAS PLANAS (ESTÉTICA MINIMALISTA SIN SOMBRAS PESADAS)
+     ----------------------------------------------------------------------- */
   --shadow-2xs: none;
-  --shadow-xs:  0 1px 2px 0 rgba(0, 0, 0, 0.04);
-  --shadow-sm:  0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md:  0 2px 6px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg:  0 8px 18px -4px rgba(0, 0, 0, 0.08);
-  --shadow-xl:  0 16px 28px -6px rgba(0, 0, 0, 0.12);
+  --shadow-xs:  none;
+  --shadow-sm:  0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md:  0 2px 4px rgba(15, 23, 42, 0.06);
+  --shadow-lg:  0 8px 16px -2px rgba(15, 23, 42, 0.08);
+  --shadow-xl:  0 16px 24px -4px rgba(15, 23, 42, 0.12);
 
-  /* 9. Transiciones */
-  --transition-fast: 0.12s ease-out;
-  --transition-normal: 0.18s ease-out;
+  --transition-fast: 0.1s ease-out;
+  --transition-normal: 0.15s ease-out;
 }
 
-/* Modo Oscuro Sobrio y Accesible */
+/* -----------------------------------------------------------------------
+   MODO OSCURO EDITORIAL (OBSIDIANA SOBERBIO)
+   ----------------------------------------------------------------------- */
 :root.dark,
 html.dark,
 :root[data-theme="dark"],
 html[data-theme="dark"],
 .dark,
 [data-theme="dark"] {
-  --bg-app:        #09090B;
-  --bg-surface:    #121215;
-  --bg-subtle:     #18181B;
-  --bg-muted:      #1F1F23;
-  
-  --text-primary:   #F4F4F5;
-  --text-secondary: #A1A1AA;
-  --text-muted:     #71717A;
-  --text-faint:     #52525B;
+  --bg-app:        #090D12; /* Obsidiana profunda */
+  --bg-surface:    #11161F; /* Superficie de trabajo oscura */
+  --bg-secondary:  #18212D;
+  --bg-subtle:     #131B26;
+  --bg-muted:      #1F2B3A;
+  --bg-blue-soft:  rgba(23, 79, 145, 0.18);
+  --bg-green-soft: rgba(57, 150, 109, 0.18);
+  --bg-orange-soft: rgba(217, 154, 32, 0.18);
 
-  --border-color:  #27272A;
-  --border-subtle: #1F1F23;
-  --border-hover:  #3F3F46;
+  --text-primary:   #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted:     #64748B;
+  --text-faint:     #475569;
+
+  --border-color:   #1E293B;
+  --border-subtle:  #16202E;
+  --border-hover:   #334155;
+  --border-focus:   var(--accent-500);
+
+  --brand-primary:       #F8FAFC;
+  --brand-primary-hover: #E2E8F0;
+  --brand-accent:        var(--accent-500);
+  --brand-accent-hover:  var(--accent-600);
+  --brand-selection:     rgba(59, 130, 246, 0.12);
+  --brand-selection-border: rgba(59, 130, 246, 0.35);
+
+  --petrol-800: #F8FAFC;
+  --petrol-700: #E2E8F0;
+  --teal-600:   var(--accent-500);
+  --teal-700:   var(--accent-600);
+  --teal-50:    rgba(59, 130, 246, 0.12);
+  --teal-100:   rgba(59, 130, 246, 0.2);
 
   --color-success:        #22C55E;
-  --color-success-bg:     rgba(34, 197, 94, 0.1);
-  --color-success-border: rgba(34, 197, 94, 0.25);
+  --color-success-bg:     rgba(34, 197, 94, 0.12);
+  --color-success-border: rgba(34, 197, 94, 0.28);
   --color-success-text:   #86EFAC;
 
   --color-warning:        #F59E0B;
-  --color-warning-bg:     rgba(245, 158, 11, 0.1);
-  --color-warning-border: rgba(245, 158, 11, 0.25);
+  --color-warning-bg:     rgba(245, 158, 11, 0.12);
+  --color-warning-border: rgba(245, 158, 11, 0.28);
   --color-warning-text:   #FDE68A;
 
   --color-danger:         #EF4444;
-  --color-danger-bg:      rgba(239, 68, 68, 0.12);
-  --color-danger-border:  rgba(239, 68, 68, 0.25);
+  --color-danger-bg:      rgba(239, 68, 68, 0.14);
+  --color-danger-border:  rgba(239, 68, 68, 0.28);
   --color-danger-text:    #FCA5A5;
 
-  --color-info:           #3B82F6;
-  --color-info-bg:        rgba(59, 130, 246, 0.1);
-  --color-info-border:    rgba(59, 130, 246, 0.25);
+  --color-info:           var(--accent-500);
+  --color-info-bg:        rgba(59, 130, 246, 0.12);
+  --color-info-border:    rgba(59, 130, 246, 0.28);
   --color-info-text:      #93C5FD;
-
-  --uex-burgundy-subtle: rgba(138, 21, 56, 0.2);
-  --uex-burgundy-border: rgba(138, 21, 56, 0.4);
 }

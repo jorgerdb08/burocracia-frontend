@@ -175,8 +175,8 @@ export function ChatWidget({ currentView }: { currentView: string }) {
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <button 
                 onClick={() => setShowHistory(!showHistory)}
-                className="btn btn-outline btn-sm"
-                style={{ padding: '4px 6px', fontSize: '11px' }}
+                className="btn btn-sm"
+                style={{ padding: '4px 6px', fontSize: '11px', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderColor: 'transparent' }}
                 title="Ver Historial"
                 type="button"
               >
@@ -187,10 +187,10 @@ export function ChatWidget({ currentView }: { currentView: string }) {
                   <Scale size={13} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  <div style={{ fontWeight: 600, fontSize: '12.5px', color: '#FFFFFF', lineHeight: 1.2 }}>
                     Consultas Normativas SGTRI
                   </div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.75)' }}>
                     Bases Presupuestarias UEx 2026
                   </div>
                 </div>
@@ -200,8 +200,8 @@ export function ChatWidget({ currentView }: { currentView: string }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <button 
                 onClick={() => handleNewChat()} 
-                className="btn btn-outline btn-sm"
-                style={{ padding: '4px 6px' }}
+                className="btn btn-sm"
+                style={{ padding: '4px 6px', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderColor: 'transparent' }}
                 title="Nueva Consulta"
                 type="button"
               >
@@ -209,8 +209,8 @@ export function ChatWidget({ currentView }: { currentView: string }) {
               </button>
               <button 
                 onClick={() => setIsOpen(false)} 
-                className="btn btn-outline btn-sm"
-                style={{ padding: '4px 6px' }}
+                className="btn btn-sm"
+                style={{ padding: '4px 6px', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderColor: 'transparent' }}
                 title="Cerrar"
                 type="button"
               >

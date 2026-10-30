@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, ChevronDown } from 'lucide-react'
 import { cn } from './lib/utils'
 import { ChatWidget } from './ChatWidget'
 import { ViewHeroLayout } from './components/views/ViewHeroLayout'
@@ -46,10 +46,15 @@ export default function App() {
               onClick={() => setView('inicio')}
               className="uex-header-brand"
             >
-              <img src="/logo_v2.jpg" alt="UEx" className="uex-logo-img" />
-              <div className="uex-brand-info">
-                <span className="uex-brand-title">Universidad de Extremadura</span>
-                <span className="uex-brand-sub">SGTRI · Gestión Económica</span>
+              <img src="/uex_emblem.svg" alt="UEx" style={{ height: '30px', width: 'auto', flexShrink: 0 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1.15, color: 'var(--color-navy)', textAlign: 'left' }}>
+                <span>UNIVERSIDAD</span>
+                <span>DE EXTREMADURA</span>
+              </div>
+              <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--border-color)', margin: '0 8px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, textAlign: 'left' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', letterSpacing: '-0.01em' }}>SGTRI</span>
+                <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)', fontWeight: 400 }}>Gestión Económica</span>
               </div>
             </button>
             
@@ -85,7 +90,21 @@ export default function App() {
           </div>
 
           <div className="uex-header-right">
-            <span className="uex-fiscal-year">Bases 2026</span>
+            <button 
+              type="button"
+              className="uex-fiscal-year" 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '5px', 
+                padding: '4px 10px', 
+                fontSize: '11.5px', 
+                cursor: 'pointer' 
+              }}
+            >
+              <span>Bases 2026</span>
+              <ChevronDown size={12} style={{ color: 'var(--text-muted)' }} />
+            </button>
 
             <button 
               onClick={() => setIsDark(!isDark)} 
@@ -95,6 +114,27 @@ export default function App() {
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
+
+            <div 
+              style={{ 
+                width: '30px', 
+                height: '30px', 
+                borderRadius: '50%', 
+                backgroundColor: 'var(--bg-blue-soft)', 
+                color: 'var(--color-blue-inst)', 
+                border: '1px solid #D0DFEF',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                fontSize: '11px', 
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                flexShrink: 0
+              }}
+              title="Usuario: Jorge"
+            >
+              JR
+            </div>
           </div>
         </div>
       </header>

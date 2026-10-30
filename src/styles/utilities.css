@@ -326,3 +326,13 @@
   from { opacity: 0; transform: translateY(2px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* SGTRI Palette Utilities */
+.text-petrol { color: var(--petrol-800); }
+.bg-petrol { background-color: var(--petrol-800); color: #FFFFFF; }
+.text-teal { color: var(--teal-600); }
+.bg-teal { background-color: var(--teal-600); color: #FFFFFF; }
+.bg-teal-subtle { background-color: var(--teal-50); color: var(--teal-700); }
+.border-teal { border-color: var(--teal-600); }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
