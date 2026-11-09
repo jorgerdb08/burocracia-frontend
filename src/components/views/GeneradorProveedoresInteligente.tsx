@@ -5,7 +5,7 @@ import {
   AlertOctagon, CheckCircle2, AlertTriangle, FileCheck, Building2,
   Scale, ShieldAlert, ArrowRight, Loader2, Eye, Edit3, Check, X,
   ArrowLeft, ShieldCheck, RefreshCw, FileText, CreditCard, Send,
-  Archive, CheckCircle, RotateCcw, Play
+  Archive, CheckCircle, RotateCcw, Play, ExternalLink
 } from 'lucide-react';
 import { fmtEur, cn } from '../../lib/utils';
 
@@ -1524,12 +1524,22 @@ export function GeneradorProveedoresInteligente() {
 
               <div className="flex items-center gap-2 shrink-0">
                 <a
+                  href={docEnVisor.url_raw}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline btn-xs px-2.5 py-1 text-xs border-slate-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1 rounded-md"
+                  title="Abrir en nueva pestaña"
+                >
+                  <ExternalLink size={13} />
+                  <span className="hidden sm:inline">Abrir en Pestaña</span>
+                </a>
+                <a
                   href={docEnVisor.download_url}
                   download={docEnVisor.nombre}
                   className="btn btn-outline btn-xs px-2.5 py-1 text-xs border-slate-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1 rounded-md"
                 >
                   <Download size={13} />
-                  <span className="hidden sm:inline">Descargar Archivo</span>
+                  <span className="hidden sm:inline">Descargar</span>
                 </a>
                 <button
                   type="button"
@@ -1557,11 +1567,29 @@ export function GeneradorProveedoresInteligente() {
                     border: '1px solid #94A3B8'
                   }}
                 >
-                  <iframe
-                    src={docEnVisor.url_raw}
-                    title={`Visor ${docEnVisor.nombre}`}
-                    className="w-full h-full min-h-[75vh] border-none"
-                  />
+                  <object
+                    data={docEnVisor.url_raw}
+                    type="application/pdf"
+                    className="w-full h-full min-h-[75vh]"
+                  >
+                    <iframe
+                      src={docEnVisor.url_raw}
+                      title={`Visor ${docEnVisor.nombre}`}
+                      className="w-full h-full min-h-[75vh] border-none"
+                    >
+                      <div className="p-8 text-center flex flex-col items-center justify-center gap-4">
+                        <p className="text-sm text-zinc-600">Su navegador no soporta visualización incrustada de PDFs.</p>
+                        <a
+                          href={docEnVisor.url_raw}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-primary btn-sm"
+                        >
+                          Abrir PDF en nueva pestaña
+                        </a>
+                      </div>
+                    </iframe>
+                  </object>
                 </div>
               ) : docEnVisor.tipo === 'imagen' ? (
                 <div className="w-full flex flex-col items-center justify-start py-4">
