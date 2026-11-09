@@ -200,6 +200,7 @@ export function ViewLotesBatch() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<{ url: string; titulo: string } | null>(null);
   const [expedienteArchivosModal, setExpedienteArchivosModal] = useState<{ nombre: string; archivos: string[] } | null>(null);
   const [archivoModal, setArchivoModal] = useState<ArchivoModalInfo | null>(null);
+  const [lotesProcesadosEnSesion, setLotesProcesadosEnSesion] = useState<Record<string, boolean>>({});
 
   const abrirArchivoEnVisor = async (expedienteId: string, archivo: string) => {
     const loteId = selectedLote;
@@ -654,6 +655,7 @@ export function ViewLotesBatch() {
       await cargarLotes(loteId);
       await cargarDetalleLote(loteId);
       setNotifExito(`Lote "${loteId}" fiscalizado con éxito. Modelos emitidos.`);
+      setLotesProcesadosEnSesion(prev => ({ ...prev, [loteId]: true }));
       setTabPrecargados('resultados');
       
       if (pantallaActual === 'cargar_nuevo') {
@@ -1653,21 +1655,26 @@ export function ViewLotesBatch() {
                               <FolderArchive size={22} />
                             </div>
 
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              padding: '3px 9px',
-                              borderRadius: '9999px',
-                              backgroundColor: lote.procesado ? '#DCFCE7' : '#FEF3C7',
-                              color: lote.procesado ? '#166534' : '#92400E',
-                              border: lote.procesado ? '1px solid #BBF7D0' : '1px solid #FDE68A'
-                            }}>
-                              {lote.procesado ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                              <span>{lote.procesado ? 'Fiscalizado con Modelos' : 'Pendiente de Fiscalización'}</span>
-                            </span>
+                            {(() => {
+                              const fueProc = !!lotesProcesadosEnSesion[lote.id];
+                              return (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  padding: '3px 9px',
+                                  borderRadius: '9999px',
+                                  backgroundColor: fueProc ? '#DCFCE7' : '#FEF3C7',
+                                  color: fueProc ? '#166534' : '#92400E',
+                                  border: fueProc ? '1px solid #BBF7D0' : '1px solid #FDE68A'
+                                }}>
+                                  {fueProc ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                                  <span>{fueProc ? 'Fiscalizado con Modelos' : 'Pendiente de Fiscalización'}</span>
+                                </span>
+                              );
+                            })()}
                           </div>
 
                           {/* Título y Descripción */}
@@ -1780,7 +1787,7 @@ export function ViewLotesBatch() {
                             <ArrowRight size={13} />
                           </button>
 
-                          {lote.procesado && (
+                          {lotesProcesadosEnSesion[lote.id] && (
                             <a
                               href={`/api/batch/descargar_zip/${encodeURIComponent(lote.id)}`}
                               download
@@ -1803,7 +1810,10 @@ export function ViewLotesBatch() {
           {/* ========================================================================= */}
           {/* MODO 2: VISTA DE ÁRBOL ÚNICA Y CENTRAL (SIN RESULTADOS SEPARADOS)         */}
           {/* ========================================================================= */}
-          {modoPrecargados === 'arbol' && (
+          {modoPrecargados === 'arbol' && (() => {
+            const loteFueProcesado = !!lotesProcesadosEnSesion[selectedLote];
+
+            return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
               {/* BARRA SUPERIOR DE NAVEGACIÓN Y ACCIONES */}
@@ -1859,7 +1869,7 @@ export function ViewLotesBatch() {
                     >
                       {lotes.filter(l => l.id !== 'proveedores_zips').map((l) => (
                         <option key={l.id} value={l.id}>
-                          {l.id} ({l.total_expedientes} exp.) {l.procesado ? '[Fiscalizado]' : '[Pendiente]'}
+                          {l.id} ({l.total_expedientes} exp.) {lotesProcesadosEnSesion[l.id] ? '[Fiscalizado]' : '[Pendiente]'}
                         </option>
                       ))}
                     </select>
@@ -1873,12 +1883,12 @@ export function ViewLotesBatch() {
                     fontWeight: 700,
                     padding: '3px 8px',
                     borderRadius: '9999px',
-                    backgroundColor: isLoteProcesado ? '#DCFCE7' : '#FEF3C7',
-                    color: isLoteProcesado ? '#166534' : '#92400E',
-                    border: isLoteProcesado ? '1px solid #BBF7D0' : '1px solid #FDE68A'
+                    backgroundColor: loteFueProcesado ? '#DCFCE7' : '#FEF3C7',
+                    color: loteFueProcesado ? '#166534' : '#92400E',
+                    border: loteFueProcesado ? '1px solid #BBF7D0' : '1px solid #FDE68A'
                   }}>
-                    {isLoteProcesado ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                    <span>{isLoteProcesado ? 'Fiscalizado con Modelos' : 'Pendiente de Fiscalización'}</span>
+                    {loteFueProcesado ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                    <span>{loteFueProcesado ? 'Fiscalizado con Modelos' : 'Pendiente de Fiscalización'}</span>
                   </span>
                 </div>
 
@@ -1898,7 +1908,7 @@ export function ViewLotesBatch() {
                     <span>Actualizar</span>
                   </Btn>
 
-                  {isLoteProcesado && (
+                  {loteFueProcesado && (
                     <a
                       href={`/api/batch/descargar_zip/${encodeURIComponent(selectedLote)}`}
                       download
@@ -1917,13 +1927,13 @@ export function ViewLotesBatch() {
                     disabled={running || !selectedLote}
                   >
                     {running ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} style={{ fill: 'currentColor' }} />}
-                    <span>{isLoteProcesado ? 'Reprocesar Lote' : 'Procesar Lote'}</span>
+                    <span>{loteFueProcesado ? 'Reprocesar Lote' : 'Procesar Lote'}</span>
                   </Btn>
                 </div>
               </div>
 
               {/* BANNER INFORMATIVO / RESULTADO */}
-              {isLoteProcesado ? (
+              {loteFueProcesado ? (
                 <div style={{
                   backgroundColor: '#F0FDF4',
                   border: '1.5px solid #BBF7D0',
@@ -1954,7 +1964,7 @@ export function ViewLotesBatch() {
                         Documentación Oficial Cumplimentada con Éxito
                       </h3>
                       <p style={{ fontSize: '12.5px', color: '#15803D', margin: '3px 0 0', lineHeight: 1.5 }}>
-                        Se han auditado los {loteDetalle?.total_expedientes ?? 0} expedientes conforme a las bases presupuestarias UEx 2026. Los modelos oficiales AcroForm PDF están listos dentro de cada carpeta en <strong>salida/</strong>. Haz clic sobre cualquier archivo para abrirlo o descargarlo.
+                        Se han auditado los {loteDetalle?.total_expedientes ?? 0} expedientes conforme a las bases presupuestarias UEx 2026. Los modelos oficiales AcroForm PDF han sido emitidos en la subcarpeta <strong>salida/</strong> de cada expediente. Haz clic sobre cualquier archivo para abrirlo o descargarlo.
                       </p>
                     </div>
                   </div>
@@ -2042,7 +2052,7 @@ export function ViewLotesBatch() {
                 </div>
               )}
 
-              {/* PANEL DEL ÁRBOL DE DIRECTORIOS (SIN EMOJIS, CON CLIC PARA ABRIR CADA ARCHIVO) */}
+              {/* PANEL DEL ÁRBOL DE DIRECTORIOS (ESTRICTAMENTE VERTICAL, SIN EMOJIS, CON CLIC PARA ABRIR CADA ARCHIVO) */}
               {!running && (
                 <div className="panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                   
@@ -2094,14 +2104,14 @@ export function ViewLotesBatch() {
                     </div>
                   </div>
 
-                  {/* Cuerpo del Árbol Monospace Interactivo */}
+                  {/* Cuerpo del Árbol Monospace Interactivo - FORMATO PURAMENTE VERTICAL */}
                   <div style={{
                     padding: '1.5rem 1.75rem',
                     backgroundColor: 'var(--bg-app)',
                     fontFamily: 'var(--font-mono)',
                     fontSize: '12.5px',
                     lineHeight: '1.75',
-                    maxHeight: '560px',
+                    maxHeight: '580px',
                     overflowY: 'auto'
                   }}>
                     
@@ -2112,7 +2122,7 @@ export function ViewLotesBatch() {
                       <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>(directorio principal)</span>
                     </div>
 
-                    {/* Archivo de Contexto Común: Clic para abrir */}
+                    {/* Archivo de Contexto Común: Fila Vertical */}
                     <div style={{
                       marginLeft: '8px',
                       paddingLeft: '20px',
@@ -2167,9 +2177,10 @@ export function ViewLotesBatch() {
 
                     {/* Subdirectorios de Expedientes */}
                     {loteDetalle?.expedientes.map((exp, expIdx) => {
-                      const isLast = expIdx === loteDetalle.expedientes.length - 1;
+                      const isLastExp = expIdx === loteDetalle.expedientes.length - 1;
                       const procInfo = getProcInfo(exp.tipo_procedimiento);
                       const modelos = exp.modelos_generados || [];
+                      const mostrarSalidaExp = loteFueProcesado && modelos.length > 0;
 
                       return (
                         <div
@@ -2177,14 +2188,14 @@ export function ViewLotesBatch() {
                           style={{
                             marginLeft: '8px',
                             paddingLeft: '20px',
-                            borderLeft: isLast ? '1px dashed transparent' : '1px dashed var(--border-color)',
+                            borderLeft: isLastExp ? '1px dashed transparent' : '1px dashed var(--border-color)',
                             position: 'relative',
-                            marginTop: '10px'
+                            marginTop: '12px'
                           }}
                         >
                           {/* Fila del Subdirectorio */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ color: 'var(--text-muted)', userSelect: 'none' }}>{isLast ? '└──' : '├──'}</span>
+                            <span style={{ color: 'var(--text-muted)', userSelect: 'none' }}>{isLastExp ? '└──' : '├──'}</span>
                             <Folder size={15} style={{ color: '#D97706', flexShrink: 0 }} />
                             <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
                               {exp.nombre}/
@@ -2220,7 +2231,7 @@ export function ViewLotesBatch() {
                               <span>{procInfo.label}</span>
                             </span>
 
-                            {isLoteProcesado && (
+                            {loteFueProcesado && (
                               <span style={{
                                 fontSize: '10.5px',
                                 fontWeight: 700,
@@ -2240,16 +2251,19 @@ export function ViewLotesBatch() {
                             )}
                           </div>
 
-                          {/* Rama de Archivos Justificantes (Entrada) */}
+                          {/* Rama de Archivos Justificantes (Entrada) - ESTRICTAMENTE VERTICAL (UNA LÍNEA POR ARCHIVO) */}
                           <div style={{
                             marginLeft: '28px',
                             paddingLeft: '18px',
-                            borderLeft: '1px dashed var(--border-color)',
+                            borderLeft: isLastExp ? '1px dashed transparent' : '1px dashed var(--border-color)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
                             marginTop: '4px',
                             marginBottom: '6px'
                           }}>
                             {exp.archivos.map((archivo, aIdx) => {
-                              const isLastArch = (modelos.length === 0) && (aIdx === exp.archivos.length - 1);
+                              const isLastArch = !mostrarSalidaExp && aIdx === exp.archivos.length - 1;
                               const ext = archivo.split('.').pop()?.toLowerCase();
                               let iconColor = 'var(--text-muted)';
                               if (ext === 'pdf') iconColor = '#DC2626';
@@ -2263,16 +2277,18 @@ export function ViewLotesBatch() {
                                   onClick={() => abrirArchivoEnVisor(exp.nombre, archivo)}
                                   title={`Clic para abrir o previsualizar ${archivo}`}
                                   style={{
-                                    display: 'inline-flex',
+                                    display: 'flex',
                                     alignItems: 'center',
-                                    gap: '7px',
+                                    gap: '8px',
                                     fontSize: '12px',
                                     color: 'var(--text-primary)',
-                                    padding: '2px 8px',
+                                    padding: '3px 8px',
                                     margin: '1px 0',
                                     borderRadius: '4px',
                                     cursor: 'pointer',
                                     transition: 'all 0.15s ease',
+                                    width: 'fit-content',
+                                    maxWidth: '100%',
                                     backgroundColor: 'transparent'
                                   }}
                                   onMouseEnter={(e) => {
@@ -2284,11 +2300,11 @@ export function ViewLotesBatch() {
                                     e.currentTarget.style.boxShadow = 'none';
                                   }}
                                 >
-                                  <span style={{ color: 'var(--text-muted)', userSelect: 'none', fontSize: '11px' }}>
+                                  <span style={{ color: 'var(--text-muted)', userSelect: 'none', fontSize: '11px', flexShrink: 0 }}>
                                     {isLastArch ? '└──' : '├──'}
                                   </span>
                                   <FileText size={13} style={{ color: iconColor, flexShrink: 0 }} />
-                                  <span style={{ textDecoration: 'underline', textDecorationColor: 'transparent', transition: 'text-decoration-color 0.15s ease' }}>
+                                  <span style={{ fontWeight: 500 }}>
                                     {archivo}
                                   </span>
                                   <span style={{
@@ -2298,7 +2314,7 @@ export function ViewLotesBatch() {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '2px',
-                                    marginLeft: '4px',
+                                    marginLeft: '6px',
                                     fontFamily: 'var(--font-sans)',
                                     opacity: 0.8
                                   }}>
@@ -2309,16 +2325,24 @@ export function ViewLotesBatch() {
                               );
                             })}
 
-                            {/* Rama de Modelos Oficiales Generados (Salida) */}
-                            {modelos.length > 0 && (
-                              <div style={{ marginTop: '6px', paddingTop: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#166534', fontWeight: 700, fontSize: '11.5px' }}>
+                            {/* Rama de Modelos Oficiales Generados (Salida) - SOLO VISIBLE TRAS PROCESAR EL LOTE */}
+                            {mostrarSalidaExp && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '6px', paddingTop: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#166534', fontWeight: 700, fontSize: '11.5px', padding: '2px 0' }}>
                                   <span style={{ color: 'var(--text-muted)', userSelect: 'none' }}>└──</span>
-                                  <FolderOpen size={13} style={{ color: '#166534' }} />
+                                  <FolderOpen size={13} style={{ color: '#166534', flexShrink: 0 }} />
                                   <span>salida/ (Modelos Oficiales SGTRI Generados)</span>
                                 </div>
 
-                                <div style={{ marginLeft: '24px', paddingLeft: '14px', borderLeft: '1px dashed #BBF7D0', marginTop: '2px' }}>
+                                <div style={{
+                                  marginLeft: '24px',
+                                  paddingLeft: '14px',
+                                  borderLeft: '1px dashed #BBF7D0',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  marginTop: '2px'
+                                }}>
                                   {modelos.map((modelo, mIdx) => {
                                     const isLastModel = mIdx === modelos.length - 1;
                                     const modPdfUrl = `/api/batch/archivo?lote_id=${encodeURIComponent(selectedLote)}&expediente_id=${encodeURIComponent(exp.nombre)}&archivo=${encodeURIComponent(modelo)}`;
@@ -2331,11 +2355,15 @@ export function ViewLotesBatch() {
                                           alignItems: 'center',
                                           gap: '6px',
                                           fontSize: '11.5px',
-                                          padding: '2px 0',
-                                          flexWrap: 'wrap'
+                                          padding: '2px 8px',
+                                          margin: '1px 0',
+                                          borderRadius: '4px',
+                                          width: 'fit-content',
+                                          maxWidth: '100%',
+                                          backgroundColor: 'transparent'
                                         }}
                                       >
-                                        <span style={{ color: 'var(--text-muted)', userSelect: 'none', fontSize: '11px' }}>
+                                        <span style={{ color: 'var(--text-muted)', userSelect: 'none', fontSize: '11px', flexShrink: 0 }}>
                                           {isLastModel ? '└──' : '├──'}
                                         </span>
                                         <FileText size={12} style={{ color: '#DC2626', flexShrink: 0 }} />
@@ -2410,10 +2438,10 @@ export function ViewLotesBatch() {
                   }}>
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {isLoteProcesado ? 'Lote completamente auditado y modelos generados' : 'Iniciar Fiscalización Masiva del Lote'}
+                        {loteFueProcesado ? 'Lote completamente auditado y modelos generados' : 'Iniciar Fiscalización Masiva del Lote'}
                       </div>
                       <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {isLoteProcesado 
+                        {loteFueProcesado 
                           ? 'Puedes abrir cualquier justificante o modelo haciendo clic en él, o volver a reprocesar el lote.'
                           : 'Se ejecutarán los procesos de extracción OCR/IA, validación de gastos y emisión de modelos oficiales PDF.'}
                       </div>
@@ -2427,14 +2455,15 @@ export function ViewLotesBatch() {
                       style={{ minWidth: '220px', justifyContent: 'center' }}
                     >
                       <Play size={15} style={{ fill: 'currentColor' }} />
-                      <span>{isLoteProcesado ? 'Reprocesar Lote Completo' : 'Procesar Lote Completo'}</span>
+                      <span>{loteFueProcesado ? 'Reprocesar Lote Completo' : 'Procesar Lote Completo'}</span>
                     </Btn>
                   </div>
                 </div>
               )}
 
             </div>
-          )}
+            );
+          })()}
 
         </div>
       )}
