@@ -5,7 +5,7 @@ import {
   Building2, Scale, Wallet, AlertTriangle, CheckCircle2,
   ShieldCheck, Trash2, Layers, FileCode, ArrowRight, ArrowLeft,
   FolderOpen, CheckCircle, FileCheck2, Sparkles, Folder, HelpCircle,
-  LayoutGrid, List
+  LayoutGrid, List, Clock
 } from 'lucide-react';
 import { cn, pollTask, fmtEur } from '../../lib/utils';
 import { Btn } from '../ui/Btn';
@@ -184,6 +184,7 @@ export function ViewLotesBatch() {
   const [running, setRunning] = useState<boolean>(false);
   const [resumen, setResumen] = useState<ResumenLote | null>(null);
   const [vistaModo, setVistaModo] = useState<'tabla' | 'informe_md'>('tabla');
+  const [tabPrecargados, setTabPrecargados] = useState<'arbol' | 'resultados'>('arbol');
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<{ url: string; titulo: string } | null>(null);
   const [expedienteArchivosModal, setExpedienteArchivosModal] = useState<{ nombre: string; archivos: string[] } | null>(null);
 
@@ -231,7 +232,7 @@ export function ViewLotesBatch() {
           bg: '#ECFDF5',
           color: '#065F46',
           border: '#A7F3D0',
-          icon: '🏢'
+          Icon: Building2
         };
       case 'honorarios':
         return {
@@ -239,7 +240,7 @@ export function ViewLotesBatch() {
           bg: '#EEF2FF',
           color: '#3730A3',
           border: '#C7D2FE',
-          icon: '🎓'
+          Icon: Scale
         };
       case 'dietas':
       default:
@@ -248,7 +249,7 @@ export function ViewLotesBatch() {
           bg: '#FFFBEB',
           color: '#92400E',
           border: '#FDE68A',
-          icon: '✈️'
+          Icon: Layers
         };
     }
   };
@@ -330,7 +331,7 @@ export function ViewLotesBatch() {
                             color: procInfo.color,
                             border: `1px solid ${procInfo.border}`
                           }}>
-                            <span>{procInfo.icon}</span>
+                            <procInfo.Icon size={12} />
                             <span>{procInfo.label}</span>
                           </span>
                         </td>
@@ -564,7 +565,7 @@ export function ViewLotesBatch() {
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Error al guardar datos comunes');
-      setNotifExito('✓ Contexto del proyecto guardado en datos_comunes_expedientes.md');
+      setNotifExito('Contexto del proyecto guardado en datos_comunes_expedientes.md');
       await cargarDetalleLote(selectedLote);
       await cargarLotes(selectedLote);
       return true;
@@ -595,7 +596,8 @@ export function ViewLotesBatch() {
       setResumen(resultado);
       await cargarLotes(loteId);
       await cargarDetalleLote(loteId);
-      setNotifExito(`¡Lote "${loteId}" fiscalizado con éxito! Modelos emitidos.`);
+      setNotifExito(`Lote "${loteId}" fiscalizado con éxito. Modelos emitidos.`);
+      setTabPrecargados('resultados');
       
       if (pantallaActual === 'cargar_nuevo') {
         setPasoCarga('resultados');
@@ -1368,11 +1370,11 @@ export function ViewLotesBatch() {
 
               <div style={{ backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left', width: '100%', maxWidth: '440px', fontSize: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-green)' }}>
-                  <span>✓</span>
+                  <Check size={13} style={{ color: 'var(--color-green)' }} />
                   <span>Estructura de directorios y contexto de proyecto leídos</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-green)' }}>
-                  <span>✓</span>
+                  <Check size={13} style={{ color: 'var(--color-green)' }} />
                   <span>Extracción OCR e Inteligencia Artificial de justificantes</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-blue-inst)', fontWeight: 600 }}>
@@ -1423,7 +1425,7 @@ export function ViewLotesBatch() {
                   <div>
                     <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Expedientes</div>
                     <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{resumen?.total_expedientes ?? totalExpedientes}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--color-success-text)' }}>✓ 100% Tramitados</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-success-text)' }}>100% Tramitados</div>
                   </div>
                 </div>
 
@@ -1475,6 +1477,7 @@ export function ViewLotesBatch() {
       {pantallaActual === 'precargados' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
+          {/* BARRA SUPERIOR DE NAVEGACIÓN */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <button
               type="button"
@@ -1497,7 +1500,7 @@ export function ViewLotesBatch() {
                     cargarResumen(selectedLote);
                   }
                 }}
-                disabled={loadingLotes}
+                disabled={loadingLotes || running}
               >
                 <RefreshCw size={13} />
                 <span>Actualizar</span>
@@ -1510,6 +1513,7 @@ export function ViewLotesBatch() {
                   setPantallaActual('cargar_nuevo');
                   setPasoCarga('subida');
                 }}
+                disabled={running}
               >
                 <Plus size={13} />
                 <span>Cargar Nuevo Lote</span>
@@ -1540,7 +1544,11 @@ export function ViewLotesBatch() {
 
               <select
                 value={selectedLote}
-                onChange={(e) => setSelectedLote(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedLote(val);
+                  setTabPrecargados('arbol');
+                }}
                 disabled={running}
                 style={{
                   fontFamily: 'var(--font-mono)',
@@ -1555,7 +1563,7 @@ export function ViewLotesBatch() {
               >
                 {lotes.map((l) => (
                   <option key={l.id} value={l.id}>
-                    {l.id} ({l.total_expedientes} exp.) {l.procesado ? '✓ Fiscalizado' : '⌛ Pendiente'}
+                    {l.id} ({l.total_expedientes} exp.) {l.procesado ? '[Fiscalizado]' : '[Pendiente]'}
                   </option>
                 ))}
               </select>
@@ -1571,8 +1579,8 @@ export function ViewLotesBatch() {
                 backgroundColor: isLoteProcesado ? '#DCFCE7' : '#FEF3C7',
                 color: isLoteProcesado ? '#166534' : '#92400E'
               }}>
-                {isLoteProcesado ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
-                <span>{isLoteProcesado ? 'Fiscalizado con Modelos' : 'Pendiente de Fiscalización'}</span>
+                {isLoteProcesado ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                <span>{isLoteProcesado ? 'Fiscalizado con Modelos' : 'Pendiente de Procesamiento'}</span>
               </span>
             </div>
 
@@ -1581,167 +1589,390 @@ export function ViewLotesBatch() {
                 <a
                   href={`/api/batch/descargar_zip/${encodeURIComponent(selectedLote)}`}
                   download
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-outline btn-sm"
                   style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <Download size={13} />
-                  <span>Descargar ZIP Completo</span>
+                  <span>Descargar ZIP</span>
                 </a>
               )}
 
               <Btn
-                variant="outline"
+                variant="primary"
                 size="sm"
                 onClick={() => ejecutarProcesamiento(selectedLote)}
                 disabled={running || !selectedLote}
               >
-                {running ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-                <span>{isLoteProcesado ? 'Reprocesar Lote' : 'Fiscalizar Lote'}</span>
+                {running ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} style={{ fill: 'currentColor' }} />}
+                <span>{isLoteProcesado ? 'Reprocesar Lote' : 'Procesar Lote'}</span>
               </Btn>
             </div>
           </div>
 
-          {/* CONTENIDO DEL LOTE: SI ESTÁ FISCALIZADO */}
-          {isLoteProcesado ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {/* 4 KPIS */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-blue-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-blue-inst)' }}>
-                    <Layers size={22} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Expedientes</div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{resumen?.total_expedientes ?? totalExpedientes}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--color-success-text)' }}>✓ 100% Tramitados</div>
-                  </div>
-                </div>
-
-                <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-green-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-green)' }}>
-                    <Wallet size={22} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Importe Imputado</div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{resumen ? fmtEur(resumen.importe_total_acumulado) : '—'}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Base contable auditada</div>
-                  </div>
-                </div>
-
-                <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-orange-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-orange)' }}>
-                    <Scale size={22} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Financiación</div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{finConfig.id} - {finConfig.normativa}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Org: {formOrganica}</div>
-                  </div>
-                </div>
-
-                <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ShieldCheck size={22} style={{ color: 'var(--color-success)' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Dictamen</div>
-                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--color-success)', marginTop: '2px' }}>Fiscalizado Conforme</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sin reparos</div>
-                  </div>
-                </div>
+          {/* ESTADO EN PROCESAMIENTO EN VIVO */}
+          {running && (
+            <div className="panel" style={{ padding: '3.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.5rem', textAlign: 'center' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--bg-blue-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-blue-inst)' }}>
+                <Loader2 size={32} style={{ animation: 'spin 1.2s linear infinite' }} />
               </div>
 
-              {/* MODELOS OFICIALES */}
-              {renderModelosOficiales()}
-            </div>
-          ) : (
-            /* SI EL LOTE ESTÁ PENDIENTE */
-            <div className="panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  Expedientes en Cola de Fiscalización ({totalExpedientes})
-                </h2>
-                <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: '3px 0 0' }}>
-                  Este lote aún no ha sido fiscalizado. Revisa los justificantes y pulsa en "Iniciar Fiscalización Masiva".
+                <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Procesando lote en el servidor...
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '540px', margin: '6px auto 0' }}>
+                  Extrayendo datos de facturas y justificantes por OCR e IA, aplicando bases presupuestarias UEx 2026 y generando modelos PDF oficiales.
                 </p>
               </div>
 
-              <div className="admin-table-container">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '220px' }}>Expediente</th>
-                      <th style={{ width: '130px' }}>Documentos</th>
-                      <th>Proveedor / Beneficiario</th>
-                      <th>Trámite Estimado</th>
-                      <th style={{ width: '120px', textAlign: 'right' }}>Importe</th>
-                      <th style={{ width: '100px', textAlign: 'center' }}>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loteDetalle?.expedientes.map((exp) => (
-                      <tr key={exp.nombre}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <FolderArchive size={14} style={{ color: '#D97706' }} />
-                            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{exp.nombre}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-                            {exp.total_archivos} archivo{exp.total_archivos === 1 ? '' : 's'}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 500 }}>{exp.proveedor_detectado || 'Pendiente'}</td>
-                        <td style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                          {exp.tipo_procedimiento === 'pago_proveedor' ? 'Pago a Proveedor' :
-                           exp.tipo_procedimiento === 'honorarios' ? 'Honorarios y Asistencias' : 'Dietas y Desplazamientos'}
-                        </td>
-                        <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                          {exp.importe > 0 ? fmtEur(exp.importe) : '—'}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => setExpedienteArchivosModal({ nombre: exp.nombre, archivos: exp.archivos })}
-                            className="btn btn-outline btn-sm"
-                            style={{ fontSize: '11px', padding: '2px 8px' }}
-                          >
-                            <Eye size={12} />
-                            <span>Ver</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', width: '100%', maxWidth: '460px', fontSize: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-green)' }}>
+                  <CheckCircle2 size={14} />
+                  <span>Estructura de directorios y datos comunes leídos</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-blue-inst)', fontWeight: 600 }}>
+                  <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>Extracción OCR e Inteligencia Artificial de justificantes...</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                  <Clock size={14} />
+                  <span>Verificación presupuestaria SGTRI 2026</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                  <Clock size={14} />
+                  <span>Generación de modelos oficiales PDF AcroForm y empaquetado ZIP</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CUERPO PRINCIPAL (SI NO ESTÁ EN EJECUCIÓN) */}
+          {!running && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* PESTAÑAS: ÁRBOL DE DIRECTORIOS VS RESULTADOS */}
+              <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setTabPrecargados('arbol')}
+                  className={`filter-btn ${tabPrecargados === 'arbol' ? 'active' : ''}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '12px' }}
+                >
+                  <FolderOpen size={14} />
+                  <span>Estructura del Lote (Vista de Árbol)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTabPrecargados('resultados')}
+                  disabled={!isLoteProcesado && !resumen}
+                  className={`filter-btn ${tabPrecargados === 'resultados' ? 'active' : ''}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '12px', opacity: (!isLoteProcesado && !resumen) ? 0.5 : 1 }}
+                >
+                  <FileCheck2 size={14} />
+                  <span>Resultados de Fiscalización {isLoteProcesado ? '(Completado)' : ''}</span>
+                </button>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                <Btn
-                  variant="primary"
-                  size="lg"
-                  onClick={() => ejecutarProcesamiento(selectedLote)}
-                  disabled={running || !selectedLote || totalExpedientes === 0}
-                >
-                  {running ? (
-                    <>
-                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                      <span>Fiscalizando lote en proceso...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play size={16} style={{ fill: 'currentColor' }} />
-                      <span>Iniciar Fiscalización Masiva</span>
-                    </>
-                  )}
-                </Btn>
-              </div>
+              {/* PESTAÑA 1: VISTA DE ÁRBOL SIN EMOJIS */}
+              {tabPrecargados === 'arbol' && (
+                <div className="panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                  {/* Cabecera del Panel */}
+                  <div style={{
+                    padding: '1.25rem 1.5rem',
+                    backgroundColor: 'var(--bg-surface)',
+                    borderBottom: '1px solid var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <div>
+                      <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FolderOpen size={17} style={{ color: 'var(--color-blue-inst)' }} />
+                        <span>Subdirectorios y Archivos Detectados</span>
+                      </h2>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '3px 0 0' }}>
+                        Ruta física: <span style={{ fontFamily: 'var(--font-mono)' }}>{loteDetalle?.ruta || `dataset/lotes_prueba/${selectedLote}`}</span>
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: 'var(--bg-subtle)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-secondary)'
+                      }}>
+                        {loteDetalle?.total_expedientes ?? 0} Subdirectorios
+                      </span>
+
+                      <Btn
+                        variant="primary"
+                        size="sm"
+                        onClick={() => ejecutarProcesamiento(selectedLote)}
+                        disabled={running || !selectedLote}
+                      >
+                        <Play size={13} style={{ fill: 'currentColor' }} />
+                        <span>{isLoteProcesado ? 'Reprocesar Lote' : 'Procesar Lote'}</span>
+                      </Btn>
+                    </div>
+                  </div>
+
+                  {/* Visualizador de Árbol Físico */}
+                  <div style={{
+                    padding: '1.5rem 1.75rem',
+                    backgroundColor: 'var(--bg-app)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '12.5px',
+                    lineHeight: '1.75',
+                    maxHeight: '520px',
+                    overflowY: 'auto'
+                  }}>
+                    {/* Raíz */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      <FolderOpen size={16} style={{ color: 'var(--color-blue-inst)' }} />
+                      <span>{selectedLote}/</span>
+                      <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>(directorio principal)</span>
+                    </div>
+
+                    {/* Contexto común */}
+                    <div style={{
+                      marginLeft: '8px',
+                      paddingLeft: '20px',
+                      borderLeft: '1px dashed var(--border-color)',
+                      paddingTop: '3px',
+                      paddingBottom: '4px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-green)' }}>
+                        <span style={{ color: 'var(--text-muted)', userSelect: 'none' }}>├──</span>
+                        <FileCode size={14} style={{ color: 'var(--color-blue-inst)', flexShrink: 0 }} />
+                        <span style={{ fontWeight: 600 }}>datos_comunes_expedientes.md</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
+                          (Contexto común: {formReferencia || '256/21'} · Orgánica: {formOrganica || '18.IW.97.89'})
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Subdirectorios */}
+                    {loteDetalle?.expedientes.map((exp, expIdx) => {
+                      const isLast = expIdx === loteDetalle.expedientes.length - 1;
+                      const procInfo = getProcInfo(exp.tipo_procedimiento);
+
+                      return (
+                        <div
+                          key={exp.nombre}
+                          style={{
+                            marginLeft: '8px',
+                            paddingLeft: '20px',
+                            borderLeft: isLast ? '1px dashed transparent' : '1px dashed var(--border-color)',
+                            position: 'relative',
+                            marginTop: '10px'
+                          }}
+                        >
+                          {/* Fila del Subdirectorio */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ color: 'var(--text-muted)', userSelect: 'none' }}>{isLast ? '└──' : '├──'}</span>
+                            <Folder size={15} style={{ color: '#D97706', flexShrink: 0 }} />
+                            <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '13px' }}>
+                              {exp.nombre}/
+                            </span>
+                            <span style={{
+                              fontSize: '10.5px',
+                              fontWeight: 600,
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              backgroundColor: 'var(--bg-subtle)',
+                              border: '1px solid var(--border-color)',
+                              color: 'var(--text-secondary)',
+                              fontFamily: 'var(--font-sans)'
+                            }}>
+                              {exp.total_archivos} archivo{exp.total_archivos === 1 ? '' : 's'}
+                            </span>
+                            <span style={{
+                              fontSize: '10.5px',
+                              fontWeight: 600,
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              backgroundColor: procInfo.bg,
+                              color: procInfo.color,
+                              border: `1px solid ${procInfo.border}`,
+                              fontFamily: 'var(--font-sans)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <procInfo.Icon size={11} />
+                              <span>{procInfo.label}</span>
+                            </span>
+                          </div>
+
+                          {/* Archivos contenidos */}
+                          <div style={{
+                            marginLeft: '28px',
+                            paddingLeft: '18px',
+                            borderLeft: '1px dashed var(--border-color)',
+                            marginTop: '4px',
+                            marginBottom: '6px'
+                          }}>
+                            {exp.archivos.map((archivo, aIdx) => {
+                              const isLastArch = aIdx === exp.archivos.length - 1;
+                              const ext = archivo.split('.').pop()?.toLowerCase();
+                              let iconColor = 'var(--text-muted)';
+                              if (ext === 'pdf') iconColor = '#DC2626';
+                              else if (ext === 'docx' || ext === 'doc') iconColor = '#2563EB';
+                              else if (ext === 'xlsx' || ext === 'xls') iconColor = '#16A34A';
+                              else if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') iconColor = '#9333EA';
+
+                              return (
+                                <div
+                                  key={archivo}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '7px',
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    paddingTop: '2px',
+                                    paddingBottom: '2px'
+                                  }}
+                                >
+                                  <span style={{ color: 'var(--text-muted)', userSelect: 'none', fontSize: '11px' }}>
+                                    {isLastArch ? '└──' : '├──'}
+                                  </span>
+                                  <FileText size={13} style={{ color: iconColor, flexShrink: 0 }} />
+                                  <span>{archivo}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Barra de Acción Inferior */}
+                  <div style={{
+                    padding: '1.25rem 1.5rem',
+                    backgroundColor: 'var(--bg-subtle)',
+                    borderTop: '1px solid var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Iniciar Fiscalización Masiva del Lote
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Se ejecutarán los procesos de extracción OCR/IA, validación de gastos y emisión de modelos oficiales PDF.
+                      </div>
+                    </div>
+
+                    <Btn
+                      variant="primary"
+                      size="lg"
+                      onClick={() => ejecutarProcesamiento(selectedLote)}
+                      disabled={running || !selectedLote}
+                      style={{ minWidth: '240px', justifyContent: 'center' }}
+                    >
+                      <Play size={15} style={{ fill: 'currentColor' }} />
+                      <span>Procesar Lote Completo</span>
+                    </Btn>
+                  </div>
+                </div>
+              )}
+
+              {/* PESTAÑA 2: RESULTADOS DE FISCALIZACIÓN */}
+              {tabPrecargados === 'resultados' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {/* 4 KPIS */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                    <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-blue-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-blue-inst)' }}>
+                        <Layers size={22} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Expedientes</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{resumen?.total_expedientes ?? totalExpedientes}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-success-text)' }}>100% Tramitados</div>
+                      </div>
+                    </div>
+
+                    <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-green-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-green)' }}>
+                        <Wallet size={22} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Importe Imputado</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>{resumen ? fmtEur(resumen.importe_total_acumulado) : '—'}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Base contable auditada</div>
+                      </div>
+                    </div>
+
+                    <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-orange-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-orange)' }}>
+                        <Scale size={22} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Financiación</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{finConfig.id} - {finConfig.normativa}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Org: {formOrganica}</div>
+                      </div>
+                    </div>
+
+                    <div className="panel" style={{ padding: '1.15rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '8px', backgroundColor: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ShieldCheck size={22} style={{ color: 'var(--color-success)' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Dictamen</div>
+                        <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--color-success)', marginTop: '2px' }}>Fiscalizado Conforme</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sin reparos</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TABLA DE EXPEDIENTES CON MODELOS ABAJO EN FILA */}
+                  {renderModelosOficiales()}
+
+                  {/* BOTÓN PARA VOLVER A LA VISTA DE ÁRBOL */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTabPrecargados('arbol')}
+                      className="btn btn-outline btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <FolderOpen size={13} />
+                      <span>Ver Árbol de Archivos de Entrada</span>
+                    </button>
+
+                    <Btn
+                      variant="primary"
+                      size="sm"
+                      onClick={() => ejecutarProcesamiento(selectedLote)}
+                      disabled={running || !selectedLote}
+                    >
+                      <RefreshCw size={13} />
+                      <span>Reprocesar Lote</span>
+                    </Btn>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
         </div>
       )}
+
 
       {/* ========================================================================= */}
       {/* MODAL 1: VER ARCHIVOS DE UN SUBEXPEDIENTE                                 */}
