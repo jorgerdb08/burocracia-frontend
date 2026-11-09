@@ -7,9 +7,10 @@ import { ViewProcesar } from './components/views/ViewProcesar'
 import { ViewExpedientes } from './components/views/ViewExpedientes'
 import { ViewLotesBatch } from './components/views/ViewLotesBatch'
 import { GeneradorHonorariosInteligente } from './components/views/GeneradorHonorariosInteligente'
+import { GeneradorProveedoresInteligente } from './components/views/GeneradorProveedoresInteligente'
 import { ExpedienteInspectorModal } from './components/modals/ExpedienteInspectorModal'
 
-type View = 'inicio' | 'procesar' | 'expedientes' | 'lotes' | 'honorarios'
+type View = 'inicio' | 'procesar' | 'expedientes' | 'lotes' | 'honorarios' | 'proveedores'
 
 export default function App() {
   const [isDark, setIsDark] = useState(false)
@@ -28,7 +29,7 @@ export default function App() {
   const [view, setView] = useState<View>(() => {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('view') as View;
-    return (v && ['inicio', 'procesar', 'expedientes', 'lotes', 'honorarios'].includes(v)) ? v : 'inicio';
+    return (v && ['inicio', 'procesar', 'expedientes', 'lotes', 'honorarios', 'proveedores'].includes(v)) ? v : 'inicio';
   })
   const [casoParam, setCaso]         = useState<string | undefined>()
   const [templateParam, setTemplate] = useState<string | undefined>()
@@ -91,6 +92,20 @@ export default function App() {
               >
                 Lotes masivos
               </button>
+
+              <button 
+                onClick={() => setView('honorarios')}
+                className={cn('uex-nav-link', view === 'honorarios' && 'active')}
+              >
+                Honorarios IA
+              </button>
+
+              <button 
+                onClick={() => setView('proveedores')}
+                className={cn('uex-nav-link', view === 'proveedores' && 'active')}
+              >
+                Pago a Proveedores
+              </button>
             </nav>
           </div>
 
@@ -152,6 +167,7 @@ export default function App() {
             onIrLotes={() => setView('lotes')}
             onIrExpedientes={() => setView('expedientes')}
             onIrHonorarios={() => setView('honorarios')}
+            onIrProveedores={() => setView('proveedores')}
             onTramitarCaso={(casoId) => irProcesar(casoId)}
             onInspeccionarCaso={(id) => setInspectCasoId(id)}
           />
@@ -177,6 +193,9 @@ export default function App() {
         )}
         {view === 'honorarios' && (
           <GeneradorHonorariosInteligente />
+        )}
+        {view === 'proveedores' && (
+          <GeneradorProveedoresInteligente />
         )}
       </main>
 

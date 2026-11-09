@@ -14,6 +14,7 @@ interface ViewHeroLayoutProps {
   onIrLotes?: () => void;
   onIrExpedientes?: () => void;
   onIrHonorarios?: () => void;
+  onIrProveedores?: () => void;
   onTramitarCaso?: (casoId: string) => void;
   onInspeccionarCaso?: (casoId: string) => void;
 }
@@ -35,6 +36,7 @@ export function ViewHeroLayout({
   onIrLotes, 
   onIrExpedientes,
   onIrHonorarios,
+  onIrProveedores,
   onTramitarCaso,
   onInspeccionarCaso,
 }: ViewHeroLayoutProps) {
@@ -358,7 +360,7 @@ export function ViewHeroLayout({
 
             {/* Pago a proveedor */}
             <div 
-              onClick={() => onComenzarConPlantilla ? onComenzarConPlantilla('pago_proveedor') : onComenzar()}
+              onClick={() => onIrProveedores ? onIrProveedores() : (onComenzarConPlantilla ? onComenzarConPlantilla('pago_proveedor') : onComenzar())}
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 border: '1px solid var(--border-color)',
