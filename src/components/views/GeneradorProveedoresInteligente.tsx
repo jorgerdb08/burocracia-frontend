@@ -1373,10 +1373,11 @@ export function GeneradorProveedoresInteligente() {
               <a
                 href={resultadoDocumentos.zip_url}
                 download={resultadoDocumentos.zip_nombre || 'Pack_Oficial_Pago_Proveedores.zip'}
-                className="btn bg-[#176B52] hover:bg-[#12533e] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shrink-0 shadow-md"
+                className="btn btn-primary px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shrink-0 shadow-md text-white cursor-pointer hover:opacity-95 transition-all"
+                style={{ backgroundColor: '#176B52', color: '#ffffff', borderColor: '#176B52' }}
               >
-                <Archive size={16} />
-                <span>Descargar Pack Oficial (ZIP)</span>
+                <Archive size={16} className="text-white" />
+                <span className="text-white font-bold">Descargar Pack Oficial (ZIP)</span>
               </a>
             )}
           </div>
@@ -1418,12 +1419,13 @@ export function GeneradorProveedoresInteligente() {
                     <span>Previsualizar</span>
                   </button>
                   <a
-                    href={doc.url_descarga}
+                    href={doc.url_descarga || doc.download_url || doc.preview_url || '#'}
                     download={doc.nombre}
-                    className="btn btn-sm bg-[#176B52] hover:bg-[#12533e] text-white text-xs font-bold px-4 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xs"
+                    className="btn btn-sm btn-primary text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer hover:opacity-95 transition-all"
+                    style={{ backgroundColor: '#176B52', color: '#ffffff', borderColor: '#176B52' }}
                   >
-                    <Download size={13} />
-                    <span>Descargar PDF</span>
+                    <Download size={14} className="text-white" />
+                    <span className="text-white font-bold">Descargar PDF</span>
                   </a>
                 </div>
               </div>
