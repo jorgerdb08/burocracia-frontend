@@ -5,7 +5,7 @@ import {
   AlertOctagon, CheckCircle2, AlertTriangle, FileCheck, Building2,
   Scale, ShieldAlert, ArrowRight, Loader2, Eye, Edit3, Check, X,
   ArrowLeft, ShieldCheck, RefreshCw, FileText, CreditCard, Send,
-  Archive, CheckCircle
+  Archive, CheckCircle, RotateCcw, Play
 } from 'lucide-react';
 import { fmtEur, cn } from '../../lib/utils';
 
@@ -404,46 +404,44 @@ export function GeneradorProveedoresInteligente() {
             </div>
           </div>
 
-          {/* Stepper horizontal */}
-          <div className="flex items-center gap-2 self-start md:self-auto bg-slate-50 dark:bg-zinc-800/60 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-medium">
-            <button
-              onClick={() => setPaso(1)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all',
-                paso === 1
-                  ? 'bg-[#176B52] text-white font-bold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-zinc-700'
+          {/* Navegación y retorno de fase */}
+          {paso > 1 ? (
+            <div className="flex items-center gap-2 self-start md:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (paso === 3) setPaso(2);
+                  else if (paso === 2) setPaso(1);
+                }}
+                className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+              >
+                <ArrowLeft size={15} />
+                <span>{paso === 2 ? 'Volver a Selección' : 'Volver a Conciliación'}</span>
+              </button>
+              {paso === 3 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaso(1);
+                    setCasoActivoId(null);
+                    setExpediente(null);
+                    setResultadoDocumentos(null);
+                  }}
+                  className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                >
+                  <RotateCcw size={14} />
+                  <span>Nuevo Expediente</span>
+                </button>
               )}
-            >
-              <span>1. Expediente</span>
-            </button>
-            <span className="text-slate-300 dark:text-zinc-600">›</span>
-            <button
-              onClick={() => { if (expediente) setPaso(2); }}
-              disabled={!expediente}
-              className={cn(
-                'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all',
-                paso === 2
-                  ? 'bg-[#176B52] text-white font-bold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-zinc-700 disabled:opacity-40'
-              )}
-            >
-              <span>2. Conciliación</span>
-            </button>
-            <span className="text-slate-300 dark:text-zinc-600">›</span>
-            <button
-              onClick={() => { if (resultadoDocumentos) setPaso(3); }}
-              disabled={!resultadoDocumentos}
-              className={cn(
-                'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all',
-                paso === 3
-                  ? 'bg-[#176B52] text-white font-bold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-zinc-700 disabled:opacity-40'
-              )}
-            >
-              <span>3. Documentos</span>
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 self-start md:self-auto">
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#176B52] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Fase 1: Entrada y Análisis</span>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -463,28 +461,18 @@ export function GeneradorProveedoresInteligente() {
       {paso === 1 && (
         <div className="space-y-6">
           {/* Regla Universal de Factura Obligatoria */}
-          <div className="bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shrink-0">
-                <FileCheck size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm sm:text-base text-blue-900 dark:text-blue-100">
-                  Regla Administrativa: La factura es el único documento universalmente obligatorio
-                </h3>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5 leading-relaxed">
-                  Para iniciar el trámite sólo se exige la factura del proveedor. La justificación de tarjeta (justificante/extracto) o los datos bancarios (IBAN) se solicitan y validan dinámicamente según la modalidad identificada.
-                </p>
-              </div>
+          <div className="bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-2xl p-5 flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shrink-0">
+              <FileCheck size={22} />
             </div>
-            <a
-              href="/api/proveedores/descargar_zip_pruebas/Casos_Pago_Proveedores_OpenAI.zip"
-              download="Casos_Pago_Proveedores_OpenAI.zip"
-              className="btn btn-outline btn-sm border-blue-300 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900 flex items-center gap-1.5 shrink-0 font-bold shadow-2xs"
-            >
-              <Archive size={14} />
-              <span>Descargar Lote Pruebas ZIP (OpenAI)</span>
-            </a>
+            <div>
+              <h3 className="font-bold text-sm sm:text-base text-blue-900 dark:text-blue-100">
+                Regla Administrativa: La factura es el único documento universalmente obligatorio
+              </h3>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-1 leading-relaxed">
+                Para iniciar el trámite sólo se exige la factura del proveedor. La justificación de tarjeta (justificante/extracto) o los datos bancarios (IBAN) se solicitan y validan dinámicamente según la modalidad identificada.
+              </p>
+            </div>
           </div>
 
           {/* Subida Manual */}
@@ -592,15 +580,15 @@ export function GeneradorProveedoresInteligente() {
                       <button
                         type="button"
                         onClick={() => handleCargarCasoDemo(c.id)}
-                        className={cn(
-                          'btn btn-sm px-3 font-bold rounded-lg flex items-center gap-1 shadow-2xs',
-                          esVerde
-                            ? 'bg-[#176B52] hover:bg-[#12533e] text-white'
-                            : 'bg-rose-700 hover:bg-rose-800 text-white'
-                        )}
+                        style={{
+                          backgroundColor: esVerde ? '#176B52' : '#BE123C',
+                          color: '#FFFFFF'
+                        }}
+                        className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm hover:opacity-95 active:scale-95 transition-all cursor-pointer border-0"
                       >
+                        <Play size={12} fill="#FFFFFF" />
                         <span>Cargar y Analizar</span>
-                        <ArrowRight size={13} />
+                        <ArrowRight size={14} />
                       </button>
                     </div>
                   </div>
@@ -616,6 +604,21 @@ export function GeneradorProveedoresInteligente() {
       {/* ========================================================================= */}
       {paso === 2 && expediente && (
         <div className="space-y-6 animate-fade-in">
+          {/* Barra superior de retorno */}
+          <div className="flex items-center justify-between pb-1">
+            <button
+              type="button"
+              onClick={() => setPaso(1)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+            >
+              <ArrowLeft size={15} />
+              <span>Volver a selección de expedientes</span>
+            </button>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Expediente activo: <strong className="text-slate-800 dark:text-slate-200">{expediente.caso_id}</strong>
+            </span>
+          </div>
+
           {/* Banner de Semáforo y Conciliación */}
           {diagnostico && (
             <div
@@ -668,7 +671,8 @@ export function GeneradorProveedoresInteligente() {
                 <button
                   type="button"
                   onClick={handleGenerarDocumentos}
-                  className="btn bg-[#176B52] hover:bg-[#12533e] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shrink-0 shadow-md"
+                  style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white flex items-center gap-2 shrink-0 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
                 >
                   <FileCheck size={16} />
                   <span>Generar Documentos Oficiales SGTRI</span>
@@ -737,7 +741,8 @@ export function GeneradorProveedoresInteligente() {
                     <button
                       type="button"
                       onClick={handleSubsanarAlineando}
-                      className="btn btn-sm bg-[#176B52] hover:bg-[#12533e] text-white px-3.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-xs"
+                      style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 shadow-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
                       title="Ajusta el importe en la memoria para eliminar el descuadre con la factura oficial"
                     >
                       <Check size={14} />
@@ -1284,6 +1289,35 @@ export function GeneradorProveedoresInteligente() {
               </div>
             )}
           </div>
+
+          {/* Barra inferior de navegación de Paso 2 */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setPaso(1)}
+              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer self-start"
+            >
+              <ArrowLeft size={16} />
+              <span>Volver a Selección de Expedientes</span>
+            </button>
+
+            {diagnostico?.semaforo === 'VERDE' ? (
+              <button
+                type="button"
+                onClick={handleGenerarDocumentos}
+                style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
+                className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
+              >
+                <FileCheck size={16} />
+                <span>Generar Documentos Oficiales SGTRI</span>
+                <ArrowRight size={14} />
+              </button>
+            ) : (
+              <span className="text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 px-4 py-2.5 rounded-xl border border-rose-300 dark:border-rose-800">
+                Subsanar discrepancia para continuar
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -1374,9 +1408,9 @@ export function GeneradorProveedoresInteligente() {
             <button
               type="button"
               onClick={() => setPaso(2)}
-              className="btn btn-ghost text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
             >
-              <ArrowLeft size={14} />
+              <ArrowLeft size={15} />
               <span>Volver a Revisión y Conciliación</span>
             </button>
             <button
@@ -1388,9 +1422,11 @@ export function GeneradorProveedoresInteligente() {
                 setDiagnostico(null);
                 setResultadoDocumentos(null);
               }}
-              className="btn btn-outline btn-sm border-slate-300 text-slate-700 dark:text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg"
+              style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
             >
-              Tramitar Otro Expediente
+              <RotateCcw size={14} />
+              <span>Tramitar Otro Expediente</span>
             </button>
           </div>
         </div>
