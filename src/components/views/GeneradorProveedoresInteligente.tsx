@@ -28,30 +28,37 @@ export interface ProveedorInfo {
 
 export interface FacturaInfo {
   numero: string;
-  fecha_emision: string;
+  fecha?: string;
+  fecha_emision?: string;
   concepto: string;
   base_imponible: number;
   tipo_iva: number;
-  cuota_iva: number;
+  iva_pct?: number;
+  cuota_iva?: number;
+  iva_importe?: number;
   total: number;
-  moneda: string;
+  moneda?: string;
 }
 
 export interface PresupuestoInfo {
   investigador_principal: string;
   solicitante: string;
-  proyecto_referencia: string;
+  proyecto?: string;
+  proyecto_referencia?: string;
   organica: string;
-  centro_gasto: string;
+  centro_gasto?: string;
   tipo_gasto: string;
-  concepto_motivado: string;
+  motivo?: string;
+  concepto_motivado?: string;
   importe_solicitado: number;
 }
 
 export interface PagoInfo {
   modalidad: 'tarjeta' | 'transferencia';
+  es_tarjeta?: boolean;
   fecha_pago?: string;
   importe_pagado?: number;
+  num_tarjeta?: string;
   tarjeta_ultimos4?: string;
   justificante_asociado?: string;
   extracto_asociado?: string;
@@ -988,7 +995,7 @@ export function GeneradorProveedoresInteligente() {
                       <input
                         type="text"
                         disabled={!modoEdicion}
-                        value={expediente.factura.fecha_emision || ''}
+                        value={expediente.factura.fecha_emision || expediente.factura.fecha || ''}
                         onChange={(e) => {
                           const nuevo = { ...expediente, factura: { ...expediente.factura, fecha_emision: e.target.value } };
                           setExpediente(nuevo);
@@ -1105,7 +1112,7 @@ export function GeneradorProveedoresInteligente() {
                       <input
                         type="text"
                         disabled={!modoEdicion}
-                        value={expediente.presupuesto.proyecto_referencia || ''}
+                        value={expediente.presupuesto.proyecto_referencia || expediente.presupuesto.proyecto || ''}
                         onChange={(e) => {
                           const nuevo = { ...expediente, presupuesto: { ...expediente.presupuesto, proyecto_referencia: e.target.value } };
                           setExpediente(nuevo);
@@ -1171,43 +1178,56 @@ export function GeneradorProveedoresInteligente() {
                     {expediente.pago.modalidad === 'tarjeta' ? <CreditCard size={14} className="text-amber-600" /> : <Send size={14} className="text-blue-600" />}
                     <span>4. Modalidad de Pago</span>
                   </h4>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={!modoEdicion}
-                      onClick={() => {
-                        const nuevo: ExpedienteProveedor = {
-                          ...expediente,
-                          pago: { ...expediente.pago, modalidad: 'tarjeta' }
-                        };
-                        setExpediente(nuevo);
-                        ejecutarValidacion(nuevo);
-                      }}
-                      className={cn(
-                        'btn btn-xs rounded-md text-[11px] font-bold',
-                        expediente.pago.modalidad === 'tarjeta' ? 'bg-amber-600 text-white' : 'btn-ghost'
-                      )}
-                    >
-                      Tarjeta
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!modoEdicion}
-                      onClick={() => {
-                        const nuevo: ExpedienteProveedor = {
-                          ...expediente,
-                          pago: { ...expediente.pago, modalidad: 'transferencia' }
-                        };
-                        setExpediente(nuevo);
-                        ejecutarValidacion(nuevo);
-                      }}
-                      className={cn(
-                        'btn btn-xs rounded-md text-[11px] font-bold',
-                        expediente.pago.modalidad === 'transferencia' ? 'bg-blue-600 text-white' : 'btn-ghost'
-                      )}
-                    >
-                      Transferencia
-                    </button>
+                  <div className="flex items-center gap-1.5">
+                    {modoEdicion ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nuevo: ExpedienteProveedor = {
+                              ...expediente,
+                              pago: { ...expediente.pago, modalidad: 'tarjeta' }
+                            };
+                            setExpediente(nuevo);
+                            ejecutarValidacion(nuevo);
+                          }}
+                          className={cn(
+                            'btn btn-xs rounded-md text-[11px] font-bold border-0',
+                            expediente.pago.modalidad === 'tarjeta' ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300'
+                          )}
+                        >
+                          Tarjeta
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nuevo: ExpedienteProveedor = {
+                              ...expediente,
+                              pago: { ...expediente.pago, modalidad: 'transferencia' }
+                            };
+                            setExpediente(nuevo);
+                            ejecutarValidacion(nuevo);
+                          }}
+                          className={cn(
+                            'btn btn-xs rounded-md text-[11px] font-bold border-0',
+                            expediente.pago.modalidad === 'transferencia' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300'
+                          )}
+                        >
+                          Transferencia
+                        </button>
+                      </>
+                    ) : (
+                      <span
+                        className={cn(
+                          'px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide flex items-center gap-1 border shadow-xs',
+                          expediente.pago.modalidad === 'tarjeta'
+                            ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800'
+                            : 'bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800'
+                        )}
+                      >
+                        {expediente.pago.modalidad === 'tarjeta' ? 'Modalidad A · Tarjeta Investigador' : 'Modalidad B · Pendiente Transferencia'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1223,7 +1243,7 @@ export function GeneradorProveedoresInteligente() {
                           <input
                             type="text"
                             disabled={!modoEdicion}
-                            value={expediente.pago.fecha_pago || ''}
+                            value={expediente.pago.fecha_pago || expediente.factura.fecha_emision || expediente.factura.fecha || ''}
                             onChange={(e) => {
                               const nuevo = { ...expediente, pago: { ...expediente.pago, fecha_pago: e.target.value } };
                               setExpediente(nuevo);
@@ -1236,7 +1256,7 @@ export function GeneradorProveedoresInteligente() {
                           <input
                             type="text"
                             disabled={!modoEdicion}
-                            value={expediente.pago.tarjeta_ultimos4 || '**** **** **** 1234'}
+                            value={expediente.pago.tarjeta_ultimos4 || expediente.pago.num_tarjeta || '**** **** **** 4171'}
                             className="input input-sm w-full font-mono bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
                             readOnly
                           />
