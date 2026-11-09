@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
 
@@ -6,7 +7,7 @@ import {
 
   ChevronLeft, RotateCcw, Check, Eye, CheckCircle2, XCircle, FileText, FolderOpen, Printer, Info, ShieldCheck,
 
-  Scale, FileCheck, Building2, HelpCircle, ExternalLink, Copy, Terminal, ChevronDown, ChevronUp, ZoomIn,
+  Scale, FileCheck, FileSpreadsheet, AlertOctagon, Building2, HelpCircle, ExternalLink, Copy, Terminal, ChevronDown, ChevronUp, ZoomIn,
 
   Calendar, Car, BedDouble, MapPin, Navigation, Gauge, Fuel, CreditCard, Clock, Sparkles, Route, ArrowRightLeft,
 
@@ -22,6 +23,7 @@ import { ViewGrafo } from './ViewGrafo';
 
 import { FormularioHonorariosUEx } from './FormularioHonorariosUEx';
 
+import { FormularioLiquidacionEditable } from './FormularioLiquidacionEditable';
 import { DocumentosSalidaHonorarios } from './DocumentosSalidaHonorarios';
 
 import { cn, pollTask, fmtEur } from '../../lib/utils';
@@ -1113,6 +1115,229 @@ export function ViewProcesar({
   const [auditoriaSubTab, setAuditoriaSubTab] = useState<'logs' | 'grafo'>('logs');
 
   const [copied, setCopied] = useState(false);
+
+  // Estados para Documentación de Entrada y Visor Modal Oficial
+  const [mostrarDocumentosEntrada, setMostrarDocumentosEntrada] = useState<boolean>(false);
+  const [docEnVisor, setDocEnVisor] = useState<any | null>(null);
+  const [loadingDocVisor, setLoadingDocVisor] = useState<boolean>(false);
+  const [errorDocVisor, setErrorDocVisor] = useState<string | null>(null);
+  const [hojaExcelActiva, setHojaExcelActiva] = useState<number>(0);
+
+  // Cerrar modal de visor con la tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && docEnVisor) {
+        setDocEnVisor(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [docEnVisor]);
+
+  // Asegurar que casoDetalle esté cargado al visualizar resultados
+  useEffect(() => {
+    if (result?.caso_id && (!casoDetalle || !casoDetalle.archivos || casoDetalle.archivos.length === 0)) {
+      fetch(`/api/caso/${encodeURIComponent(result.caso_id)}`)
+        .then(r => r.json())
+        .then(d => { if (d.ok && d.detalle) setCasoDetalle(d.detalle); })
+        .catch(() => {});
+    }
+  }, [result?.caso_id]);
+
+  // Manejador para abrir documento en Visor Modal
+  const handleVerDocumento = async (archivo: any) => {
+    const cid = result?.caso_id || casoSel || '';
+    if (!cid || !archivo) return;
+    setLoadingDocVisor(true);
+    setErrorDocVisor(null);
+    setHojaExcelActiva(0);
+
+    const nombre = archivo.name || archivo.nombre || '';
+    const ext = nombre.split('.').pop()?.toLowerCase() || '';
+    const tipoDetectado = ['xlsx', 'xls', 'csv'].includes(ext)
+      ? 'xlsx'
+      : (['docx', 'doc'].includes(ext)
+        ? 'docx'
+        : (ext === 'pdf' ? 'pdf' : (['png', 'jpg', 'jpeg', 'webp'].includes(ext) ? 'imagen' : 'texto')));
+
+    setDocEnVisor({
+      nombre: nombre,
+      categoria: archivo.categoria || 'Documento',
+      tamano: archivo.size || archivo.tamano,
+      tipo: tipoDetectado,
+      download_url: `/api/caso/${encodeURIComponent(cid)}/archivo/${encodeURIComponent(nombre)}?download=1`,
+      url_raw: `/api/caso/${encodeURIComponent(cid)}/archivo/${encodeURIComponent(nombre)}`
+    });
+
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(cid)}/archivo/${encodeURIComponent(nombre)}/preview`);
+      const data = await res.json();
+      if (data.ok) {
+        setDocEnVisor(data);
+      } else {
+        setErrorDocVisor(data.error || 'No se pudo cargar la vista previa directa.');
+      }
+    } catch (err: any) {
+      setErrorDocVisor(err.message || 'Error de conexión al cargar la vista previa.');
+    } finally {
+      setLoadingDocVisor(false);
+    }
+  };
+
+  // Renderizador de Tarjeta Colapsable de Documentos de Entrada en 2 Columnas
+  const renderCardDocumentosEntrada = (archivos: any[], cid: string) => {
+    if (!archivos || archivos.length === 0) return null;
+
+    return (
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs mb-4">
+        {/* Cabecera Colapsable */}
+        <div className="p-4 sm:p-4.5 bg-slate-50/70 dark:bg-zinc-950/40 border-b border-zinc-200/80 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-[#176B52] dark:text-emerald-300">
+              <FileText size={17} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                  Documentación y Justificantes de Entrada ({archivos.length} archivo(s))
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-zinc-200/60 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                  Originales
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                Archivos originales aportados para este expediente (facturas de hotel, billetes, certificados bancarios, etc.).
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMostrarDocumentosEntrada(!mostrarDocumentosEntrada)}
+            className="btn btn-ghost btn-xs text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shadow-2xs self-end sm:self-auto"
+          >
+            {mostrarDocumentosEntrada ? (
+              <>
+                <span>Ocultar lista</span>
+                <ChevronUp size={14} />
+              </>
+            ) : (
+              <>
+                <span>Ver lista ({archivos.length})</span>
+                <ChevronDown size={14} />
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Contenido en 2 columnas (Oculto por defecto) */}
+        {mostrarDocumentosEntrada && (
+          <div className="p-4 bg-slate-50/40 dark:bg-zinc-950/20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {archivos.map((archivo: any, aIdx: number) => {
+                const nombre = archivo.name || archivo.nombre || '';
+                const ext = nombre.split('.').pop()?.toLowerCase() || '';
+                const esExcel = ['xlsx', 'xls', 'csv'].includes(ext);
+                const esPdf = ext === 'pdf';
+                const esWord = ['docx', 'doc'].includes(ext);
+                const esImg = ['png', 'jpg', 'jpeg', 'webp'].includes(ext);
+                const fileDownloadUrl = `/api/caso/${encodeURIComponent(cid)}/archivo/${encodeURIComponent(nombre)}?download=1`;
+                const tamanoKb = archivo.size || archivo.tamano ? ((archivo.size || archivo.tamano) / 1024).toFixed(0) : null;
+
+                let iconElem = <FileText size={16} color="#64748B" />;
+                let iconBg = '#F1F5F9';
+                let iconBorder = '#E2E8F0';
+                if (esExcel) {
+                  iconElem = <FileSpreadsheet size={16} color="#176B52" />;
+                  iconBg = '#ECFDF5';
+                  iconBorder = '#A7F3D0';
+                } else if (esPdf) {
+                  iconElem = <FileText size={16} color="#DC2626" />;
+                  iconBg = '#FEF2F2';
+                  iconBorder = '#FECACA';
+                } else if (esWord) {
+                  iconElem = <FileText size={16} color="#2563EB" />;
+                  iconBg = '#EFF6FF';
+                  iconBorder = '#BFDBFE';
+                } else if (esImg) {
+                  iconElem = <Eye size={16} color="#7E22CE" />;
+                  iconBg = '#FAF5FF';
+                  iconBorder = '#E9D5FF';
+                }
+
+                return (
+                  <div
+                    key={aIdx}
+                    className="p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center justify-between gap-3 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          backgroundColor: iconBg,
+                          border: `1px solid ${iconBorder}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        {iconElem}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <span
+                          onClick={() => handleVerDocumento(archivo)}
+                          title={`Ver contenido de ${nombre}`}
+                          className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate block cursor-pointer hover:text-[#176B52]"
+                        >
+                          {nombre}
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                            {archivo.categoria || ext.toUpperCase() || 'Documento'}
+                          </span>
+                          {tamanoKb && (
+                            <span className="text-[10px] font-mono text-zinc-400">
+                              {tamanoKb} KB
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleVerDocumento(archivo)}
+                        className="btn btn-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-[#176B52] border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 hover:bg-[#176B52] hover:text-white cursor-pointer transition-all"
+                        title="Ver documento en ventana modal estructurada"
+                      >
+                        <Eye size={12} />
+                        <span>Ver</span>
+                      </button>
+
+                      <a
+                        href={fileDownloadUrl}
+                        download={nombre}
+                        className="btn btn-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer transition-all"
+                        title="Descargar archivo original"
+                      >
+                        <Download size={12} />
+                        <span>Descargar</span>
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
 
 
@@ -2783,64 +3008,14 @@ export function ViewProcesar({
 
 
 
-                  {/* Listado de Archivos Físicos del Caso */}
-
+                  {/* Listado Colapsable de Documentación y Justificantes de Entrada */}
                   {loadingDetalle ? (
-
                     <div className="flex items-center gap-2 text-xs text-zinc-400 py-3 animate-pulse">
-
-                      <Loader2 size={14} className="animate-spin" />
-
+                      <Loader2 size={14} className="animate-spin text-[#176B52]" />
                       <span>Inspeccionando y auditando archivos del caso...</span>
-
                     </div>
-
-                  ) : casoDetalle?.archivos && casoDetalle.archivos.length > 0 ? (
-
-                    <div className="space-y-2 pt-1">
-
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-
-                        Archivos Digitales Asociados ({casoDetalle.archivos.length})
-
-                      </span>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-
-                        {casoDetalle.archivos.map((a: any, idx: number) => (
-
-                          <div key={idx} className="p-2.5 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between text-xs gap-2">
-
-                            <div className="flex items-center gap-2 truncate">
-
-                              <FileText size={14} className="text-zinc-500 shrink-0" />
-
-                              <span className="truncate font-medium text-zinc-800 dark:text-zinc-200" title={a.name}>
-
-                                {a.name}
-
-                              </span>
-
-                            </div>
-
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium shrink-0 font-mono">
-
-                              {a.categoria || a.ext}
-
-                            </span>
-
-                          </div>
-
-                        ))}
-
-                      </div>
-
-                    </div>
-
                   ) : (
-
-                    <p className="text-xs text-zinc-400 py-2">No se encontraron archivos en este expediente.</p>
-
+                    renderCardDocumentosEntrada(casoDetalle?.archivos, casoSel || '')
                   )}
 
                 </div>
@@ -4039,6 +4214,9 @@ export function ViewProcesar({
 
         <div ref={resultRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
 
+          {/* DOCUMENTACIÓN Y JUSTIFICANTES DE ENTRADA (COLAPSABLE EN 2 COLUMNAS, OCULTO POR DEFECTO) */}
+          {renderCardDocumentosEntrada(casoDetalle?.archivos, result.caso_id)}
+
 
 
           {/* 1. DICTAMEN OFICIAL DE FISCALIZACIÓN */}
@@ -4634,6 +4812,25 @@ export function ViewProcesar({
           </div>
 
 
+
+          {/* 1.5 FORMULARIO DE LIQUIDACIÓN Y AJUSTE DE GASTOS EXTRAÍDOS */}
+          <FormularioLiquidacionEditable
+            casoId={result.caso_id}
+            extraccion={result.extraccion}
+            liquidacion={result.liquidacion}
+            selectedTemplate={selectedTemplate}
+            onDataUpdated={(nuevaExt, nuevaLiq, nuevoLiq) => {
+              setResult(prev => {
+                if (!prev) return null;
+                return {
+                  ...prev,
+                  extraccion: nuevaExt,
+                  liquidacion: nuevaLiq,
+                  liquido_ag: nuevoLiq
+                };
+              });
+            }}
+          />
 
           {/* 2. PESTAÑAS Y CONTENIDO DETALLADO */}
 
@@ -7624,6 +7821,275 @@ export function ViewProcesar({
       )}
 
 
+
+      {/* VENTANA MODAL FLOTANTE DEL VISOR DE DOCUMENTOS DE ENTRADA (FONDO OSCURO BORROSO) */}
+      {docEnVisor && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-3 sm:p-6 animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            zIndex: 99999,
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            margin: 0
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDocEnVisor(null);
+          }}
+        >
+          <div
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full flex flex-col overflow-hidden shadow-2xl"
+            style={{
+              width: '92vw',
+              maxWidth: '1100px',
+              height: '88vh',
+              maxHeight: '88vh',
+              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.6)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera de la Ventana Modal */}
+            <div className="px-5 py-3.5 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-[#176B52] dark:text-emerald-300 shrink-0">
+                  {docEnVisor.tipo === 'xlsx' ? (
+                    <FileSpreadsheet size={18} />
+                  ) : docEnVisor.tipo === 'docx' ? (
+                    <FileText size={18} />
+                  ) : docEnVisor.tipo === 'pdf' ? (
+                    <FileText size={18} className="text-rose-600" />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate" title={docEnVisor.nombre}>
+                      {docEnVisor.nombre}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-[#176B52] dark:bg-emerald-950 dark:text-emerald-300">
+                      {docEnVisor.categoria || 'Documento'}
+                    </span>
+                    {docEnVisor.tamano ? (
+                      <span className="text-[11px] text-zinc-500 font-mono">
+                        {(docEnVisor.tamano / 1024).toFixed(0)} KB
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    {docEnVisor.tipo === 'xlsx' && 'Visualizador interactivo de hoja de cálculo Excel'}
+                    {docEnVisor.tipo === 'docx' && 'Visualizador estructurado de documento Word (.docx)'}
+                    {docEnVisor.tipo === 'pdf' && 'Visualizador integrado de documento PDF'}
+                    {docEnVisor.tipo === 'imagen' && 'Visualizador de imagen'}
+                    {docEnVisor.tipo === 'texto' && 'Visualizador de archivo de texto'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Acciones de la Ventana */}
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={docEnVisor.download_url || `/api/caso/${encodeURIComponent(result?.caso_id || casoSel || '')}/archivo/${encodeURIComponent(docEnVisor.nombre)}?download=1`}
+                  download={docEnVisor.nombre}
+                  className="btn btn-outline btn-xs flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold px-3 py-1.5 rounded-lg"
+                  title="Descargar este archivo a su ordenador"
+                >
+                  <Download size={13} />
+                  <span>Descargar Archivo</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setDocEnVisor(null)}
+                  className="btn btn-ghost btn-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all font-semibold cursor-pointer"
+                  title="Cerrar esta ventana (Esc)"
+                >
+                  <X size={15} />
+                  <span className="text-xs">Cerrar</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido de la Ventana Modal con Scroll Interno - Lienzo con Contraste Editorial */}
+            <div
+              className="p-4 sm:p-8 flex-1 overflow-y-auto doc-viewer-canvas"
+              style={{ backgroundColor: '#CBD5E1' }}
+            >
+              {loadingDocVisor ? (
+                <div className="flex flex-col items-center justify-center py-20 text-zinc-600 gap-3">
+                  <Loader2 size={32} className="animate-spin text-[#176B52]" />
+                  <span className="text-sm font-semibold">Cargando contenido del documento...</span>
+                </div>
+              ) : errorDocVisor ? (
+                <div className="p-6 text-center text-rose-700 bg-white rounded-xl border border-rose-300 max-w-lg mx-auto my-12 shadow-lg">
+                  <AlertOctagon size={32} className="mx-auto mb-2 text-rose-600" />
+                  <p className="font-semibold text-sm mb-1">No se pudo cargar la vista previa directa</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4">{errorDocVisor}</p>
+                  <a
+                    href={docEnVisor.download_url}
+                    download={docEnVisor.nombre}
+                    className="btn btn-primary btn-sm bg-[#176B52] hover:bg-[#125440] text-white font-semibold"
+                  >
+                    <Download size={14} className="mr-1.5" />
+                    Descargar archivo directamente
+                  </a>
+                </div>
+              ) : docEnVisor.tipo === 'docx' ? (
+                <div
+                  className="max-w-3xl mx-auto p-8 sm:p-12 rounded-xl space-y-4 doc-viewer-sheet"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #94A3B8',
+                    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 8px 10px -6px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.05)',
+                    margin: '16px auto 32px auto'
+                  }}
+                >
+                  <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-6 flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 font-semibold">
+                      Documento Word · {docEnVisor.total_parrafos || docEnVisor.parrafos?.length || 0} párrafos
+                    </span>
+                    <span className="text-[11px] font-bold text-[#176B52] bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                      UEx SGTRI
+                    </span>
+                  </div>
+                  {docEnVisor.parrafos && docEnVisor.parrafos.length > 0 ? (
+                    docEnVisor.parrafos.map((pText: string, pIdx: number) => {
+                      const esTitulo = pText.toUpperCase() === pText && pText.length < 120 && pText.length > 4;
+                      const esSubtitulo = pText.startsWith('---') || pText.startsWith('•') || pText.startsWith('*');
+                      if (esTitulo) {
+                        return (
+                          <h3 key={pIdx} className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 pt-3 border-b border-zinc-100 dark:border-zinc-800 pb-1">
+                            {pText}
+                          </h3>
+                        );
+                      }
+                      return (
+                        <p key={pIdx} className={`text-xs sm:text-sm leading-relaxed ${esSubtitulo ? 'font-semibold text-zinc-800 dark:text-zinc-200 pl-2 border-l-2 border-[#176B52]' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                          {pText}
+                        </p>
+                      );
+                    })
+                  ) : (
+                    <p className="text-zinc-500 text-xs italic text-center py-8">Documento sin contenido de texto extraíble.</p>
+                  )}
+                </div>
+              ) : docEnVisor.tipo === 'xlsx' ? (
+                <div className="space-y-4 max-w-5xl mx-auto my-3">
+                  {docEnVisor.hojas && docEnVisor.hojas.length > 1 && (
+                    <div className="flex items-center gap-2 pb-1 overflow-x-auto">
+                      {docEnVisor.hojas.map((h: any, hIdx: number) => (
+                        <button
+                          key={hIdx}
+                          type="button"
+                          onClick={() => setHojaExcelActiva(hIdx)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shadow-xs cursor-pointer ${
+                            hojaExcelActiva === hIdx
+                              ? 'bg-[#176B52] text-white shadow-sm'
+                              : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {h.nombre} ({h.total_filas || h.filas?.length || 0})
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {(() => {
+                    const hoja = docEnVisor.hojas ? docEnVisor.hojas[hojaExcelActiva] || docEnVisor.hojas[0] : null;
+                    if (!hoja) {
+                      return <p className="text-zinc-500 text-xs text-center py-8 bg-white rounded-xl">Hoja de cálculo vacía.</p>;
+                    }
+                    return (
+                      <div
+                        className="rounded-xl overflow-hidden doc-viewer-sheet"
+                        style={{
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #94A3B8',
+                          boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 8px 10px -6px rgba(15, 23, 42, 0.12)'
+                        }}
+                      >
+                        <div className="overflow-x-auto max-h-[550px]">
+                          <table className="w-full text-xs text-left border-collapse">
+                            <thead className="bg-[#176B52]/10 dark:bg-[#176B52]/20 text-zinc-800 dark:text-zinc-200 sticky top-0 z-10 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800 font-bold">
+                              <tr>
+                                {hoja.encabezados?.map((header: string, cIdx: number) => (
+                                  <th key={cIdx} className="px-3 py-2.5 whitespace-nowrap border-r border-zinc-200/50 dark:border-zinc-800/50 last:border-r-0">
+                                    {header || `Columna ${cIdx + 1}`}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+                              {hoja.filas?.map((row: string[], rIdx: number) => (
+                                <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-white dark:bg-zinc-900' : 'bg-zinc-50/60 dark:bg-zinc-800/20'}>
+                                  {row.map((val: string, vIdx: number) => (
+                                    <td key={vIdx} className="px-3 py-2 whitespace-nowrap text-zinc-700 dark:text-zinc-300 border-r border-zinc-200/40 dark:border-zinc-800/40 last:border-r-0">
+                                      {val}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="px-4 py-2.5 bg-slate-50 dark:bg-zinc-800/50 border-t border-slate-200 dark:border-zinc-800 text-[11px] text-zinc-600 flex justify-between font-medium">
+                          <span>Hoja activa: <strong>{hoja.nombre}</strong></span>
+                          <span>Total filas computadas: {hoja.total_filas || hoja.filas?.length || 0}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : docEnVisor.tipo === 'pdf' ? (
+                <div
+                  className="w-full h-full min-h-[520px] max-w-5xl mx-auto rounded-xl overflow-hidden doc-viewer-sheet"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #94A3B8',
+                    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.18)'
+                  }}
+                >
+                  <iframe
+                    src={docEnVisor.url_raw}
+                    title={`Visor ${docEnVisor.nombre}`}
+                    className="w-full h-full border-none"
+                    style={{ minHeight: '520px' }}
+                  />
+                </div>
+              ) : docEnVisor.tipo === 'imagen' ? (
+                <div className="flex items-center justify-center p-4">
+                  <img
+                    src={docEnVisor.url_raw}
+                    alt={docEnVisor.nombre}
+                    className="max-h-[65vh] max-w-full rounded-xl shadow-xl border border-slate-300 dark:border-zinc-700 object-contain"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="p-6 rounded-xl overflow-auto max-h-[500px] max-w-3xl mx-auto doc-viewer-sheet"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #94A3B8',
+                    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.18)'
+                  }}
+                >
+                  <pre className="text-xs font-mono text-zinc-800 whitespace-pre-wrap leading-relaxed">
+                    {docEnVisor.texto || 'Archivo sin contenido textual legible.'}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
 
