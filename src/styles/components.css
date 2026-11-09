@@ -55,6 +55,25 @@
   border-color: #E2E8F0;
 }
 
+.btn-uex {
+  background-color: #176B52;
+  color: #FFFFFF;
+  border-color: #176B52;
+}
+.btn-uex:hover:not(:disabled) {
+  background-color: #125440;
+  border-color: #125440;
+}
+.dark .btn-uex {
+  background-color: #176B52;
+  color: #FFFFFF;
+  border-color: #176B52;
+}
+.dark .btn-uex:hover:not(:disabled) {
+  background-color: #125440;
+  border-color: #125440;
+}
+
 .btn-accent {
   background-color: var(--brand-accent);
   color: #FFFFFF;
@@ -454,4 +473,31 @@ textarea::placeholder {
   padding: 10px 12px;
   border-top: 1px solid var(--border-color);
   background-color: var(--bg-surface);
+}
+
+/* -------------------------------------------------------------------------
+   VISOR DE DOCUMENTOS SGTRI - VENTANA Y LIENZO DE CONTRASTE EDITORIAL
+   ------------------------------------------------------------------------- */
+.doc-viewer-canvas {
+  background-color: #CBD5E1; /* Gris pizarra medio que contrasta vivamente con el folio blanco */
+}
+:root.dark .doc-viewer-canvas,
+html.dark .doc-viewer-canvas,
+.dark .doc-viewer-canvas,
+[data-theme="dark"] .doc-viewer-canvas {
+  background-color: #090D12;
+}
+
+.doc-viewer-sheet {
+  background-color: #FFFFFF !important;
+  border: 1px solid #94A3B8 !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 8px 10px -6px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.05) !important;
+}
+:root.dark .doc-viewer-sheet,
+html.dark .doc-viewer-sheet,
+.dark .doc-viewer-sheet,
+[data-theme="dark"] .doc-viewer-sheet {
+  background-color: #11161F !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 }

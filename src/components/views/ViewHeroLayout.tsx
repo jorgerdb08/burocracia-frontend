@@ -13,6 +13,7 @@ interface ViewHeroLayoutProps {
   onComenzarConPlantilla?: (templateId: string) => void;
   onIrLotes?: () => void;
   onIrExpedientes?: () => void;
+  onIrHonorarios?: () => void;
   onTramitarCaso?: (casoId: string) => void;
   onInspeccionarCaso?: (casoId: string) => void;
 }
@@ -33,51 +34,11 @@ export function ViewHeroLayout({
   onComenzarConPlantilla, 
   onIrLotes, 
   onIrExpedientes,
+  onIrHonorarios,
   onTramitarCaso,
   onInspeccionarCaso,
 }: ViewHeroLayoutProps) {
-  const [expedientes, setExpedientes] = useState<ExpedienteReciente[]>([
-    {
-      id: 'caso_30_honorarios_conferencia',
-      codigo: 'EXP-2026-0178',
-      tipo: 'honorarios',
-      procedimientoLabel: 'Honorarios',
-      objeto: 'Conferencia Cátedra Telefónica',
-      fecha: '22/04/2026',
-      estado: 'completado',
-      estadoLabel: 'Completado'
-    },
-    {
-      id: 'caso_01_tarjeta_subscripcion',
-      codigo: 'EXP-2026-0177',
-      tipo: 'pago_proveedor',
-      procedimientoLabel: 'Pago a proveedor',
-      objeto: 'Suscripción ChatGPT 23/6/26-23/7/26',
-      fecha: '20/04/2026',
-      estado: 'revision',
-      estadoLabel: 'En revisión'
-    },
-    {
-      id: 'caso_02_dietas_madrid',
-      codigo: 'EXP-2026-0176',
-      tipo: 'dietas',
-      procedimientoLabel: 'Dietas y desplazamientos',
-      objeto: 'Congreso internacional - Madrid',
-      fecha: '15/04/2026',
-      estado: 'completado',
-      estadoLabel: 'Completado'
-    },
-    {
-      id: 'caso_03_compra_laboratorio',
-      codigo: 'EXP-2026-0175',
-      tipo: 'pago_proveedor',
-      procedimientoLabel: 'Pago a proveedor',
-      objeto: 'Material fungible de laboratorio',
-      fecha: '10/04/2026',
-      estado: 'borrador',
-      estadoLabel: 'Borrador'
-    }
-  ]);
+  const [expedientes, setExpedientes] = useState<ExpedienteReciente[]>([]);
 
   useEffect(() => {
     fetch('/api/casos')
@@ -97,10 +58,10 @@ export function ViewHeroLayout({
             }
             return {
               id: c.id,
-              codigo: `EXP-2026-${num}`,
+              codigo: c.codigo || `EXP-2026-${num}`,
               tipo: tipoNorm,
               procedimientoLabel: label,
-              objeto: c.descripcion || c.id.replace(/_/g, ' '),
+              objeto: c.titulo || c.descripcion || c.id.replace(/_/g, ' '),
               fecha: c.fecha || '22/04/2026',
               estado: c.estado === 'error' ? 'revision' : 'completado',
               estadoLabel: c.estado === 'error' ? 'En revisión' : 'Completado'
@@ -372,7 +333,7 @@ export function ViewHeroLayout({
             
             {/* Honorarios */}
             <div 
-              onClick={() => onComenzarConPlantilla ? onComenzarConPlantilla('honorarios') : onComenzar()}
+              onClick={() => onIrHonorarios ? onIrHonorarios() : (onComenzarConPlantilla ? onComenzarConPlantilla('honorarios') : onComenzar())}
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 border: '1px solid var(--border-color)',
@@ -391,7 +352,7 @@ export function ViewHeroLayout({
                 <ArrowRight size={14} color="var(--color-blue-inst)" />
               </div>
               <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                Conferencias, cursos, premios y convenios
+                Conferencias, premios, colaboraciones Art. 83 y convenios
               </div>
             </div>
 

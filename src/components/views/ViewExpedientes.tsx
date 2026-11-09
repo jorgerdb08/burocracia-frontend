@@ -11,7 +11,17 @@ export function ViewExpedientes({
   onProcesar: (id: string) => void;
   onInspeccionar: (id: string) => void;
 }) {
-  const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean, estado_validacion?: 'error' | 'valido_con_advertencias' | 'valido_completo' }[]>([]);
+  const [casos, setCasos] = useState<{ 
+    id: string; 
+    tipo: string; 
+    codigo?: string;
+    titulo?: string;
+    descripcion?: string;
+    total_archivos?: number; 
+    porcentaje?: number; 
+    completo?: boolean; 
+    estado_validacion?: 'error' | 'valido_con_advertencias' | 'valido_completo' 
+  }[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [search, setSearch] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
@@ -32,8 +42,14 @@ export function ViewExpedientes({
 
   const filteredCasos = useMemo(() => {
     return casos.filter(c => {
-      const matchSearch = c.id.toLowerCase().includes(search.toLowerCase()) || c.tipo.toLowerCase().includes(search.toLowerCase());
-      const matchTipo = tipoFiltro === 'todos' || c.tipo === tipoFiltro;
+      const q = search.toLowerCase();
+      const matchSearch = 
+        c.id.toLowerCase().includes(q) || 
+        (c.titulo && c.titulo.toLowerCase().includes(q)) || 
+        (c.codigo && c.codigo.toLowerCase().includes(q)) ||
+        (c.descripcion && c.descripcion.toLowerCase().includes(q)) ||
+        c.tipo.toLowerCase().includes(q);
+      const matchTipo = tipoFiltro === 'todos' || c.tipo === tipoFiltro || (tipoFiltro === 'pago_proveedor' && c.tipo === 'proveedores');
       return matchSearch && matchTipo;
     });
   }, [casos, search, tipoFiltro]);
@@ -41,8 +57,9 @@ export function ViewExpedientes({
   const getTipoNombre = (tipo: string) => {
     switch (tipo) {
       case 'dietas': return 'Dietas y Desplazamientos';
-      case 'pago_proveedor': return 'Pago a Proveedor y Facturas';
-      case 'honorarios': return 'Honorarios por Conferencias';
+      case 'pago_proveedor':
+      case 'proveedores': return 'Pago a Proveedor y Facturas';
+      case 'honorarios': return 'Honorarios SGTRI';
       case 'adquisiciones': return 'Contratos Menores';
       default: return tipo;
     }
@@ -130,7 +147,7 @@ export function ViewExpedientes({
           <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ width: '280px' }}>Código de Expediente</th>
+                <th style={{ width: '380px' }}>Expediente / Asunto</th>
                 <th>Procedimiento</th>
                 <th style={{ width: '130px' }}>Documentos</th>
                 <th style={{ width: '220px' }}>Estado documental</th>
@@ -148,9 +165,37 @@ export function ViewExpedientes({
                 filteredCasos.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'var(--text-primary)', fontSize: '12px' }}>
-                        {c.id}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          {c.codigo && (
+                            <span style={{ 
+                              display: 'inline-block',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: 600,
+                              background: 'var(--bg-card-alt, #f1f5f9)',
+                              color: 'var(--text-secondary, #475569)',
+                              border: '1px solid var(--border-color, #e2e8f0)'
+                            }}>
+                              {c.codigo}
+                            </span>
+                          )}
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
+                            {c.titulo || c.id}
+                          </span>
+                        </div>
+                        {c.descripcion ? (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', maxWidth: '380px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.descripcion}>
+                            {c.descripcion}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                            {c.id}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ color: 'var(--text-primary)', fontWeight: 400 }}>
                       {getTipoNombre(c.tipo)}

@@ -6,9 +6,10 @@ import { ViewHeroLayout } from './components/views/ViewHeroLayout'
 import { ViewProcesar } from './components/views/ViewProcesar'
 import { ViewExpedientes } from './components/views/ViewExpedientes'
 import { ViewLotesBatch } from './components/views/ViewLotesBatch'
+import { GeneradorHonorariosInteligente } from './components/views/GeneradorHonorariosInteligente'
 import { ExpedienteInspectorModal } from './components/modals/ExpedienteInspectorModal'
 
-type View = 'inicio' | 'procesar' | 'expedientes' | 'lotes'
+type View = 'inicio' | 'procesar' | 'expedientes' | 'lotes' | 'honorarios'
 
 export default function App() {
   const [isDark, setIsDark] = useState(false)
@@ -24,7 +25,11 @@ export default function App() {
     }
   }, [isDark])
 
-  const [view, setView]              = useState<View>('inicio')
+  const [view, setView] = useState<View>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('view') as View;
+    return (v && ['inicio', 'procesar', 'expedientes', 'lotes', 'honorarios'].includes(v)) ? v : 'inicio';
+  })
   const [casoParam, setCaso]         = useState<string | undefined>()
   const [templateParam, setTemplate] = useState<string | undefined>()
   const [inspectCasoId, setInspectCasoId] = useState<string | null>(null)
@@ -146,6 +151,7 @@ export default function App() {
             onComenzarConPlantilla={(tId) => irProcesar(undefined, tId)}
             onIrLotes={() => setView('lotes')}
             onIrExpedientes={() => setView('expedientes')}
+            onIrHonorarios={() => setView('honorarios')}
             onTramitarCaso={(casoId) => irProcesar(casoId)}
             onInspeccionarCaso={(id) => setInspectCasoId(id)}
           />
@@ -156,6 +162,7 @@ export default function App() {
             initialCaso={casoParam} 
             templateId={templateParam} 
             onVolver={() => setView('inicio')}
+            onIrHonorarios={() => setView('honorarios')}
             onInspeccionarCaso={(id) => setInspectCasoId(id)}
           />
         )}
@@ -167,6 +174,9 @@ export default function App() {
         )}
         {view === 'lotes' && (
           <ViewLotesBatch />
+        )}
+        {view === 'honorarios' && (
+          <GeneradorHonorariosInteligente />
         )}
       </main>
 

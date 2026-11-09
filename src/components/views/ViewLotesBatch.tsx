@@ -169,14 +169,14 @@ export function ViewLotesBatch() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Estados del formulario (Datos Comunes de Proyecto)
-  const [formInvestigador, setFormInvestigador] = useState<string>('Pedro Clemente');
-  const [formOrganica, setFormOrganica] = useState<string>('18.IW.97.89');
-  const [formReferencia, setFormReferencia] = useState<string>('GR24099');
-  const [formTipoFinanciacion, setFormTipoFinanciacion] = useState<string>('G24');
+    const [formInvestigador, setFormInvestigador] = useState<string>('');
+  const [formOrganica, setFormOrganica] = useState<string>('');
+  const [formReferencia, setFormReferencia] = useState<string>('');
+  const [formTipoFinanciacion, setFormTipoFinanciacion] = useState<string>('');
   const [formFormaPago, setFormFormaPago] = useState<string>('Transferencia');
-  const [formCentro, setFormCentro] = useState<string>('Escuela Politécnica');
-  const [formCampus, setFormCampus] = useState<string>('Cáceres');
-  const [formContacto, setFormContacto] = useState<string>('pjclemente@unex.es');
+  const [formCentro, setFormCentro] = useState<string>('');
+  const [formCampus, setFormCampus] = useState<string>('');
+  const [formContacto, setFormContacto] = useState<string>('');
   const [guardandoDatos, setGuardandoDatos] = useState<boolean>(false);
 
   // Estados de ejecución y resultados
@@ -221,13 +221,13 @@ export function ViewLotesBatch() {
         setLoteDetalle(data);
         if (data.datos_comunes) {
           const dc = data.datos_comunes;
-          setFormInvestigador(dc.investigador || 'Pedro Clemente');
-          setFormOrganica(dc.organica || '18.IW.97.89');
-          setFormReferencia(dc.referencia_proyecto || 'GR24099');
-          setFormTipoFinanciacion(dc.tipo_financiacion || dc.tipo_de_financiación || 'G24');
+          setFormInvestigador(dc.investigador || '');
+          setFormOrganica(dc.organica || '');
+          setFormReferencia(dc.referencia_proyecto || '');
+          setFormTipoFinanciacion(dc.tipo_financiacion || dc.tipo_de_financiación || '');
           setFormFormaPago(dc.forma_pago || 'Transferencia');
-          setFormCentro(dc.centro || 'Escuela Politécnica');
-          setFormCampus(dc.campus || 'Cáceres');
+          setFormCentro(dc.centro || '');
+          setFormCampus(dc.campus || '');
           setFormContacto(dc.contacto || '');
         }
       }

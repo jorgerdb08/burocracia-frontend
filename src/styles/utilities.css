@@ -208,6 +208,7 @@
 }
 
 /* Sizing */
+.min-w-0 { min-width: 0 !important; }
 .w-full { width: 100%; }
 .h-full { height: 100%; }
 .w-auto { width: auto; }
@@ -228,6 +229,7 @@
 .h-10 { height: 2.5rem; }
 
 .max-w-2xl { max-width: 42rem; }
+.max-w-3xl { max-width: 48rem; }
 .max-w-4xl { max-width: 56rem; }
 .max-w-5xl { max-width: 64rem; }
 .max-w-none { max-width: none; }
@@ -264,6 +266,22 @@
 .overflow-y-auto { overflow-y: auto; }
 .cursor-pointer { cursor: pointer; }
 .cursor-not-allowed { cursor: not-allowed; }
+
+/* Modal Backdrops & Overlays */
+.bg-black-40, .bg-black\/40 { background-color: rgba(0, 0, 0, 0.40) !important; }
+.bg-black-50, .bg-black\/50 { background-color: rgba(0, 0, 0, 0.50) !important; }
+.bg-black-60, .bg-black\/60 { background-color: rgba(0, 0, 0, 0.65) !important; }
+.bg-black-70, .bg-black\/70 { background-color: rgba(0, 0, 0, 0.70) !important; }
+.bg-black-80, .bg-black\/80 { background-color: rgba(0, 0, 0, 0.80) !important; }
+
+.backdrop-blur-xs, .backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.backdrop-blur, .backdrop-blur-md {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
 
 /* Institutional Color Mappings for Tailwind backwards compatibility */
 .bg-white { background-color: var(--bg-surface); }

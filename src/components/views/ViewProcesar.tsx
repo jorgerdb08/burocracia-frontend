@@ -1018,6 +1018,8 @@ export function ViewProcesar({
 
   onVolver,
 
+  onIrHonorarios,
+
 }: {
 
   initialCaso?: string;
@@ -1025,6 +1027,8 @@ export function ViewProcesar({
   templateId?: string;
 
   onVolver: () => void;
+
+  onIrHonorarios?: () => void;
 
   onInspeccionarCaso?: (id: string) => void;
 
@@ -2289,6 +2293,32 @@ export function ViewProcesar({
 
 
               {selectedTemplate === 'honorarios' && (
+                <>
+                  <div style={{ marginBottom: '16px', padding: '14px 18px', borderRadius: '8px', border: '1px solid rgba(23, 107, 82, 0.3)', backgroundColor: 'rgba(23, 107, 82, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#176B52', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
+                        <Sparkles size={18} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#176B52' }}>
+                          Procedimiento Oficial de Honorarios UEx (SGTRI)
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          Análisis multimodal de PDFs, imágenes y contratos, trazabilidad de comprobaciones administrativas y generación de los modelos oficiales UEx.
+                        </div>
+                      </div>
+                    </div>
+                    {onIrHonorarios && (
+                      <button
+                        type="button"
+                        onClick={onIrHonorarios}
+                        style={{ padding: '8px 14px', borderRadius: '6px', backgroundColor: '#176B52', color: '#fff', fontSize: '12px', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
+                      >
+                        <span>Abrir Honorarios</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    )}
+                  </div>
 
                 <FormularioHonorariosUEx
 
@@ -2339,6 +2369,7 @@ export function ViewProcesar({
                   }}
 
                 />
+                </>
 
               )}
 
