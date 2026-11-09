@@ -105,12 +105,16 @@ export interface DiagnosticoProveedor {
 }
 
 export interface DocumentoOficialSalida {
-  nombre: string;
-  ruta: string;
+  id?: string;
+  nombre?: string;
+  titulo?: string;
+  ruta?: string;
   tamano_kb: number;
-  tipo: string;
+  tipo?: string;
   descripcion: string;
-  url_descarga: string;
+  url_descarga?: string;
+  download_url?: string;
+  preview_url?: string;
 }
 
 export interface ResultadoDocumentos {
@@ -274,13 +278,16 @@ export function GeneradorProveedoresInteligente() {
 
   // Previsualizar documento oficial de salida
   const handleVerDocSalida = (doc: DocumentoOficialSalida) => {
+    const docNombre = doc.nombre || doc.titulo || '01_Anexo_II_Aprobacion_del_Gasto.pdf';
+    const rawUrl = doc.preview_url || doc.url_descarga || doc.download_url || '';
+    const dlUrl = doc.download_url || doc.url_descarga || `${rawUrl}?download=1`;
     setDocEnVisor({
-      nombre: doc.nombre,
+      nombre: docNombre,
       categoria: 'Documento Oficial SGTRI Generado',
       tipo: 'pdf',
-      tamano: doc.tamano_kb * 1024,
-      url_raw: doc.url_descarga,
-      download_url: `${doc.url_descarga}?download=1`
+      tamano: (doc.tamano_kb || 320) * 1024,
+      url_raw: rawUrl,
+      download_url: dlUrl
     });
   };
 
@@ -1536,15 +1543,15 @@ export function GeneradorProveedoresInteligente() {
             </div>
 
             {/* Cuerpo del Visor con Hoja de Alto Contraste */}
-            <div className="flex-1 p-4 sm:p-6 overflow-auto bg-slate-100/80 dark:bg-zinc-950 flex flex-col items-center justify-center">
+            <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-slate-100/80 dark:bg-zinc-950 flex flex-col items-center justify-start w-full">
               {cargandoVisor ? (
-                <div className="flex items-center gap-2 text-zinc-500">
-                  <Loader2 className="animate-spin" size={20} />
-                  <span>Cargando documento...</span>
+                <div className="flex items-center gap-2 text-zinc-500 py-16">
+                  <Loader2 className="animate-spin" size={24} />
+                  <span className="text-sm font-medium">Cargando documento...</span>
                 </div>
               ) : docEnVisor.tipo === 'pdf' ? (
                 <div
-                  className="w-full h-full min-h-[520px] max-w-5xl mx-auto rounded-xl overflow-hidden shadow-xl"
+                  className="w-full h-full min-h-[75vh] max-w-5xl mx-auto rounded-xl overflow-hidden shadow-xl"
                   style={{
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #94A3B8'
@@ -1553,27 +1560,26 @@ export function GeneradorProveedoresInteligente() {
                   <iframe
                     src={docEnVisor.url_raw}
                     title={`Visor ${docEnVisor.nombre}`}
-                    className="w-full h-full border-none"
-                    style={{ minHeight: '520px' }}
+                    className="w-full h-full min-h-[75vh] border-none"
                   />
                 </div>
               ) : docEnVisor.tipo === 'imagen' ? (
-                <div className="flex items-center justify-center p-4">
+                <div className="w-full flex flex-col items-center justify-start py-4">
                   <img
                     src={docEnVisor.url_raw}
                     alt={docEnVisor.nombre}
-                    className="max-h-[65vh] max-w-full rounded-xl shadow-xl border border-slate-300 dark:border-zinc-700 object-contain"
+                    className="max-w-4xl w-full h-auto rounded-xl shadow-xl border border-slate-300 dark:border-zinc-700 object-contain my-2 bg-white"
                   />
                 </div>
               ) : (
                 <div
-                  className="p-6 rounded-xl overflow-auto max-h-[500px] max-w-3xl w-full mx-auto shadow-xl"
+                  className="p-6 rounded-xl w-full max-w-4xl mx-auto shadow-xl my-4"
                   style={{
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #94A3B8'
                   }}
                 >
-                  <pre className="font-mono text-xs text-zinc-800 whitespace-pre-wrap">
+                  <pre className="font-mono text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed">
                     {docEnVisor.texto || 'Sin contenido textual.'}
                   </pre>
                 </div>
