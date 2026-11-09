@@ -183,7 +183,7 @@ export function ViewLotesBatch() {
   // Estados de ejecución y resultados
   const [running, setRunning] = useState<boolean>(false);
   const [resumen, setResumen] = useState<ResumenLote | null>(null);
-  const [vistaModo, setVistaModo] = useState<'tarjetas' | 'tabla' | 'informe_md'>('tarjetas');
+  const [vistaModo, setVistaModo] = useState<'tabla' | 'informe_md'>('tabla');
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<{ url: string; titulo: string } | null>(null);
   const [expedienteArchivosModal, setExpedienteArchivosModal] = useState<{ nombre: string; archivos: string[] } | null>(null);
 
@@ -261,322 +261,182 @@ export function ViewLotesBatch() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Modelos Oficiales Emitidos por Expediente
+              Expedientes Fiscalizados y Modelos Oficiales
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Expedientes fiscalizados conforme a bases SGTRI 2026. Haz clic en previsualizar o descargar cada PDF.
+              Modelos oficiales AcroForm PDF generados por expediente, listos para previsualización y descarga.
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <button
-              type="button"
-              onClick={() => setVistaModo('tarjetas')}
-              className={`filter-btn ${vistaModo === 'tarjetas' ? 'active' : ''}`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-            >
-              <LayoutGrid size={13} />
-              <span>Vista Tarjetas</span>
-            </button>
+          <div style={{ display: 'flex', gap: '6px' }}>
             <button
               type="button"
               onClick={() => setVistaModo('tabla')}
               className={`filter-btn ${vistaModo === 'tabla' ? 'active' : ''}`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
-              <List size={13} />
-              <span>Tabla de expedientes</span>
+              Tabla de expedientes
             </button>
             <button
               type="button"
               onClick={() => setVistaModo('informe_md')}
               className={`filter-btn ${vistaModo === 'informe_md' ? 'active' : ''}`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
-              <FileCode size={13} />
-              <span>Informe Markdown</span>
+              Informe Markdown
             </button>
           </div>
         </div>
 
-        {/* MODO TARJETAS */}
-        {vistaModo === 'tarjetas' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {resumen.expedientes.map((exp, idx) => {
-              const procInfo = getProcInfo(exp.tipo_procedimiento);
-              const docs = getDocsUnicos(exp);
-              const titular = exp.proveedor || exp.beneficiario || 'Beneficiario no asignado';
-
-              return (
-                <div
-                  key={exp.expediente_id || idx}
-                  style={{
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '10px',
-                    backgroundColor: 'var(--bg-surface)',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {/* Cabecera del Expediente */}
-                  <div style={{
-                    padding: '0.85rem 1.25rem',
-                    backgroundColor: 'var(--bg-subtle)',
-                    borderBottom: '1px solid var(--border-color)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '12px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '3px 9px',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        backgroundColor: procInfo.bg,
-                        color: procInfo.color,
-                        border: `1px solid ${procInfo.border}`
-                      }}>
-                        <span>{procInfo.icon}</span>
-                        <span>{procInfo.label}</span>
-                      </span>
-
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {exp.expediente_id}
-                      </span>
-
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        · <strong style={{ color: 'var(--text-primary)' }}>{titular}</strong>
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Importe</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14.5px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                          {fmtEur(exp.importe)}
-                        </div>
-                      </div>
-
-                      <span style={{
-                        padding: '4px 9px',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        backgroundColor: '#DCFCE7',
-                        color: '#166534',
-                        border: '1px solid #BBF7D0',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}>
-                        <CheckCircle2 size={13} />
-                        <span>Conforme SGTRI</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Modelos Oficiales Generados */}
-                  <div style={{ padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.4px' }}>
-                        Modelos Oficiales Generados ({docs.length})
-                      </div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Formato oficial AcroForm PDF UEx 2026
-                      </span>
-                    </div>
-
-                    {docs.length === 0 ? (
-                      <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', backgroundColor: 'var(--bg-subtle)', borderRadius: '6px' }}>
-                        Sin modelos oficiales generados
-                      </div>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
-                        {docs.map((doc, dIdx) => {
-                          const pdfUrl = `/api/batch/archivo?lote_id=${encodeURIComponent(selectedLote)}&expediente_id=${encodeURIComponent(exp.expediente_id)}&archivo=${encodeURIComponent(doc.filename)}`;
-                          return (
-                            <div
-                              key={dIdx}
-                              style={{
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '8px',
-                                padding: '12px 14px',
-                                backgroundColor: 'var(--bg-app)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                gap: '10px',
-                                transition: 'box-shadow 0.15s ease'
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                                <div style={{
-                                  width: '36px',
-                                  height: '36px',
-                                  borderRadius: '8px',
-                                  backgroundColor: '#FEE2E2',
-                                  border: '1px solid #FECACA',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0
-                                }}>
-                                  <FileText size={18} style={{ color: '#DC2626' }} />
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <span style={{
-                                    fontSize: '9.5px',
-                                    fontWeight: 800,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.4px',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    backgroundColor: '#DCFCE7',
-                                    color: '#166534',
-                                    border: '1px solid #BBF7D0'
-                                  }}>
-                                    Oficial SGTRI 2026
-                                  </span>
-                                  <div
-                                    style={{
-                                      fontSize: '12.5px',
-                                      fontWeight: 700,
-                                      color: 'var(--text-primary)',
-                                      marginTop: '4px',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap'
-                                    }}
-                                    title={doc.filename}
-                                  >
-                                    {doc.filename}
-                                  </div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.3 }}>
-                                    {doc.desc}
-                                  </div>
-                                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
-                                    Formato AcroForm PDF · Listo para firma
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'flex-end',
-                                gap: '8px',
-                                paddingTop: '8px',
-                                borderTop: '1px solid var(--border-color)'
-                              }}>
-                                <button
-                                  type="button"
-                                  onClick={() => setPdfPreviewUrl({ url: pdfUrl, titulo: `${exp.expediente_id} — ${doc.filename}` })}
-                                  className="btn btn-outline btn-sm"
-                                  style={{ fontSize: '11px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                                >
-                                  <Eye size={12} />
-                                  <span>Previsualizar</span>
-                                </button>
-                                <a
-                                  href={pdfUrl}
-                                  download={doc.filename}
-                                  className="btn btn-sm"
-                                  style={{
-                                    fontSize: '11px',
-                                    padding: '4px 10px',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    backgroundColor: '#176B52',
-                                    color: '#ffffff',
-                                    borderColor: '#176B52',
-                                    textDecoration: 'none',
-                                    borderRadius: '6px',
-                                    fontWeight: 600
-                                  }}
-                                >
-                                  <Download size={12} />
-                                  <span>Descargar</span>
-                                </a>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* MODO TABLA (Deduplicada) */}
+        {/* MODO TABLA: MODELOS ABAJO EN FILA */}
         {vistaModo === 'tabla' && (
-          <div className="admin-table-container">
-            <table className="admin-table">
+          <div className="admin-table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+            <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>
-                  <th style={{ width: '190px' }}>Expediente</th>
-                  <th style={{ width: '160px' }}>Procedimiento</th>
-                  <th>Beneficiario / Proveedor</th>
-                  <th style={{ width: '120px', textAlign: 'right' }}>Importe</th>
-                  <th style={{ width: '120px', textAlign: 'center' }}>Dictamen</th>
-                  <th style={{ width: '320px', textAlign: 'center' }}>Modelos oficiales generados</th>
+                <tr style={{ backgroundColor: 'var(--bg-subtle)', borderBottom: '1px solid var(--border-color)' }}>
+                  <th style={{ width: '220px', padding: '10px 14px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Expediente</th>
+                  <th style={{ width: '190px', padding: '10px 14px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Procedimiento</th>
+                  <th style={{ padding: '10px 14px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Beneficiario / Proveedor</th>
+                  <th style={{ width: '120px', textAlign: 'right', padding: '10px 14px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Importe</th>
+                  <th style={{ width: '130px', textAlign: 'center', padding: '10px 14px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Dictamen</th>
                 </tr>
               </thead>
               <tbody>
                 {resumen.expedientes.map((exp, idx) => {
+                  const procInfo = getProcInfo(exp.tipo_procedimiento);
                   const docs = getDocsUnicos(exp);
+                  const titular = exp.proveedor || exp.beneficiario || 'N/D';
+
                   return (
-                    <tr key={idx}>
-                      <td>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{exp.expediente_id}</span>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
-                        {exp.tipo_procedimiento === 'pago_proveedor' ? 'Pago a Proveedor' :
-                         exp.tipo_procedimiento === 'honorarios' ? 'Honorarios y Asistencias' : 'Dietas y Desplazamientos'}
-                      </td>
-                      <td style={{ fontWeight: 500 }}>{exp.proveedor || exp.beneficiario || 'N/D'}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                        {fmtEur(exp.importe)}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#DCFCE7', color: '#166534' }}>
-                          Conforme SGTRI
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                          {docs.length > 0 ? (
-                            docs.map((doc, dIdx) => {
-                              const pdfUrl = `/api/batch/archivo?lote_id=${encodeURIComponent(selectedLote)}&expediente_id=${encodeURIComponent(exp.expediente_id)}&archivo=${encodeURIComponent(doc.filename)}`;
-                              return (
-                                <button
-                                  key={dIdx}
-                                  type="button"
-                                  onClick={() => setPdfPreviewUrl({ url: pdfUrl, titulo: `${exp.expediente_id} — ${doc.filename}` })}
-                                  className="btn btn-outline btn-sm"
-                                  style={{ fontSize: '11px', padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--bg-surface)' }}
-                                  title={doc.desc}
-                                >
-                                  <FileCheck size={12} style={{ color: 'var(--color-success)' }} />
-                                  <span style={{ fontWeight: 600 }}>{doc.filename.replace('.pdf', '')}</span>
-                                </button>
-                              );
-                            })
-                          ) : (
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sin modelos generados</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                    <React.Fragment key={exp.expediente_id || idx}>
+                      {/* Fila Principal del Expediente */}
+                      <tr style={{
+                        backgroundColor: idx % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-app)',
+                        borderTop: idx > 0 ? '1px solid var(--border-color)' : 'none'
+                      }}>
+                        <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
+                            {exp.expediente_id}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 8px',
+                            borderRadius: '5px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            backgroundColor: procInfo.bg,
+                            color: procInfo.color,
+                            border: `1px solid ${procInfo.border}`
+                          }}>
+                            <span>{procInfo.icon}</span>
+                            <span>{procInfo.label}</span>
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', verticalAlign: 'middle', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {titular}
+                        </td>
+                        <td style={{ padding: '12px 14px', verticalAlign: 'middle', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13.5px' }}>
+                          {fmtEur(exp.importe)}
+                        </td>
+                        <td style={{ padding: '12px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: '#DCFCE7',
+                            color: '#166534',
+                            border: '1px solid #BBF7D0',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <CheckCircle2 size={12} />
+                            <span>Conforme SGTRI</span>
+                          </span>
+                        </td>
+                      </tr>
+
+                      {/* Subfila: Modelos Oficiales en Fila Horizontal Abajo */}
+                      <tr style={{
+                        backgroundColor: idx % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-app)',
+                        borderBottom: '1px solid var(--border-color)'
+                      }}>
+                        <td colSpan={5} style={{ padding: '0 14px 12px 14px', paddingTop: '0px' }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flexWrap: 'wrap',
+                            backgroundColor: 'var(--bg-subtle)',
+                            padding: '7px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-color)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginRight: '4px', flexShrink: 0 }}>
+                              <FileText size={13} style={{ color: 'var(--text-muted)' }} />
+                              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.4px' }}>
+                                Modelos emitidos ({docs.length}):
+                              </span>
+                            </div>
+
+                            {docs.length === 0 ? (
+                              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Sin modelos generados</span>
+                            ) : (
+                              docs.map((doc, dIdx) => {
+                                const pdfUrl = `/api/batch/archivo?lote_id=${encodeURIComponent(selectedLote)}&expediente_id=${encodeURIComponent(exp.expediente_id)}&archivo=${encodeURIComponent(doc.filename)}`;
+                                return (
+                                  <div
+                                    key={dIdx}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      backgroundColor: 'var(--bg-surface)',
+                                      border: '1px solid var(--border-color)',
+                                      padding: '3px 8px',
+                                      borderRadius: '5px',
+                                      fontSize: '11px',
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                    }}
+                                  >
+                                    <FileText size={12} style={{ color: '#DC2626', flexShrink: 0 }} />
+                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }} title={doc.desc}>
+                                      {doc.filename}
+                                    </span>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginLeft: '4px', borderLeft: '1px solid var(--border-color)', paddingLeft: '6px' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => setPdfPreviewUrl({ url: pdfUrl, titulo: `${exp.expediente_id} — ${doc.filename}` })}
+                                        className="btn btn-ghost btn-xs"
+                                        style={{ padding: '1px 5px', fontSize: '10.5px', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '2px', height: '22px' }}
+                                        title="Previsualizar PDF"
+                                      >
+                                        <Eye size={11} />
+                                        <span>Ver</span>
+                                      </button>
+                                      <a
+                                        href={pdfUrl}
+                                        download={doc.filename}
+                                        className="btn btn-ghost btn-xs"
+                                        style={{ padding: '1px 5px', fontSize: '10.5px', color: '#176B52', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px', textDecoration: 'none', height: '22px' }}
+                                        title="Descargar PDF"
+                                      >
+                                        <Download size={11} />
+                                        <span>Descargar</span>
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -604,7 +464,6 @@ export function ViewLotesBatch() {
       </div>
     );
   };
-
 
   // Carga lista de lotes
   const cargarLotes = useCallback(async (loteToSelect?: string) => {
