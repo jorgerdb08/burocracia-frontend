@@ -478,12 +478,12 @@ export function GeneradorProveedoresInteligente() {
               </div>
             </div>
             <a
-              href="/api/proveedores/descargar_zip_pruebas/Casos_Pago_Proveedores_UEx_01_a_06.zip"
-              download="Casos_Pago_Proveedores_UEx_01_a_06.zip"
+              href="/api/proveedores/descargar_zip_pruebas/Casos_Pago_Proveedores_OpenAI.zip"
+              download="Casos_Pago_Proveedores_OpenAI.zip"
               className="btn btn-outline btn-sm border-blue-300 text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900 flex items-center gap-1.5 shrink-0 font-bold shadow-2xs"
             >
               <Archive size={14} />
-              <span>Descargar Lote Pruebas ZIP (01 a 06)</span>
+              <span>Descargar Lote Pruebas ZIP (OpenAI)</span>
             </a>
           </div>
 
@@ -525,10 +525,10 @@ export function GeneradorProveedoresInteligente() {
               <div>
                 <h2 className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <Sparkles size={18} className="text-[#176B52]" />
-                  <span>Casos Oficiales de Demostración SGTRI (5 Verdes y 1 Rojo)</span>
+                  <span>Casos Oficiales de Demostración · Factura Real OpenAI</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Cinco supuestos perfectamente conformes a normativa y un caso con discrepancia económica intencionada para comprobar el bloqueo de Intervención.
+                  Modalidad A (Abonado con tarjeta del investigador) y Modalidad B (Pendiente de pago por transferencia), con caso de control de discordancia económica.
                 </p>
               </div>
               <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300">
@@ -858,7 +858,10 @@ export function GeneradorProveedoresInteligente() {
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleVerDocumento(archivo)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVerDocumento(archivo);
+                            }}
                             className="btn btn-ghost btn-xs text-xs font-semibold text-[#176B52] dark:text-emerald-400 px-2 py-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950 flex items-center gap-1"
                           >
                             <Eye size={12} />
