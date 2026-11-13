@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   X, FileText, Download, Trash2, Plus, Loader2, Play
 } from 'lucide-react';
@@ -20,6 +20,13 @@ export function ExpedienteInspectorModal({
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const archivosValidos = useMemo(() => {
+    return (detalle?.archivos || []).filter(a => {
+      const nm = (a.name || '').toLowerCase();
+      return !nm.endsWith('.json') && nm !== 'resultado_esperado.txt' && !nm.startsWith('.');
+    });
+  }, [detalle?.archivos]);
 
   const cargarDetalle = useCallback(async () => {
     setLoading(true);
@@ -174,18 +181,18 @@ export function ExpedienteInspectorModal({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h4 style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', margin: 0 }}>
-                    Documentación aportada ({detalle.archivos.length})
+                    Documentación aportada ({archivosValidos.length})
                   </h4>
                   <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>Digitalizada en servidor</span>
                 </div>
 
-                {detalle.archivos.length === 0 ? (
+                {archivosValidos.length === 0 ? (
                   <div style={{ padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
                     No hay documentos asociados a este expediente.
                   </div>
                 ) : (
                   <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                    {detalle.archivos.map((archivo, idx) => (
+                    {archivosValidos.map((archivo, idx) => (
                       <div
                         key={idx}
                         style={{
@@ -194,7 +201,7 @@ export function ExpedienteInspectorModal({
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           fontSize: '12px',
-                          borderBottom: idx < detalle.archivos.length - 1 ? '1px solid var(--border-color)' : 'none',
+                          borderBottom: idx < archivosValidos.length - 1 ? '1px solid var(--border-color)' : 'none',
                           backgroundColor: idx % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-subtle)'
                         }}
                       >

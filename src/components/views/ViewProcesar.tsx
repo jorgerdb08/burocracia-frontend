@@ -15,7 +15,7 @@ import {
 
   ArrowLeft, Table, Layers, Filter, Landmark, Utensils, Code2, GitFork, Download, Menu,
 
-  Train, Plane, Bus
+  Train, Plane, Bus, FolderPlus, Edit3, User
 
 } from 'lucide-react';
 
@@ -1053,6 +1053,8 @@ export function ViewProcesar({
   const [tipoProyecto, setTipoProyecto] = useState('');
 
   const [organica, setOrganica] = useState('');
+  const [organicaSecundaria, setOrganicaSecundaria] = useState('');
+  const [esMultiorganica, setEsMultiorganica] = useState(false);
 
   const [referenciaProyecto, setReferenciaProyecto] = useState('');
 
@@ -1108,7 +1110,7 @@ export function ViewProcesar({
 
   const [activeTab, setActiveTab] = useState<string>('desglose');
 
-  const [filtroConcepto, setFiltroConcepto] = useState<'manutencion' | 'transporte' | 'alojamiento' | 'inscripcion' | null>(null);
+  const [filtroConcepto, setFiltroConcepto] = useState<'manutencion' | 'transporte' | 'alojamiento' | 'inscripcion' | 'suplidos' | null>(null);
 
   const [jsonTab, setJsonTab] = useState<'extraccion' | 'liquidacion'>('liquidacion');
 
@@ -1122,6 +1124,56 @@ export function ViewProcesar({
   const [loadingDocVisor, setLoadingDocVisor] = useState<boolean>(false);
   const [errorDocVisor, setErrorDocVisor] = useState<string | null>(null);
   const [hojaExcelActiva, setHojaExcelActiva] = useState<number>(0);
+
+  // Estados para nombrar y gestionar expedientes nuevos / personalizados
+  const [nombreNuevoCaso, setNombreNuevoCaso] = useState<string>('');
+  const [modalNombrarCasoOpen, setModalNombrarCasoOpen] = useState<boolean>(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [modalRenombrarOpen, setModalRenombrarOpen] = useState<boolean>(false);
+  const [nuevoNombreRenombrar, setNuevoNombreRenombrar] = useState<string>('');
+  const [renombrando, setRenombrando] = useState<boolean>(false);
+  const [modalEliminarOpen, setModalEliminarOpen] = useState<boolean>(false);
+  const [eliminandoCaso, setEliminandoCaso] = useState<boolean>(false);
+
+  // Estados para el formulario de comprobación y edición previa a la liquidación (Paso 4)
+  const [formConfirmacion, setFormConfirmacion] = useState({
+    comisionado: '',
+    dni: '',
+    iban: '',
+    grupo_dieta: '2',
+    origen: '',
+    destino: '',
+    itinerario: '',
+    motivo: '',
+    fecha_salida: '',
+    hora_salida: '',
+    fecha_regreso: '',
+    hora_regreso: '',
+    referencia: '',
+    organica: '',
+    organica_secundaria: '',
+    es_multiorganica: false,
+    cofinanciacion_regla: '',
+    tipo_proyecto: '',
+    tipo_transporte: 'vehiculo_particular' as 'vehiculo_particular' | 'transporte_publico',
+    km: 0,
+    matricula: '',
+    marca: '',
+    modelo: '',
+    importe_transporte_publico: 0,
+    descripcion_transporte: '',
+    peajes: 0,
+    parking: 0,
+    hotel_nombre: '',
+    hotel_noches: 0,
+    hotel_importe: 0,
+    congreso_nombre: '',
+    congreso_importe: 0,
+    congreso_pagada_por: 'investigador'
+  });
+  const [loadingExtraccionForm, setLoadingExtraccionForm] = useState<boolean>(false);
+  const [guardandoCorrecciones, setGuardandoCorrecciones] = useState<boolean>(false);
+  const [mensajeGuardadoExitoso, setMensajeGuardadoExitoso] = useState<string>('');
 
   // Cerrar modal de visor con la tecla Escape
   useEffect(() => {
@@ -1152,7 +1204,7 @@ export function ViewProcesar({
     setErrorDocVisor(null);
     setHojaExcelActiva(0);
 
-    const nombre = archivo.name || archivo.nombre || '';
+    const nombre = typeof archivo === 'string' ? archivo : (archivo.name || archivo.nombre || '');
     const ext = nombre.split('.').pop()?.toLowerCase() || '';
     const tipoDetectado = ['xlsx', 'xls', 'csv'].includes(ext)
       ? 'xlsx'
@@ -1328,6 +1380,16 @@ export function ViewProcesar({
                         <Download size={12} />
                         <span>Descargar</span>
                       </a>
+
+                      <button
+                        type="button"
+                        onClick={() => ejecutarEliminarArchivo(cid, nombre)}
+                        className="btn btn-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60 hover:bg-rose-600 hover:text-white cursor-pointer transition-all"
+                        title={`Eliminar ${nombre} de este expediente`}
+                      >
+                        <Trash2 size={12} />
+                        <span>Eliminar</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -1519,16 +1581,15 @@ export function ViewProcesar({
 
           // Autocompletado inteligente de Referencia y Orgánica detectadas
 
-          if (d?.referencia_sugerida) {
+          setReferenciaProyecto(d?.referencia_sugerida || '');
+          setOrganica(d?.organica_sugerida || '');
 
-            setReferenciaProyecto(d.referencia_sugerida);
-
-          }
-
-          if (d?.organica_sugerida) {
-
-            setOrganica(d.organica_sugerida);
-
+          if (d?.organica_secundaria_sugerida || d?.es_multiorganica) {
+            setEsMultiorganica(true);
+            setOrganicaSecundaria(d?.organica_secundaria_sugerida || '');
+          } else {
+            setEsMultiorganica(false);
+            setOrganicaSecundaria('');
           }
 
           // Autoselección contextual de Tipo de Proyecto (G24, UEX, PEI, PCO, etc.)
@@ -1639,7 +1700,205 @@ export function ViewProcesar({
 
 
 
-  const subirArchivos = async (nuevosArchivos: File[]) => {
+  const cargarDatosConfirmacion = useCallback(async (cid: string) => {
+    if (!cid) return;
+    setLoadingExtraccionForm(true);
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(cid)}/datos_extraccion`);
+      const data = await res.json();
+      if (data && data.ok) {
+        const ext = data.extraccion || {};
+        const dp = data.datos_personales || {};
+        const inv = ext.investigador || {};
+        const com = ext.comision || {};
+        const proy = ext.proyecto || {};
+        const transp = Array.isArray(ext.transporte) ? ext.transporte : [];
+        const supl = Array.isArray(ext.suplidos) ? ext.suplidos : [];
+        const aloj = Array.isArray(ext.alojamiento) ? ext.alojamiento : [];
+        const insc = ext.inscripcion || {};
+
+        // 1. Filtrar suplidos que puedan venir erróneamente en el array de transporte (peajes, parkings)
+        const suplidosCombinados = [...supl];
+        const transpLimpio: any[] = [];
+
+        for (const t of transp) {
+          const desc = (t.descripcion || t.concepto || '').toLowerCase();
+          const tipo = (t.tipo || '').toLowerCase();
+          const esPeaje = /peaje|autopista|via-t/.test(desc) || /peaje|autopista|via-t/.test(tipo);
+          const esParking = /park|aparcamiento|estacionamiento/.test(desc) || /park|aparcamiento|estacionamiento/.test(tipo);
+
+          if (esPeaje) {
+            suplidosCombinados.push({ concepto: t.descripcion || 'Peaje', importe: t.importe });
+          } else if (esParking) {
+            suplidosCombinados.push({ concepto: t.descripcion || 'Parking', importe: t.importe });
+          } else {
+            transpLimpio.push(t);
+          }
+        }
+
+        const veh = transpLimpio.find((t: any) => t.tipo === 'vehiculo_particular' || t.tipo === 'vehiculo_propio' || t.km > 0);
+        const pub = transpLimpio.find((t: any) => 
+          t.tipo === 'tren' || t.tipo === 'avion' || t.tipo === 'bus' || t.tipo === 'autobus' ||
+          /tren|ave|renfe|vuelo|avion|billete|autobus|bus/i.test(t.descripcion || '')
+        );
+
+        const esVehiculo = Boolean(veh || dp.vehiculo_propio || dp.km > 0);
+
+        let fSal = '';
+        let hSal = '';
+        if (com.fecha_hora_salida && typeof com.fecha_hora_salida === 'string' && com.fecha_hora_salida.includes('T')) {
+          fSal = com.fecha_hora_salida.split('T')[0];
+          hSal = com.fecha_hora_salida.split('T')[1]?.slice(0, 5) || '';
+        } else if (dp.fecha_salida) {
+          fSal = dp.fecha_salida;
+          hSal = dp.hora_salida || '';
+        }
+
+        let fReg = '';
+        let hReg = '';
+        if (com.fecha_hora_regreso && typeof com.fecha_hora_regreso === 'string' && com.fecha_hora_regreso.includes('T')) {
+          fReg = com.fecha_hora_regreso.split('T')[0];
+          hReg = com.fecha_hora_regreso.split('T')[1]?.slice(0, 5) || '';
+        } else if (dp.fecha_vuelta) {
+          fReg = dp.fecha_vuelta;
+          hReg = dp.hora_vuelta || '';
+        }
+
+        const peajeTotal = suplidosCombinados
+          .filter((s: any) => /peaje|autopista|via-t/i.test(s.concepto || s.descripcion || ''))
+          .reduce((acc: number, s: any) => acc + (Number(s.importe) || 0), 0) || Number(dp.peajes) || 0;
+
+        const parkTotal = suplidosCombinados
+          .filter((s: any) => /park|aparcamiento|estacionamiento/i.test(s.concepto || s.descripcion || ''))
+          .reduce((acc: number, s: any) => acc + (Number(s.importe) || 0), 0) || Number(dp.parking) || 0;
+
+        const al0 = aloj[0] || {};
+        const hotImporte = Number(al0.importe_total || al0.importe) || Number(dp.alojamiento) || 0;
+        let calcNoches = 0;
+        if (fSal && fReg) {
+          const diffDays = Math.round((new Date(fReg).getTime() - new Date(fSal).getTime()) / 86400000);
+          if (diffDays > 0) calcNoches = diffDays;
+        }
+        const hotNoches = Number(al0.noches) > 0 ? Number(al0.noches) : calcNoches;
+        const hotNombre = al0.establecimiento || dp.alojamiento_nombre || '';
+
+        const inscImporte = Number(insc.importe) || Number(dp.inscripcion) || 0;
+        const inscNombre = insc.nombre_congreso || '';
+
+        const curRef = referenciaProyecto || proy.referencia || dp.referencia || '';
+        const curOrg = organica || proy.organica || dp.organica || '';
+        const curOrgSec = organicaSecundaria || proy.organica_secundaria || dp.organica_secundaria || '';
+        const curEsMulti = Boolean(esMultiorganica || curOrgSec || proy.es_multiorganica || dp.es_multiorganica);
+        const finalOrgSec = curEsMulti ? curOrgSec : '';
+        const rawCofin = proy.cofinanciacion || dp.cofinanciacion || '';
+        const curCofin = typeof rawCofin === 'string' ? rawCofin : '';
+        const curTipoProy = tipoProyecto || proy.tipo_proyecto || '';
+        const curKm = Number(veh?.km) || Number(dp.km) || 0;
+
+        setFormConfirmacion({
+          comisionado: inv.nombre || dp.comisionado || '',
+          dni: inv.nif || dp.dni || '',
+          iban: inv.iban || dp.iban || '',
+          grupo_dieta: inv.grupo_dieta || '2',
+
+          origen: com.origen || dp.origen || (dp.itinerario?.includes('->') ? dp.itinerario.split('->')[0].trim() : ''),
+          destino: com.destino || (dp.itinerario?.includes('->') ? dp.itinerario.split('->')[1]?.trim() : dp.itinerario) || '',
+          itinerario: dp.itinerario || (com.destino ? `${com.origen || ''} -> ${com.destino}`.replace(/^ -> /, '') : ''),
+          motivo: com.motivo || '',
+          fecha_salida: fSal,
+          hora_salida: hSal,
+          fecha_regreso: fReg,
+          hora_regreso: hReg,
+
+          referencia: curRef,
+          organica: curOrg,
+          organica_secundaria: finalOrgSec,
+          es_multiorganica: curEsMulti,
+          cofinanciacion_regla: curCofin,
+          tipo_proyecto: curTipoProy,
+
+          tipo_transporte: esVehiculo ? 'vehiculo_particular' : 'transporte_publico',
+          km: esVehiculo ? curKm : 0,
+          matricula: esVehiculo ? (veh?.matricula || dp.matricula || '') : '',
+          marca: esVehiculo ? (veh?.marca || dp.marca || '') : '',
+          modelo: esVehiculo ? (veh?.modelo || dp.modelo || '') : '',
+          importe_transporte_publico: esVehiculo ? 0 : (pub?.importe || dp.transporte_publico || 0),
+          descripcion_transporte: esVehiculo ? '' : (pub?.descripcion || ''),
+          peajes: peajeTotal,
+          parking: parkTotal,
+
+          hotel_nombre: hotNombre,
+          hotel_noches: hotNoches,
+          hotel_importe: hotImporte,
+
+          congreso_nombre: inscNombre,
+          congreso_importe: inscImporte,
+          congreso_pagada_por: insc.pagada_por || 'investigador'
+        });
+
+        if (!referenciaProyecto && curRef) setReferenciaProyecto(curRef);
+        if (!organica && curOrg) setOrganica(curOrg);
+        if (!organicaSecundaria && finalOrgSec) setOrganicaSecundaria(finalOrgSec);
+        if (curEsMulti) setEsMultiorganica(true);
+        if (!tipoProyecto && curTipoProy) setTipoProyecto(curTipoProy);
+      }
+    } catch (e) {
+      console.error('Error al cargar datos de extracción:', e);
+    } finally {
+      setLoadingExtraccionForm(false);
+    }
+  }, [referenciaProyecto, organica, tipoProyecto]);
+
+  useEffect(() => {
+    if (currentStep === 4 && casoSel) {
+      cargarDatosConfirmacion(casoSel);
+    }
+  }, [currentStep, casoSel, cargarDatosConfirmacion]);
+
+  const guardarSoloDatos = async () => {
+    if (!casoSel) return;
+    setGuardandoCorrecciones(true);
+    setMensajeGuardadoExitoso('');
+    try {
+      await fetch(`/api/caso/${encodeURIComponent(casoSel)}/guardar_datos_personales`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          comisionado: formConfirmacion.comisionado,
+          dni: formConfirmacion.dni,
+          iban: formConfirmacion.iban,
+          itinerario: formConfirmacion.itinerario,
+          fecha_salida: formConfirmacion.fecha_salida,
+          hora_salida: formConfirmacion.hora_salida,
+          fecha_vuelta: formConfirmacion.fecha_regreso,
+          hora_vuelta: formConfirmacion.hora_regreso,
+          vehiculo_propio: formConfirmacion.tipo_transporte === 'vehiculo_particular',
+          km: Number(formConfirmacion.km) || 0,
+          matricula: formConfirmacion.matricula,
+          marca: formConfirmacion.marca,
+          modelo: formConfirmacion.modelo,
+          peajes: Number(formConfirmacion.peajes) || 0,
+          parking: Number(formConfirmacion.parking) || 0,
+          transporte_publico: Number(formConfirmacion.importe_transporte_publico) || 0,
+          alojamiento: Number(formConfirmacion.hotel_importe) || 0,
+          inscripcion: Number(formConfirmacion.congreso_importe) || 0,
+          referencia: formConfirmacion.referencia,
+          organica: formConfirmacion.organica,
+          organica_secundaria: formConfirmacion.es_multiorganica ? formConfirmacion.organica_secundaria : '',
+          cofinanciacion: formConfirmacion.cofinanciacion_regla,
+          es_multiorganica: formConfirmacion.es_multiorganica
+        })
+      });
+      setMensajeGuardadoExitoso('Datos del expediente guardados correctamente.');
+      setTimeout(() => setMensajeGuardadoExitoso(''), 4000);
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar los datos.');
+    } finally {
+      setGuardandoCorrecciones(false);
+    }
+  };
+
+  const subirArchivos = async (nuevosArchivos: File[], customNombre?: string) => {
 
     if (nuevosArchivos.length === 0) return;
 
@@ -1657,6 +1916,11 @@ export function ViewProcesar({
 
         fd.append('tipo', selectedTemplate);
 
+      }
+
+      const nombreParaSubida = (customNombre !== undefined ? customNombre : nombreNuevoCaso).trim();
+      if (!casoSel && nombreParaSubida) {
+        fd.append('nombre_caso', nombreParaSubida);
       }
 
       const res = await fetch(`/api/caso/upload?tipo=${encodeURIComponent(selectedTemplate || '')}`, {
@@ -1691,6 +1955,11 @@ export function ViewProcesar({
 
         setOrganica(data.detalle.organica_sugerida);
 
+      }
+
+      if (data.detalle?.organica_secundaria_sugerida || data.detalle?.es_multiorganica) {
+        setEsMultiorganica(true);
+        setOrganicaSecundaria(data.detalle.organica_secundaria_sugerida || '');
       }
 
       if (data.detalle?.tipo_proyecto_sugerido) {
@@ -1741,6 +2010,85 @@ export function ViewProcesar({
 
 
 
+  const ejecutarRenombrarCaso = async () => {
+    if (!casoSel || !nuevoNombreRenombrar.trim()) return;
+    setRenombrando(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(casoSel)}/renombrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nuevo_nombre: nuevoNombreRenombrar.trim() })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      setModalRenombrarOpen(false);
+      if (data.caso_id) {
+        setCasoSel(data.caso_id);
+      }
+      if (data.detalle) {
+        setCasoDetalle(data.detalle);
+      }
+      const r = await fetch('/api/casos');
+      const d = await r.json();
+      if (d.casos) setCasos(d.casos);
+    } catch (err: any) {
+      alert(err.message || 'Error al renombrar el expediente.');
+    } finally {
+      setRenombrando(false);
+    }
+  };
+
+  const ejecutarEliminarCaso = async () => {
+    if (!casoSel) return;
+    setEliminandoCaso(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(casoSel)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      setModalEliminarOpen(false);
+      setCasoSel('');
+      setCasoDetalle(null);
+      setFiles([]);
+      setNombreNuevoCaso('');
+
+      const r = await fetch('/api/casos');
+      const d = await r.json();
+      if (d.casos) setCasos(d.casos);
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar el expediente.');
+    } finally {
+      setEliminandoCaso(false);
+    }
+  };
+
+  const ejecutarEliminarArchivo = async (cid: string, fileName: string) => {
+    if (!window.confirm(`¿Desea eliminar el archivo "${fileName}" de este expediente?`)) return;
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(cid)}/archivo/${encodeURIComponent(fileName)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      const rDet = await fetch(`/api/caso/${encodeURIComponent(cid)}/detalle`);
+      const dDet = await rDet.json();
+      if (!dDet.error) {
+        setCasoDetalle(dDet);
+      }
+      const rCasos = await fetch('/api/casos');
+      const dCasos = await rCasos.json();
+      if (dCasos.casos) setCasos(dCasos.casos);
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar el archivo.');
+    }
+  };
+
   const handleFileDrop = (e: React.DragEvent) => {
 
     e.preventDefault();
@@ -1753,7 +2101,12 @@ export function ViewProcesar({
 
       setFiles(dropped);
 
-      subirArchivos(dropped);
+      if (casoSel || nombreNuevoCaso.trim()) {
+        subirArchivos(dropped, nombreNuevoCaso.trim());
+      } else {
+        setPendingFiles(dropped);
+        setModalNombrarCasoOpen(true);
+      }
 
     }
 
@@ -1769,7 +2122,12 @@ export function ViewProcesar({
 
       setFiles(selected);
 
-      subirArchivos(selected);
+      if (casoSel || nombreNuevoCaso.trim()) {
+        subirArchivos(selected, nombreNuevoCaso.trim());
+      } else {
+        setPendingFiles(selected);
+        setModalNombrarCasoOpen(true);
+      }
 
     }
 
@@ -1786,96 +2144,142 @@ export function ViewProcesar({
 
 
   const ejecutar = useCallback(async () => {
-
     let targetCaso = casoSel;
-
     setRunning(true);
-
     setError('');
-
     setResult(null);
-
-    setTaskLogs('Iniciando cotejo documental y fiscalización del expediente...');
+    setTaskLogs('Iniciando validación de datos y liquidación del expediente...');
 
     try {
-
       if (!targetCaso) {
-
         if (files.length === 0) throw new Error("Debe seleccionar un expediente o subir los archivos para justificar el gasto.");
-
         const fd = new FormData();
-
         files.forEach(f => fd.append('files', f));
-
         const res = await fetch('/api/caso/upload', { method: 'POST', body: fd });
-
         const data = await res.json();
-
         if (data.error) throw new Error(data.error);
-
         targetCaso = data.caso_id;
-
         setCasoSel(targetCaso);
-
       }
 
+      const reqTipoProyecto = formConfirmacion.tipo_proyecto || tipoProyecto || 'G24';
 
+      // 1. Guardar datos en el expediente físico para coherencia documental (.xlsx / .txt)
+      try {
+        await fetch(`/api/caso/${encodeURIComponent(targetCaso)}/guardar_datos_personales`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            comisionado: formConfirmacion.comisionado,
+            dni: formConfirmacion.dni,
+            iban: formConfirmacion.iban,
+            itinerario: formConfirmacion.itinerario,
+            fecha_salida: formConfirmacion.fecha_salida,
+            hora_salida: formConfirmacion.hora_salida,
+            fecha_vuelta: formConfirmacion.fecha_regreso,
+            hora_vuelta: formConfirmacion.hora_regreso,
+            vehiculo_propio: formConfirmacion.tipo_transporte === 'vehiculo_particular',
+            km: Number(formConfirmacion.km) || 0,
+            matricula: formConfirmacion.matricula,
+            marca: formConfirmacion.marca,
+            modelo: formConfirmacion.modelo,
+            peajes: Number(formConfirmacion.peajes) || 0,
+            parking: Number(formConfirmacion.parking) || 0,
+            transporte_publico: Number(formConfirmacion.importe_transporte_publico) || 0,
+            alojamiento: Number(formConfirmacion.hotel_importe) || 0,
+            inscripcion: Number(formConfirmacion.congreso_importe) || 0,
+            referencia: formConfirmacion.referencia || referenciaProyecto,
+            organica: formConfirmacion.organica || organica
+          })
+        });
+      } catch (err) {
+        console.warn('Aviso al guardar datos personales:', err);
+      }
 
-      const reqTipoProyecto = tipoProyecto || '';
-
-
-
-      const s = await fetch('/api/caso/iniciar', {
-
-        method: 'POST',
-
-        headers: { 'Content-Type': 'application/json' },
-
-        body: JSON.stringify({
-
-          caso_id: targetCaso,
-
+      // 2. Construir la extracción estructurada validada por el usuario
+      const updatedExtraccion: any = {
+        investigador: {
+          nombre: formConfirmacion.comisionado || '',
+          nif: formConfirmacion.dni || '',
+          iban: formConfirmacion.iban || '',
+          grupo_dieta: formConfirmacion.grupo_dieta || '2'
+        },
+        comision: {
+          origen: formConfirmacion.origen || '',
+          destino: formConfirmacion.destino || formConfirmacion.itinerario || '',
+          motivo: formConfirmacion.motivo || '',
+          fecha_hora_salida: formConfirmacion.fecha_salida ? `${formConfirmacion.fecha_salida}T${formConfirmacion.hora_salida || '00:00'}:00` : '',
+          fecha_hora_regreso: formConfirmacion.fecha_regreso ? `${formConfirmacion.fecha_regreso}T${formConfirmacion.hora_regreso || '00:00'}:00` : '',
+          autorizada: true,
+          pais: 'España',
+          tipo_viaje: 'asistencia_congreso'
+        },
+        proyecto: {
+          referencia: formConfirmacion.referencia || referenciaProyecto || '',
+          organica: formConfirmacion.organica || organica || '',
+          ...(formConfirmacion.es_multiorganica || formConfirmacion.organica_secundaria ? {
+            organica_secundaria: formConfirmacion.organica_secundaria || organicaSecundaria || '',
+            es_multiorganica: true,
+            ...(formConfirmacion.cofinanciacion_regla ? { cofinanciacion: formConfirmacion.cofinanciacion_regla } : {})
+          } : {}),
           tipo_proyecto: reqTipoProyecto,
+          aplica_irpf: !['G24', 'PEI', 'NAL'].includes(reqTipoProyecto)
+        },
+        transporte: formConfirmacion.tipo_transporte === 'vehiculo_particular' ? [{
+          tipo: 'vehiculo_particular',
+          descripcion: formConfirmacion.itinerario || [formConfirmacion.origen, formConfirmacion.destino].filter(Boolean).join(' - '),
+          km: Number(formConfirmacion.km) || 0,
+          matricula: formConfirmacion.matricula || '',
+          marca: formConfirmacion.marca || '',
+          modelo: formConfirmacion.modelo || ''
+        }] : [{
+          tipo: 'tren',
+          descripcion: formConfirmacion.descripcion_transporte || 'Billete de transporte público',
+          importe: Number(formConfirmacion.importe_transporte_publico) || 0
+        }],
+        suplidos: [
+          ...(Number(formConfirmacion.peajes) > 0 ? [{ concepto: 'Peaje', importe: Number(formConfirmacion.peajes) }] : []),
+          ...(Number(formConfirmacion.parking) > 0 ? [{ concepto: 'Parking', importe: Number(formConfirmacion.parking) }] : [])
+        ],
+        alojamiento: Number(formConfirmacion.hotel_importe) > 0 ? [{
+          establecimiento: formConfirmacion.hotel_nombre || 'Alojamiento',
+          fecha_entrada: formConfirmacion.fecha_salida,
+          fecha_salida: formConfirmacion.fecha_regreso,
+          noches: Number(formConfirmacion.hotel_noches) || 1,
+          importe_total: Number(formConfirmacion.hotel_importe)
+        }] : [],
+        inscripcion: Number(formConfirmacion.congreso_importe) > 0 ? {
+          nombre_congreso: formConfirmacion.congreso_nombre || 'Congreso / Jornadas',
+          importe: Number(formConfirmacion.congreso_importe) || 0,
+          pagada_por: formConfirmacion.congreso_pagada_por || 'investigador'
+        } : undefined
+      };
 
-          tipo_procedimiento: selectedTemplate,
-
-          caso_especifico: selectedCasoEspecifico,
-
-          schema_path: selectedSchemaPath,
-
-          prompt_path: selectedPromptExtraccion,
-
-          prompt_liquidacion_path: selectedPromptLiquidacion,
-
-          prompt_proyecto_path: selectedPromptProyecto,
-
-          organica: organica,
-
-          referencia_proyecto: referenciaProyecto,
-
-        }),
-
+      // 3. Ejecutar cálculo determinista y generación documental oficial
+      const respAct = await fetch(`/api/caso/${encodeURIComponent(targetCaso)}/actualizar_datos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          extraccion: updatedExtraccion,
+          tipo_tramite: selectedTemplate || 'dietas'
+        })
       });
+      const dataAct = await respAct.json();
+      if (dataAct.error) throw new Error(dataAct.error);
 
-      const { task_id } = await s.json();
+      // Refrescar casoDetalle para mostrar los nuevos PDFs generados en el visor
+      fetch(`/api/caso/${encodeURIComponent(targetCaso)}/detalle?tipo=${encodeURIComponent(selectedTemplate || '')}`)
+        .then(r => r.json())
+        .then(d => { if (d && !d.error) setCasoDetalle(d); })
+        .catch(() => {});
 
-      setActiveTaskId(task_id);
-
-      const res = await pollTask<CasoResult>(task_id);
-
-      setResult(res);
-
+      setResult(dataAct);
     } catch (e: any) {
-
-      setError(e.message);
-
+      setError(e.message || 'Error al ejecutar la fiscalización del expediente.');
     } finally {
-
       setRunning(false);
-
     }
-
-  }, [casoSel, files, tipoProyecto, selectedTemplate, organica, referenciaProyecto, selectedCasoEspecifico, selectedSchemaPath, selectedPromptExtraccion, selectedPromptLiquidacion, selectedPromptProyecto]);
+  }, [casoSel, files, formConfirmacion, tipoProyecto, selectedTemplate, organica, referenciaProyecto]);
 
 
 
@@ -1950,55 +2354,41 @@ export function ViewProcesar({
     const aloExceso = Math.max(0, aloReal - aloAbonable);
 
     const insTotal = liq.conceptos.inscripcion?.importe_total || liq.conceptos.inscripcion?.importe || 0;
-
     const insPagadaPor = liq.conceptos.inscripcion?.pagada_por || 'tarjeta_investigador';
-
     const insEsTarjetaInst = insPagadaPor === 'tarjeta_institucional' || liq.conceptos.inscripcion?.reembolsable_al_investigador === false;
-
+    const insTarjetaInstImporte = insEsTarjetaInst ? insTotal : 0;
+    const sup = liq.conceptos.suplidos?.importe || 0;
     const irpfRetencion = liq.resumen_economico?.retencion_irpf || liq.irpf?.retencion || 0;
-
     const irpfBase = liq.irpf?.base_sujeta || 0;
 
-
-
     // Gasto bruto total justificado
+    const gastoTotalMision = man + tra + aloReal + insTotal + sup;
 
-    const gastoTotalMision = man + tra + aloReal + insTotal;
+    // Totales oficiales según modelo UEx
+    const totalDesplazamientos = man + tra + aloAbonable;
+    const totalOtrosGastos = sup + insTotal;
 
     // Total líquido que se paga al investigador
-
-    const liquidoTransferir = result.liquido_ag || (liq.resumen_economico?.liquido_a_abonar ?? (man + tra + aloAbonable - irpfRetencion));
-
-
+    const liquidoTransferir = result.liquido_ag || (liq.resumen_economico?.liquido_a_abonar ?? (man + tra + aloAbonable + sup + (insEsTarjetaInst ? 0 : insTotal) - irpfRetencion));
 
     return {
-
       fuente,
-
       esJunta,
-
       man,
-
       tra,
-
       aloReal,
-
       aloAbonable,
-
       aloExceso,
-
       insTotal,
-
       insEsTarjetaInst,
-
+      insTarjetaInstImporte,
+      sup,
       irpfRetencion,
-
       irpfBase,
-
       gastoTotalMision,
-
+      totalDesplazamientos,
+      totalOtrosGastos,
       liquidoTransferir
-
     };
 
   }, [result]);
@@ -2092,15 +2482,16 @@ export function ViewProcesar({
 
 
           {result && (
-
-            <Btn size="sm" variant="outline" onClick={reiniciarTramite}>
-
-              <RotateCcw size={13} />
-
-              <span>Nueva liquidación</span>
-
-            </Btn>
-
+            <div className="flex items-center gap-2">
+              <Btn size="sm" variant="outline" onClick={() => { setResult(null); setCurrentStep(4); }}>
+                <Edit3 size={13} />
+                <span>Modificar datos y recalcular</span>
+              </Btn>
+              <Btn size="sm" variant="outline" onClick={reiniciarTramite}>
+                <RotateCcw size={13} />
+                <span>Nueva liquidación</span>
+              </Btn>
+            </div>
           )}
 
         </div>
@@ -2649,7 +3040,6 @@ export function ViewProcesar({
                     <div className="p-4 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50 animate-fade-in">
 
                       <div className="flex flex-wrap gap-2 pt-2">
-
                         {casosFiltrados.map((c) => {
 
                           const isSel = casoSel === c.id;
@@ -2708,6 +3098,7 @@ export function ViewProcesar({
 
                               )}
 
+
                               {c.estado_validacion === 'error' && (
 
                                 <span className="status-dot status-dot-danger" title="Faltan documentos obligatorios" />
@@ -2744,6 +3135,37 @@ export function ViewProcesar({
 
 
 
+              {/* Campo para nombrar el nuevo expediente al subir desde cero */}
+              {!casoSel && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Nombre o Referencia del Expediente <span className="text-zinc-400 font-normal">(opcional)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={nombreNuevoCaso}
+                      onChange={(e) => setNombreNuevoCaso(e.target.value)}
+                      placeholder="Ej: Viaje_Madrid_SISTEDES o Congreso_Sevilla_2026"
+                      className="flex-1 px-3 py-2 text-xs font-mono rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+                    />
+                    {nombreNuevoCaso && (
+                      <button
+                        type="button"
+                        onClick={() => setNombreNuevoCaso('')}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-2 cursor-pointer"
+                        title="Borrar nombre"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                    Indique un nombre identificativo para este expediente o déjelo en blanco si prefiere que se asigne automáticamente.
+                  </p>
+                </div>
+              )}
+
               {/* Listado y Checklist de Documentos del Expediente Seleccionado */}
 
               {casoSel && (
@@ -2760,13 +3182,59 @@ export function ViewProcesar({
 
                       <div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
 
                           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
 
                             {casoSel}
 
                           </span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNuevoNombreRenombrar(casoSel);
+                              setModalRenombrarOpen(true);
+                            }}
+                            style={{
+                              fontSize: '11px',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-color)',
+                              backgroundColor: 'var(--bg-surface)',
+                              color: 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Cambiar el nombre o identificador del expediente"
+                          >
+                            <Edit3 size={11} />
+                            <span>Renombrar</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setModalEliminarOpen(true)}
+                            style={{
+                              fontSize: '11px',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #fecaca',
+                              backgroundColor: '#fff1f2',
+                              color: '#b91c1c',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            className="hover:bg-red-100 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-900/60 transition-colors"
+                            title="Eliminar este expediente y todos sus documentos del servidor"
+                          >
+                            <Trash2 size={11} />
+                            <span>Eliminar</span>
+                          </button>
 
                           {casoDetalle?.tipo && (
 
@@ -2918,93 +3386,7 @@ export function ViewProcesar({
 
 
 
-                  {/* Checklist de Requisitos Normativos */}
 
-                  {casoDetalle?.requisitos && casoDetalle.requisitos.length > 0 && (
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
-                      <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
-
-                        Requisitos documentales verificados
-
-                      </span>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '8px' }}>
-
-                        {casoDetalle.requisitos.map((req: any) => (
-
-                          <div
-
-                            key={req.id}
-
-                            style={{
-
-                              padding: '8px 12px',
-
-                              borderRadius: 'var(--radius-sm)',
-
-                              border: '1px solid var(--border-color)',
-
-                              backgroundColor: 'var(--bg-surface)',
-
-                              display: 'flex',
-
-                              alignItems: 'center',
-
-                              justifyContent: 'space-between',
-
-                              fontSize: '12px'
-
-                            }}
-
-                          >
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden' }}>
-
-                              <span className={`status-dot ${req.cumplido ? 'status-dot-success' : req.obligatorio ? 'status-dot-danger' : 'status-dot-warning'}`} />
-
-                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-
-                                <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{req.label}</span>
-
-                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '6px' }}>
-
-                                  ({req.obligatorio ? "Obligatorio" : "Opcional"})
-
-                                </span>
-
-                              </div>
-
-                            </div>
-
-                            <span style={{
-
-                              fontSize: '11px',
-
-                              fontFamily: 'var(--font-mono)',
-
-                              color: req.cumplido ? 'var(--color-success-text)' : req.obligatorio ? 'var(--color-danger-text)' : 'var(--color-warning-text)',
-
-                              fontWeight: 500,
-
-                              flexShrink: 0
-
-                            }}>
-
-                              {req.cumplido ? "Presente" : req.obligatorio ? "Falta" : "Aviso"}
-
-                            </span>
-
-                          </div>
-
-                        ))}
-
-                      </div>
-
-                    </div>
-
-                  )}
 
 
 
@@ -3318,6 +3700,33 @@ export function ViewProcesar({
 
                   </span>
 
+                </div>
+
+                {/* Campo Orgánica Secundaria en Paso 3 integrado armónicamente */}
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                      <Building2 size={13} style={{ color: 'var(--text-secondary)' }} />
+                      Orgánica Secundaria UEx
+                    </span>
+                    <span style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--text-muted)', backgroundColor: 'var(--bg-app)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)', letterSpacing: '0.02em' }}>
+                      Opcional
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={organicaSecundaria}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setOrganicaSecundaria(val);
+                      setEsMultiorganica(Boolean(val.trim()));
+                    }}
+                    placeholder="Ej: 18.IW.00 (cofinanciación)"
+                    className="form-input"
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    Segunda unidad de gasto si es multiorgánica (genera Anexo II).
+                  </span>
                 </div>
 
               </div>
@@ -3636,257 +4045,7 @@ export function ViewProcesar({
 
 
 
-              {/* Panel Desplegable de Configuración Avanzada: Prompts, Esquemas y Plantillas */}
-
-              <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setMostrarConfigAvanzada(!mostrarConfigAvanzada)}
-
-                  className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
-
-                >
-
-                  <span className="flex items-center gap-2">
-
-                    <Code2 size={14} className="text-[#176B52] dark:text-[#86EFAC]" />
-
-                    Configuración Avanzada: Prompts Normativos (Presupuestos UEx 2026), Esquemas y Plantillas
-
-                  </span>
-
-                  <div className="flex items-center gap-2 text-zinc-400 text-[11px] font-normal">
-
-                    <span>{selectedPromptLiquidacion ? selectedPromptLiquidacion.split('/').pop() : 'Prompts por defecto'}</span>
-
-                    {mostrarConfigAvanzada ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-
-                  </div>
-
-                </button>
-
-
-
-                {mostrarConfigAvanzada && (
-
-                  <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 space-y-4 bg-zinc-50/50 dark:bg-zinc-950/40 animate-fade-in text-xs">
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                      {/* Selector de Prompt de Liquidación */}
-
-                      <div>
-
-                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
-
-                          <span className="flex items-center gap-1.5">
-
-                            <Scale size={13} className="text-[#176B52] dark:text-[#86EFAC]" />
-
-                            Prompt de Liquidación y Fiscalización
-
-                          </span>
-
-                          <span className="text-[10px] text-zinc-400 font-mono">extractor/prompts/liquidacion/</span>
-
-                        </label>
-
-                        <select
-
-                          value={selectedPromptLiquidacion}
-
-                          onChange={(e) => setSelectedPromptLiquidacion(e.target.value)}
-
-                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
-
-                        >
-
-                          <option value="">Automático por Procedimiento ({selectedTemplate})</option>
-
-                          {promptsCatalog.liquidacion?.map((l: any) => (
-
-                            <option key={l.path} value={l.path}>
-
-                              {l.nombre} ({l.archivo})
-
-                            </option>
-
-                          ))}
-
-                        </select>
-
-                        <p className="text-[10px] text-zinc-400 mt-1">
-
-                          Aplica auditoría y fiscalización de PRESUPUESTO-2026.pdf (0,26 €/km, topes DOE/BOE, retención IRPF).
-
-                        </p>
-
-                      </div>
-
-
-
-                      {/* Selector de Prompt de Proyecto */}
-
-                      <div>
-
-                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
-
-                          <span className="flex items-center gap-1.5">
-
-                            <Building2 size={13} className="text-blue-600 dark:text-blue-400" />
-
-                            Prompt de Normativa de Proyecto
-
-                          </span>
-
-                          <span className="text-[10px] text-zinc-400 font-mono">extractor/prompts/proyectos/</span>
-
-                        </label>
-
-                        <select
-
-                          value={selectedPromptProyecto}
-
-                          onChange={(e) => setSelectedPromptProyecto(e.target.value)}
-
-                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
-
-                        >
-
-                          <option value="">Directrices UEx 2026 ({tipoProyecto || 'Detección Auto'})</option>
-
-                          {promptsCatalog.proyectos?.map((p: any) => (
-
-                            <option key={p.path} value={p.path}>
-
-                              {p.nombre} ({p.archivo})
-
-                            </option>
-
-                          ))}
-
-                        </select>
-
-                        <p className="text-[10px] text-zinc-400 mt-1">
-
-                          Directrices normativas de financiación (RD 462/2002, Decreto 42/2025, Art. 60 LOSU).
-
-                        </p>
-
-                      </div>
-
-
-
-                      {/* Selector de Esquema de Extracción */}
-
-                      <div>
-
-                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
-
-                          <span>Esquema de Extracción JSON</span>
-
-                          <span className="text-[10px] text-zinc-400 font-mono">schemas/</span>
-
-                        </label>
-
-                        <select
-
-                          value={selectedSchemaPath}
-
-                          onChange={(e) => setSelectedSchemaPath(e.target.value)}
-
-                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
-
-                        >
-
-                          <option value="">Automático por Procedimiento</option>
-
-                          {schemasList.map((s) => (
-
-                            <option key={s.path} value={s.path}>
-
-                              {s.nombre} ({s.path.split('/').pop()})
-
-                            </option>
-
-                          ))}
-
-                        </select>
-
-                        <p className="text-[10px] text-zinc-400 mt-1">
-
-                          Valida los datos devueltos por el LLM antes de la generación documental.
-
-                        </p>
-
-                      </div>
-
-
-
-                      {/* Selector de Plantilla de Generación */}
-
-                      <div>
-
-                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
-
-                          <span>Plantilla PDF de Salida</span>
-
-                          <span className="text-[10px] text-zinc-400 font-mono">templates/</span>
-
-                        </label>
-
-                        <select
-
-                          value={selectedPlantilla}
-
-                          onChange={(e) => setSelectedPlantilla(e.target.value)}
-
-                          className="w-full px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 cursor-pointer"
-
-                        >
-
-                          <option value="">Pack Oficial Completo del Procedimiento</option>
-
-                          {plantillasList.map((p) => (
-
-                            <option key={p.id} value={p.id}>
-
-                              {p.nombre}
-
-                            </option>
-
-                          ))}
-
-                        </select>
-
-                        <p className="text-[10px] text-zinc-400 mt-1">
-
-                          Formulario oficial interactivo de la Universidad de Extremadura a cumplimentar.
-
-                        </p>
-
-                      </div>
-
-                    </div>
-
-
-
-                    <div className="flex items-center justify-between pt-2 text-[11px] text-zinc-400 border-t border-zinc-200/60 dark:border-zinc-800">
-
-                      <span>Catálogos centralizados en: <code className="font-mono text-zinc-600 dark:text-zinc-300">extractor/prompts/</code> & <code className="font-mono text-zinc-600 dark:text-zinc-300">config_data/</code></span>
-
-                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">✓ Validación PRESUPUESTO-2026.pdf Activa</span>
-
-                    </div>
-
-                  </div>
-
-                )}
-
-              </div>
+              
 
             </div>
 
@@ -3894,195 +4053,658 @@ export function ViewProcesar({
 
 
 
-          {/* PASO 4: CONFIRMACIÓN */}
-
+          {/* PASO 4: CONFIRMACIÓN Y COMPROBACIÓN DE DATOS */}
           {currentStep === 4 && (
-
             <div className="space-y-6 animate-fade-in">
-
               <div>
-
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">4. Resumen e Inicio de la Fiscalización</h3>
-
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                  <span>4. Comprobación de Datos Extraídos y Validación</span>
+                </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-
-                  Revise los parámetros antes de iniciar el cotejo documental y el cálculo normativo determinista.
-
+                  Revise y ajuste los datos extraídos del expediente antes de generar la liquidación oficial determinista. Cualquier modificación actualizará el cálculo final y los documentos oficiales emitidos.
                 </p>
-
               </div>
 
-
-
-              <div className="p-5 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
-
-                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
-
-                  <span className="text-zinc-500">Procedimiento:</span>
-
-                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{templateActivo?.titulo}</span>
-
+              {loadingExtraccionForm ? (
+                <div className="p-12 text-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <Loader2 className="animate-spin text-[#176B52] mx-auto mb-3" size={28} />
+                  <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Cargando y analizando datos documentales del expediente...
+                  </p>
                 </div>
+              ) : (
+                <div className="space-y-5">
+                  {/* BLOQUE 1: DATOS DEL PERCEPTOR Y CUENTA BANCARIA */}
+                  <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded bg-emerald-50 text-[#176B52] dark:bg-emerald-950/40 dark:text-emerald-400">
+                          <User size={15} />
+                        </div>
+                        <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                          1. Datos del Perceptor / Comisionado
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
+                        Fiscalización Personal
+                      </span>
+                    </div>
 
-                {selectedCasoEspecifico && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                      <div className="lg:col-span-2">
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Nombre y Apellidos
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfirmacion.comisionado}
+                          onChange={(e) => setFormConfirmacion(prev => ({ ...prev, comisionado: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          placeholder="Ej: Dr. Juan Pérez Ejemplo"
+                        />
+                      </div>
 
-                  <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          DNI / NIF
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfirmacion.dni}
+                          onChange={(e) => setFormConfirmacion(prev => ({ ...prev, dni: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          placeholder="12345678Z"
+                        />
+                      </div>
 
-                    <span className="text-zinc-500">Caso / Supuesto:</span>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Grupo de Dieta UEx
+                        </label>
+                        <select
+                          value={formConfirmacion.grupo_dieta}
+                          onChange={(e) => setFormConfirmacion(prev => ({ ...prev, grupo_dieta: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                        >
+                          <option value="2">Grupo 2 (PDI, PAS, Investigadores)</option>
+                          <option value="1">Grupo 1 (Rector, Vicerrectores, Decanos)</option>
+                        </select>
+                      </div>
 
-                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
-
-                      {procedimientosConfig[selectedTemplate]?.casos?.[selectedCasoEspecifico]?.nombre || selectedCasoEspecifico}
-
-                    </span>
-
+                      <div className="md:col-span-2 lg:col-span-4">
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          IBAN Bancario de Abono
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfirmacion.iban}
+                          onChange={(e) => setFormConfirmacion(prev => ({ ...prev, iban: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          placeholder="ES91 2048 0123 4567 8901 2345"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                )}
-
-                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
-
-                  <span className="text-zinc-500">Expediente / Archivos:</span>
-
-                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
-
-                    {casoSel ? casoSel : `${files.length} archivos adjuntados`}
-
-                  </span>
-
-                </div>
-
-                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
-
-                  <span className="text-zinc-500">Referencia del Proyecto:</span>
-
-                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
-
-                    {referenciaProyecto || 'Extracción Automática'}
-
-                  </span>
-
-                </div>
-
-                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
-
-                  <span className="text-zinc-500">Orgánica Presupuestaria:</span>
-
-                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
-
-                    {organica || 'Extracción Automática'}
-
-                  </span>
-
-                </div>
-
-                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
-
-                  <span className="text-zinc-500">Tipo de Proyecto / Financiación:</span>
-
-                  <span className="font-bold text-zinc-900 dark:text-zinc-100">
-
-                    {tipoProyecto ? (
-
-                      tipoProyecto === 'G24' ? 'Ayudas a grupos o proyectos GR24/IB24 (R.D. 462/2002)' :
-
-                      tipoProyecto === 'PEI' ? 'Plan Estatal de Investigación (R.D. 462/2002)' :
-
-                      tipoProyecto === 'NAL' ? 'Otros proyectos R.D. 462/2002 (Régimen Estatal)' :
-
-                      tipoProyecto === 'UEX' ? 'Contratos y convenios UEx (Decreto 42/2025)' :
-
-                      tipoProyecto === 'JEX' ? 'Otros proyectos Decreto 42/2025 (Junta Extremadura)' :
-
-                      tipoProyecto === 'PCO' ? 'Planes Complementarios (Decreto 42/2025)' :
-
-                      (proyectosCatalogo.find(p => p.id === tipoProyecto)?.nombre || tipoProyecto)
-
-                    ) : 'No seleccionado'}
-
-                  </span>
-
-                </div>
-
-                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
-
-                  <span className="text-zinc-500">Directrices Normativas:</span>
-
-                  <span className="font-mono text-[11px] text-[#176B52] dark:text-[#86EFAC] font-bold">
-
-                    {selectedPromptLiquidacion ? selectedPromptLiquidacion.split('/').pop() : 'Automático por procedimiento'}
-
-                  </span>
-
-                </div>
-
-                <div className="flex justify-between py-1 border-b border-zinc-200/60 dark:border-zinc-800">
-
-                  <span className="text-zinc-500">Esquema de Fiscalización:</span>
-
-                  <span className="font-mono text-[11px] text-zinc-800 dark:text-zinc-200">
-
-                    {selectedSchemaPath ? selectedSchemaPath.split('/').pop() : 'Automático'}
-
-                  </span>
-
-                </div>
-
-                <div className="flex justify-between py-1">
-
-                  <span className="text-zinc-500">Módulo de Fiscalización y Liquidación:</span>
-
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">Servicio de Intervención UEx · Motor Determinista Presupuestos 2026</span>
-
-                </div>
-
-              </div>
-
-
-
-              <div className="flex justify-center pt-2">
-
-                <Btn 
-
-                  size="lg" 
-
-                  variant="primary" 
-
-                  disabled={running || !tieneFicheroOExpediente} 
-
-                  onClick={ejecutar}
-
-                  className="w-full sm:w-auto px-8 shadow-md cursor-pointer rounded-md"
-
-                >
-
-                  {running ? (
-
-                    <span className="flex items-center gap-2">
-
-                      <Loader2 size={16} className="animate-spin" /> Fiscalizando expediente...
-
-                    </span>
-
-                  ) : (
-
-                    <span className="flex items-center gap-2 font-bold">
-
-                      <Play size={16} /> Ejecutar Liquidación Oficial UEx
-
-                    </span>
-
+                  {/* BLOQUE 2: DESPLAZAMIENTO Y FECHAS DE LA COMISIÓN */}
+                  <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded bg-emerald-50 text-[#176B52] dark:bg-emerald-950/40 dark:text-emerald-400">
+                          <Calendar size={15} />
+                        </div>
+                        <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                          2. Fechas, Horarios e Itinerario
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
+                        Cómputo Horario
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Itinerario Completo
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfirmacion.itinerario}
+                          onChange={(e) => setFormConfirmacion(prev => ({ ...prev, itinerario: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          placeholder="Ej: Cáceres -> Alicante -> Cáceres"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Motivo de la Comisión
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfirmacion.motivo}
+                          onChange={(e) => setFormConfirmacion(prev => ({ ...prev, motivo: e.target.value }))}
+                          className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          placeholder="Ej: Asistencia a Jornadas SISTEDES 2026..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Salida Oficial (Fecha y Hora)
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="date"
+                            value={formConfirmacion.fecha_salida}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, fecha_salida: e.target.value }))}
+                            className="w-full px-2.5 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                          <input
+                            type="time"
+                            value={formConfirmacion.hora_salida}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, hora_salida: e.target.value }))}
+                            className="w-full px-2.5 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Regreso Oficial (Fecha y Hora)
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="date"
+                            value={formConfirmacion.fecha_regreso}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, fecha_regreso: e.target.value }))}
+                            className="w-full px-2.5 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                          <input
+                            type="time"
+                            value={formConfirmacion.hora_regreso}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, hora_regreso: e.target.value }))}
+                            className="w-full px-2.5 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BLOQUE 3: IMPUTACIÓN PRESUPUESTARIA */}
+                  <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded bg-emerald-50 text-[#176B52] dark:bg-emerald-950/40 dark:text-emerald-400">
+                          <Building2 size={15} />
+                        </div>
+                        <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                          3. Imputación Presupuestaria y Régimen Fiscal
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
+                        Contabilidad UEx
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Referencia del Proyecto
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfirmacion.referencia}
+                          onChange={(e) => {
+                            setFormConfirmacion(prev => ({ ...prev, referencia: e.target.value }));
+                            setReferenciaProyecto(e.target.value);
+                          }}
+                          className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          placeholder="Ej: PID2021-125890OB-I00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Orgánica Presupuestaria Principal
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfirmacion.organica}
+                          onChange={(e) => {
+                            setFormConfirmacion(prev => ({ ...prev, organica: e.target.value }));
+                            setOrganica(e.target.value);
+                          }}
+                          className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          placeholder="Ej: 18.IW.A8.FA"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                          Tipo de Financiación / Fiscalidad
+                        </label>
+                        <select
+                          value={formConfirmacion.tipo_proyecto || tipoProyecto}
+                          onChange={(e) => {
+                            setFormConfirmacion(prev => ({ ...prev, tipo_proyecto: e.target.value }));
+                            setTipoProyecto(e.target.value);
+                          }}
+                          className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                        >
+                          <option value="G24">Ayudas a grupos o proyectos GR24/IB24 (R.D. 462/2002 · Exento)</option>
+                          <option value="PEI">Plan Estatal de Investigación (R.D. 462/2002 · Exento)</option>
+                          <option value="NAL">Otros proyectos R.D. 462/2002 (Régimen Estatal · Exento)</option>
+                          <option value="UEX">Contratos y convenios UEx (Decreto 42/2025)</option>
+                          <option value="JEX">Otros proyectos Decreto 42/2025 (Junta Extremadura)</option>
+                          <option value="PCO">Planes Complementarios (Decreto 42/2025)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Módulo Multiorgánica en Paso 4 - Discreto y sobrio */}
+                    <div className="mt-3 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-xs">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer font-medium text-zinc-800 dark:text-zinc-200">
+                          <input
+                            type="checkbox"
+                            checked={formConfirmacion.es_multiorganica}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setFormConfirmacion(prev => ({
+                                ...prev,
+                                es_multiorganica: checked,
+                                organica_secundaria: checked ? (prev.organica_secundaria || '') : ''
+                              }));
+                              setEsMultiorganica(checked);
+                            }}
+                            className="rounded text-[#176B52] focus:ring-[#176B52] w-4 h-4"
+                          />
+                          <span>Cofinanciación Multiorgánica (Imputación presupuestaria compartida)</span>
+                        </label>
+                        {formConfirmacion.es_multiorganica && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                            Genera Anexo II
+                          </span>
+                        )}
+                      </div>
+
+                      {formConfirmacion.es_multiorganica && (
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                          <div>
+                            <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-300 mb-1">
+                              Orgánica Secundaria UEx
+                            </label>
+                            <input
+                              type="text"
+                              value={formConfirmacion.organica_secundaria}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setFormConfirmacion(prev => ({ ...prev, organica_secundaria: val }));
+                                setOrganicaSecundaria(val);
+                              }}
+                              placeholder="Ej: 18.IW.00"
+                              className="w-full px-3 py-1.5 text-xs font-mono rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-300 mb-1">
+                              Criterio de Desglose
+                            </label>
+                            <input
+                              type="text"
+                              value={formConfirmacion.cofinanciacion_regla}
+                              onChange={(e) => setFormConfirmacion(prev => ({ ...prev, cofinanciacion_regla: e.target.value }))}
+                              placeholder="Ej: Imputar parking a 18.IW.00 y el resto a 18.IW.A8.FA"
+                              className="w-full px-3 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* BLOQUE 4: GASTOS Y JUSTIFICANTES EXTRAÍDOS */}
+                  <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded bg-emerald-50 text-[#176B52] dark:bg-emerald-950/40 dark:text-emerald-400">
+                          <Receipt size={15} />
+                        </div>
+                        <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                          4. Justificantes de Gasto Extraídos
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
+                        Baremos y Tarifas 2026
+                      </span>
+                    </div>
+
+                    {/* Selector de modo de transporte */}
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                          Modo de Transporte:
+                        </span>
+
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setFormConfirmacion(prev => ({
+                              ...prev,
+                              tipo_transporte: 'vehiculo_particular',
+                              importe_transporte_publico: 0,
+                              descripcion_transporte: ''
+                            }))}
+                            className={cn(
+                              "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none",
+                              formConfirmacion.tipo_transporte === 'vehiculo_particular'
+                                ? "shadow-xs"
+                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            )}
+                            style={{
+                              border: formConfirmacion.tipo_transporte === 'vehiculo_particular' ? '1px solid #176B52' : '1px solid #D4D4D8',
+                              backgroundColor: formConfirmacion.tipo_transporte === 'vehiculo_particular' ? '#176B52' : '#FFFFFF',
+                              color: formConfirmacion.tipo_transporte === 'vehiculo_particular' ? '#FFFFFF' : '#27272A',
+                              outline: 'none',
+                            }}
+                          >
+                            <Car size={15} style={{ color: formConfirmacion.tipo_transporte === 'vehiculo_particular' ? '#FFFFFF' : '#71717A' }} />
+                            <span>Vehículo Particular (0,26 €/km)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setFormConfirmacion(prev => ({
+                              ...prev,
+                              tipo_transporte: 'transporte_publico',
+                              km: 0,
+                              matricula: '',
+                              marca: '',
+                              modelo: ''
+                            }))}
+                            className={cn(
+                              "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none",
+                              formConfirmacion.tipo_transporte === 'transporte_publico'
+                                ? "shadow-xs"
+                                : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            )}
+                            style={{
+                              border: formConfirmacion.tipo_transporte === 'transporte_publico' ? '1px solid #176B52' : '1px solid #D4D4D8',
+                              backgroundColor: formConfirmacion.tipo_transporte === 'transporte_publico' ? '#176B52' : '#FFFFFF',
+                              color: formConfirmacion.tipo_transporte === 'transporte_publico' ? '#FFFFFF' : '#27272A',
+                              outline: 'none',
+                            }}
+                          >
+                            <Train size={15} style={{ color: formConfirmacion.tipo_transporte === 'transporte_publico' ? '#FFFFFF' : '#71717A' }} />
+                            <span>Transporte Público (Tren / Avión / Bus)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {formConfirmacion.tipo_transporte === 'vehiculo_particular' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 p-3.5 rounded-lg bg-zinc-50/60 dark:bg-zinc-950/40 border border-zinc-200/80 dark:border-zinc-800">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                                Kilómetros Recorridos
+                              </label>
+                              <span className="text-[10px] font-bold font-mono text-[#176B52] dark:text-[#86EFAC]">
+                                = {(Number(formConfirmacion.km || 0) * 0.26).toFixed(2)} €
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={formConfirmacion.km}
+                              onChange={(e) => setFormConfirmacion(prev => ({ ...prev, km: Number(e.target.value) }))}
+                              className="w-full px-3 py-2 text-xs font-bold font-mono rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                              Matrícula del Vehículo
+                            </label>
+                            <input
+                              type="text"
+                              value={formConfirmacion.matricula}
+                              onChange={(e) => setFormConfirmacion(prev => ({ ...prev, matricula: e.target.value.toUpperCase() }))}
+                              className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                              placeholder="4026GNW"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                              Marca
+                            </label>
+                            <input
+                              type="text"
+                              value={formConfirmacion.marca}
+                              onChange={(e) => setFormConfirmacion(prev => ({ ...prev, marca: e.target.value }))}
+                              className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                              placeholder="BMW, Renault..."
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                              Modelo
+                            </label>
+                            <input
+                              type="text"
+                              value={formConfirmacion.modelo}
+                              onChange={(e) => setFormConfirmacion(prev => ({ ...prev, modelo: e.target.value }))}
+                              className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                              placeholder="Serie 1, Clio..."
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 rounded-lg bg-zinc-50/60 dark:bg-zinc-950/40 border border-zinc-200/80 dark:border-zinc-800">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                              Importe Billetes Transporte (€)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={formConfirmacion.importe_transporte_publico}
+                              onChange={(e) => setFormConfirmacion(prev => ({ ...prev, importe_transporte_publico: Number(e.target.value) }))}
+                              className="w-full px-3 py-2 text-xs font-bold font-mono rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                              Descripción / Trayecto Billete
+                            </label>
+                            <input
+                              type="text"
+                              value={formConfirmacion.descripcion_transporte}
+                              onChange={(e) => setFormConfirmacion(prev => ({ ...prev, descripcion_transporte: e.target.value }))}
+                              className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                              placeholder="Billete de tren (AVE / MD) Cáceres-Alicante..."
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Suplidos: Peajes y Parking */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                            Peajes de Autopista (€)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formConfirmacion.peajes}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, peajes: Number(e.target.value) }))}
+                            className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                            Parking / Estacionamiento (€)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formConfirmacion.parking}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, parking: Number(e.target.value) }))}
+                            className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                            Nombre Hotel / Establecimiento
+                          </label>
+                          <input
+                            type="text"
+                            value={formConfirmacion.hotel_nombre}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, hotel_nombre: e.target.value }))}
+                            className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                            placeholder="Hotel / Residencia..."
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                              Factura Alojamiento (€)
+                            </label>
+                            <span className="text-[10px] text-zinc-400">
+                              {formConfirmacion.hotel_noches || 1} noches
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formConfirmacion.hotel_importe}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, hotel_importe: Number(e.target.value) }))}
+                            className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Inscripción a Congreso */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
+                        <div className="md:col-span-2">
+                          <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                            Nombre del Congreso / Jornadas Oficiales
+                          </label>
+                          <input
+                            type="text"
+                            value={formConfirmacion.congreso_nombre}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, congreso_nombre: e.target.value }))}
+                            className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                            placeholder="Ej: Jornadas SISTEDES 2026..."
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                            Cuota de Inscripción (€)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formConfirmacion.congreso_importe}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, congreso_importe: Number(e.target.value) }))}
+                            className="w-full px-3 py-2 text-xs font-mono font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                            Medio de Pago Inscripción
+                          </label>
+                          <select
+                            value={formConfirmacion.congreso_pagada_por}
+                            onChange={(e) => setFormConfirmacion(prev => ({ ...prev, congreso_pagada_por: e.target.value }))}
+                            className="w-full px-3 py-2 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                          >
+                            <option value="investigador">Personal investigador (Reembolsable)</option>
+                            <option value="tarjeta_investigador">Tarjeta investigador / Corporate (Reembolsable)</option>
+                            <option value="tarjeta_institucional">Tarjeta Institucional UEx (No transferible)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ALERTA Y BOTONES DE EJECUCIÓN */}
+                  <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/40 flex items-start gap-3">
+                    <CheckCircle2 size={18} className="text-[#176B52] dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        Validación y Fiscalización Oficial UEx
+                      </p>
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Al ejecutar la liquidación, el motor normativo de presupuestos aplicará automáticamente los límites de alojamiento (102,56 €/noche), manutención según tramos horarios de salida/llegada, kilometraje a 0,26 €/km y régimen fiscal IRPF según la imputación seleccionada.
+                      </p>
+                    </div>
+                  </div>
+
+                  {mensajeGuardadoExitoso && (
+                    <div className="p-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
+                      <Check size={15} />
+                      <span>{mensajeGuardadoExitoso}</span>
+                    </div>
                   )}
 
-                </Btn>
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={guardarSoloDatos}
+                      disabled={guardandoCorrecciones || running}
+                      className="btn btn-outline w-full sm:w-auto px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer flex items-center justify-center gap-2 transition-all shadow-2xs"
+                    >
+                      {guardandoCorrecciones ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          <span>Guardando datos...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileCheck size={14} />
+                          <span>Guardar datos comprobados</span>
+                        </>
+                      )}
+                    </button>
 
-              </div>
-
+                    <Btn
+                      size="lg"
+                      variant="primary"
+                      disabled={running || !tieneFicheroOExpediente}
+                      onClick={ejecutar}
+                      className="w-full sm:w-auto px-8 shadow-md cursor-pointer rounded-lg"
+                    >
+                      {running ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 size={16} className="animate-spin" /> Fiscalizando expediente...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2 font-bold">
+                          <Play size={16} /> Ejecutar Liquidación Oficial UEx
+                        </span>
+                      )}
+                    </Btn>
+                  </div>
+                </div>
+              )}
             </div>
-
           )}
-
-
 
           {/* BOTONES DE NAVEGACIÓN */}
 
@@ -4699,38 +5321,27 @@ export function ViewProcesar({
 
                   </span>
 
-                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>Total facturas, billetes y dietas</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                    {balanceFinanciero ? `Desplazamientos: ${fmtEur(balanceFinanciero.totalDesplazamientos)} · Otros: ${fmtEur(balanceFinanciero.totalOtrosGastos)}` : 'Total facturas, billetes y dietas'}
+                  </span>
 
                 </div>
 
 
 
-                <div style={{ padding: '14px 16px', borderRadius: '10px', border: (balanceFinanciero?.insTotal || 0) > 0 ? '1px solid #C7D2FE' : '1px solid var(--border-color)', backgroundColor: (balanceFinanciero?.insTotal || 0) > 0 ? 'rgba(238, 242, 255, 0.5)' : 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-
+                <div style={{ padding: '14px 16px', borderRadius: '10px', border: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? '1px solid #C7D2FE' : '1px solid var(--border-color)', backgroundColor: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? 'rgba(238, 242, 255, 0.5)' : 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-
-                    <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: (balanceFinanciero?.insTotal || 0) > 0 ? '#4338CA' : 'var(--text-muted)' }}>Tarjeta Institucional</span>
-
-                    <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', backgroundColor: (balanceFinanciero?.insTotal || 0) > 0 ? '#E0E7FF' : 'var(--bg-secondary)', color: (balanceFinanciero?.insTotal || 0) > 0 ? '#3730A3' : 'var(--text-secondary)' }}>
-
-                      {(balanceFinanciero?.insTotal || 0) > 0 ? 'Abonado UEx' : 'Sin tarjeta'}
-
+                    <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? '#4338CA' : 'var(--text-muted)' }}>Tarjeta Institucional</span>
+                    <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', backgroundColor: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? '#E0E7FF' : 'var(--bg-secondary)', color: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? '#3730A3' : 'var(--text-secondary)' }}>
+                      {(balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? 'Abonado UEx' : 'Sin tarjeta'}
                     </span>
-
                   </div>
-
-                  <span style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: (balanceFinanciero?.insTotal || 0) > 0 ? '#4338CA' : 'var(--text-primary)' }}>
-
-                    {(balanceFinanciero?.insTotal || 0) > 0 ? `-${fmtEur(balanceFinanciero?.insTotal || 0)}` : '0,00 €'}
-
+                  <span style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? '#4338CA' : 'var(--text-primary)' }}>
+                    {(balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? `-${fmtEur(balanceFinanciero?.insTarjetaInstImporte || 0)}` : '0,00 €'}
                   </span>
-
                   <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-
-                    {(balanceFinanciero?.insTotal || 0) > 0 ? 'Abonado directamente por UEx (no transferible)' : 'Sin cargos de tarjeta institucional'}
-
+                    {(balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? 'Abonado directamente por UEx (no transferible)' : 'Sin cargos de tarjeta institucional'}
                   </span>
-
                 </div>
 
 
@@ -4801,12 +5412,90 @@ export function ViewProcesar({
 
                   </span>
 
-                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>Abono directo en cuenta corriente bancaria</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                    {result.liquidacion?.identificacion?.organica_secundaria ? `Orgánicas: ${result.liquidacion.identificacion.organica} / ${result.liquidacion.identificacion.organica_secundaria}` : 'Abono directo en cuenta corriente bancaria'}
+                  </span>
 
                 </div>
 
               </div>
 
+            )}
+
+            {/* TARJETA DE COFINANCIACIÓN MULTIORGÁNICA (SI APLICA) - Discreta y sobria */}
+            {Boolean(result.liquidacion?.identificacion?.organica_secundaria || result.extraccion?.proyecto?.organica_secundaria || (result.liquidacion?.identificacion?.cofinanciacion && Object.keys(result.liquidacion.identificacion.cofinanciacion).length > 1)) && (
+              <div style={{
+                marginTop: '1.25rem',
+                padding: '14px 16px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-card-alt, #fafafa)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-app)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                      Imputación Presupuestaria Multiorgánica (Cofinanciada)
+                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Anexo II de Aprobación de Gasto Oficial Generado
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleVerDocumento('02_Anexo_II_Aprobacion_Gasto.pdf')}
+                    className="btn btn-outline btn-sm"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  >
+                    <FileText size={13} />
+                    <span>Ver Anexo II (Aprobación Gasto)</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                  {(() => {
+                    const org1 = result.liquidacion?.identificacion?.organica || result.extraccion?.proyecto?.organica || '';
+                    const org2 = result.liquidacion?.identificacion?.organica_secundaria || result.extraccion?.proyecto?.organica_secundaria || '';
+                    const cofinMap = result.liquidacion?.identificacion?.cofinanciacion || {};
+                    const totalLiq = Number(result.liquido_ag) || Number(result.liquidacion?.resumen_economico?.liquido_a_abonar) || 0;
+                    const imp2 = Number(cofinMap[org2]) || Number(result.extraccion?.suplidos?.find((s: any) => /park/i.test(s.concepto || s.descripcion))?.importe) || 0;
+                    const rawImp1 = Number(cofinMap[org1]);
+                    const imp1 = rawImp1 > 0 ? rawImp1 : Math.max(0, totalLiq - imp2);
+
+                    return (
+                      <>
+                        <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block' }}>
+                            Orgánica Principal (1ª Unidad de Gasto)
+                          </span>
+                          <span style={{ fontSize: '15px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                            {org1 || 'Sin orgánica'}
+                          </span>
+                          <div style={{ fontSize: '16px', fontWeight: 800, color: '#176B52', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                            {fmtEur(imp1)}
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Imputación principal del expediente</span>
+                        </div>
+
+                        <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block' }}>
+                            Orgánica Secundaria (2ª Unidad de Gasto)
+                          </span>
+                          <span style={{ fontSize: '15px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                            {org2 || 'Sin orgánica secundaria'}
+                          </span>
+                          <div style={{ fontSize: '16px', fontWeight: 800, color: '#4F46E5', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                            {fmtEur(imp2)}
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Partidas cofinanciadas ({fmtEur(imp2)}) en 2ª orgánica</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
             )}
 
           </div>
@@ -4876,11 +5565,9 @@ export function ViewProcesar({
 
                   { id: 'desglose', label: 'Desglose Oficial', icon: Layers },
 
-                  { id: 'fiscalizacion_uex', label: 'Fiscalización Presupuestos 2026', icon: ShieldCheck },
+                  { id: 'fiscalizacion_uex', label: 'Fiscalización y Régimen Fiscal', icon: ShieldCheck },
 
                   { id: 'balance', label: 'Balance y Reconciliación', icon: FileText },
-
-                  { id: 'fundamentacion', label: 'Régimen Fiscal', icon: Scale },
 
                   { id: 'json', label: 'Esquema JSON', icon: Code2 },
 
@@ -4980,11 +5667,9 @@ export function ViewProcesar({
 
                 {activeTab === 'desglose' && 'Desglose Oficial de Liquidación'}
 
-                {activeTab === 'fiscalizacion_uex' && 'Fiscalización Normativa y Presupuestos UEx 2026'}
+                {activeTab === 'fiscalizacion_uex' && 'Fiscalización Normativa, Presupuestos 2026 y Régimen Fiscal'}
 
                 {activeTab === 'balance' && 'Balance y Reconciliación de Gastos'}
-
-                {activeTab === 'fundamentacion' && 'Régimen Fiscal y Fundamento Jurídico'}
 
                 {activeTab === 'json' && 'Esquema JSON'}
 
@@ -4996,133 +5681,59 @@ export function ViewProcesar({
 
               {/* =============================================================== */}
 
-              {/* TAB FISCALIZACIÓN OFICIAL PRESUPUESTOS UEx 2026 */}
+              {/* TAB FISCALIZACIÓN OFICIAL PRESUPUESTOS UEx 2026 + RÉGIMEN FISCAL */}
 
               {/* =============================================================== */}
 
-              {activeTab === 'fiscalizacion_uex' && (
+              {activeTab === 'fiscalizacion_uex' && (() => {
+
+                const fisc26 = (result.liquidacion as any)?.fiscalizacion_presupuestos_2026 || {};
+
+                const articulosList: string[] = fisc26.articulos_aplicados || fisc26.articulos_verificados || [
+
+                  "Art. 32.1 Presupuestos UEx 2026: Régimen de dietas y resarcimiento (RD 462/2002)",
+
+                  "Art. 32.1.c Presupuestos UEx 2026: Kilometraje a 0,26 €/km y justificación documental",
+
+                  "Art. 32.7 Presupuestos UEx 2026: Adaptación a la normativa del proyecto/subvención",
+
+                  "Art. 32.8 Presupuestos UEx 2026: Plazo de 45 días naturales de liquidación"
+
+                ];
+
+                const alertasFisc: string[] = fisc26.alertas || fisc26.alertas_normativas || (result.liquidacion as any)?.avisos || [];
+
+                const esConforme = fisc26.conformidad !== false;
+
+                const liqAny = (result.liquidacion || {}) as any;
+
+                const irpfObj = liqAny.irpf || {};
+
+                const irpfRet = Number(irpfObj.retencion ?? liqAny.resumen_economico?.retencion_irpf ?? 0);
+
+                const tarifaManut = Number(liqAny.tarifas_aplicadas?.manutencion_dia ?? liqAny.conceptos?.manutencion?.tarifa_dia ?? 37.4);
+
+                const tarifaKm = Number(liqAny.tarifas_aplicadas?.km_vehiculo ?? 0.26);
+
+                const alojMax = Number(liqAny.tarifas_aplicadas?.alojamiento_max_dia ?? 65.97);
+
+                const alojSol = Number(liqAny.conceptos?.alojamiento?.importe_real_total ?? 0);
+
+                const alojAb = Number(liqAny.conceptos?.alojamiento?.importe ?? 0);
+
+                const alojExceso = Math.max(0, alojSol - alojAb);
+
+                const transpDetalle = Array.isArray(liqAny.conceptos?.transporte?.detalle) ? liqAny.conceptos.transporte.detalle : [];
+
+                const totalKmExp = transpDetalle.reduce((acc: number, t: any) => acc + Number(t.km || 0), 0);
+
+                const organicaExp = liqAny.identificacion?.organica || organica || 'No especificada';
+
+                const proyectoExp = liqAny.identificacion?.referencia || liqAny.identificacion?.proyecto || referenciaProyecto || 'No especificado';
+
+                return (
 
                 <div className="space-y-6 animate-fade-in">
-
-                  {/* Card Dictamen de Fiscalización */}
-
-                  <div className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 space-y-5 shadow-xs">
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-
-                      <div>
-
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-mono">
-
-                          Dictamen Económico UEx
-
-                        </span>
-
-                        <h4 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mt-0.5">
-
-                          <ShieldCheck size={20} className="text-emerald-600 dark:text-emerald-400" />
-
-                          Fiscalización Conforme a PRESUPUESTO-2026.pdf
-
-                        </h4>
-
-                      </div>
-
-                      <div className="flex items-center gap-2">
-
-                        <span className={cn(
-
-                          "px-3 py-1.5 rounded-md font-bold text-xs flex items-center gap-1.5 shadow-2xs",
-
-                          (result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.conformidad
-
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-
-                        )}>
-
-                          <CheckCircle2 size={14} />
-
-                          {(result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.conformidad ? 'CONFORME PARA ABONO' : 'DISCONFORMIDAD / ALERTAS'}
-
-                        </span>
-
-                      </div>
-
-                    </div>
-
-
-
-                    {/* Artículos de Presupuestos UEx 2026 Aplicados */}
-
-                    <div>
-
-                      <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2.5">
-
-                        Artículos Auditados Oficialmente (PRESUPUESTO-2026.pdf):
-
-                      </h5>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-
-                        {((result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.articulos_verificados || [
-
-                          "Art. 32.1 & 32.1.c: Kilometraje a 0,26 €/km y justificación documental",
-
-                          "Art. 32.7: Adaptación a normativa de subvenciones externas",
-
-                          "Art. 32.8: Plazo de 45 días naturales de liquidación de la comisión"
-
-                        ]).map((art: string, i: number) => (
-
-                          <div key={i} className="p-3 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/60 flex items-start gap-2.5">
-
-                            <CheckCircle size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-
-                            <span className="text-xs text-zinc-800 dark:text-zinc-200 font-medium leading-relaxed">{art}</span>
-
-                          </div>
-
-                        ))}
-
-                      </div>
-
-                    </div>
-
-
-
-                    {/* Alertas Normativas si existieran */}
-
-                    {(result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.alertas_normativas?.length > 0 && (
-
-                      <div className="p-4 rounded-md bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-2">
-
-                        <h5 className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-
-                          <AlertTriangle size={14} />
-
-                          Observaciones Normativas y Límites:
-
-                        </h5>
-
-                        <ul className="list-disc list-inside text-xs text-amber-700 dark:text-amber-400 space-y-1">
-
-                          {(result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.alertas_normativas?.map((al: string, i: number) => (
-
-                            <li key={i}>{al}</li>
-
-                          ))}
-
-                        </ul>
-
-                      </div>
-
-                    )}
-
-                  </div>
-
-
 
                   {/* Vista Oficial de la Memoria de Fiscalización */}
 
@@ -5132,13 +5743,51 @@ export function ViewProcesar({
 
                       <div>
 
-                        <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                        <div className="flex items-center gap-2.5 flex-wrap">
 
-                          <FileText size={16} className="text-[#176B52] dark:text-[#86EFAC]" />
+                          <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
 
-                          Memoria Oficial de Fiscalización Económica (SGTRI UEx)
+                            <FileText size={16} className="text-[#176B52] dark:text-[#86EFAC]" />
 
-                        </h4>
+                            Memoria Oficial de Fiscalización Económica (SGTRI UEx)
+
+                          </h4>
+
+                          <span
+
+                            style={{
+
+                              padding: '3px 10px',
+
+                              borderRadius: '6px',
+
+                              fontWeight: 700,
+
+                              fontSize: '11px',
+
+                              display: 'inline-flex',
+
+                              alignItems: 'center',
+
+                              gap: '5px',
+
+                              backgroundColor: esConforme ? '#D1FAE5' : '#FEF3C7',
+
+                              color: esConforme ? '#065F46' : '#92400E',
+
+                              border: `1px solid ${esConforme ? '#6EE7B7' : '#FCD34D'}`
+
+                            }}
+
+                          >
+
+                            <CheckCircle2 size={12} />
+
+                            {esConforme ? 'CONFORME PARA ABONO' : 'CON OBSERVACIONES'}
+
+                          </span>
+
+                        </div>
 
                         <span className="text-xs text-zinc-400 font-mono">memoria_fiscalizacion_uex.txt</span>
 
@@ -5198,13 +5847,41 @@ export function ViewProcesar({
 
 
 
-                    <pre className="p-5 rounded-md bg-zinc-950 text-zinc-200 font-mono text-xs overflow-x-auto max-h-[420px] border border-zinc-800 shadow-inner whitespace-pre-wrap leading-relaxed">
+                    <pre
+
+                      style={{
+
+                        padding: '20px',
+
+                        borderRadius: '8px',
+
+                        backgroundColor: '#0F172A',
+
+                        color: '#E2E8F0',
+
+                        fontFamily: 'var(--font-mono)',
+
+                        fontSize: '12px',
+
+                        overflowX: 'auto',
+
+                        maxHeight: '420px',
+
+                        border: '1px solid #1E293B',
+
+                        whiteSpace: 'pre-wrap',
+
+                        lineHeight: 1.6
+
+                      }}
+
+                    >
 
                       {result.memoria_fiscalizacion || (
 
-                        (result.liquidacion as any)?.fiscalizacion_presupuestos_2026?.normativa_marco
+                        fisc26?.normativa_marco
 
-                          ? `MEMORIA DE FISCALIZACIÓN ECONÓMICA Y PRESUPUESTARIA\nUNIVERSIDAD DE EXTREMADURA\n\nNormativa Marco: ${(result.liquidacion as any).fiscalizacion_presupuestos_2026.normativa_marco}\nConformidad: ${(result.liquidacion as any).fiscalizacion_presupuestos_2026.conformidad ? 'CONFORME PARA ABONO' : 'REQUIERE RECTIFICACIÓN'}`
+                          ? `MEMORIA DE FISCALIZACIÓN ECONÓMICA Y PRESUPUESTARIA\nUNIVERSIDAD DE EXTREMADURA\n\nNormativa Marco: ${fisc26.normativa_marco}\nConformidad: ${esConforme ? 'CONFORME PARA ABONO' : 'REQUIERE RECTIFICACIÓN'}`
 
                           : 'Memoria de fiscalización oficial generada en backend.'
 
@@ -5214,9 +5891,149 @@ export function ViewProcesar({
 
                   </div>
 
+
+
+                  {/* Fundamento Jurídico-Tributario y Régimen Fiscal (Cuadrícula 2x2 simétrica) */}
+
+                  <div className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-5 text-xs leading-relaxed">
+
+                    <div className="flex items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+
+                      <Scale size={18} className="text-zinc-700 dark:text-zinc-300" />
+
+                      <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+
+                        Fundamento Jurídico-Tributario y Régimen Fiscal
+
+                      </h4>
+
+                    </div>
+
+
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 items-stretch">
+
+                      <div style={{ height: '100%', padding: '16px', borderRadius: '8px', backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+
+                        <ShieldCheck size={18} style={{ color: '#166534', flexShrink: 0, marginTop: '2px' }} />
+
+                        <div>
+
+                          <span className="font-bold text-zinc-900 block mb-1">
+
+                            {irpfObj.aplica && irpfRet > 0
+
+                              ? `Retención IRPF Aplicada (${fmtEur(irpfRet)})`
+
+                              : `Régimen de Exención de IRPF (${fmtEur(irpfRet)})`}
+
+                          </span>
+
+                          <p className="text-zinc-700 text-[11px] leading-relaxed">
+
+                            Conforme al <strong>Artículo 9 del Reglamento del IRPF (RD 439/2007)</strong> y el <strong>Real Decreto 462/2002</strong>, para la tarifa aplicada de manutención ({tarifaManut.toFixed(2)} €/día) y locomoción ({tarifaKm.toFixed(2)} €/km): {irpfObj.aplica && irpfRet > 0
+
+                              ? `se aplica retención sobre una base sujeta de ${fmtEur(irpfObj.base_sujeta || 0)} (${irpfObj.detalle || 'exceso sobre el límite exento estatal'}).`
+
+                              : `las cuantías devengadas se encuentran íntegramente exentas de retención (${irpfObj.detalle || 'dentro de los límites legales'}).`}
+
+                          </p>
+
+                        </div>
+
+                      </div>
+
+
+
+                      <div style={{ height: '100%', padding: '16px', borderRadius: '8px', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+
+                        <AlertTriangle size={18} style={{ color: '#92400E', flexShrink: 0, marginTop: '2px' }} />
+
+                        <div>
+
+                          <span className="font-bold text-zinc-900 block mb-1">
+
+                            Aplicación de Topes Máximos de Alojamiento
+
+                          </span>
+
+                          <p className="text-zinc-700 text-[11px] leading-relaxed">
+
+                            El tope máximo aplicable de alojamiento por noche según la normativa del proyecto es de <strong>{fmtEur(alojMax)}</strong>.{' '}
+
+                            {alojExceso > 0
+
+                              ? `Las cantidades que exceden dicho umbral (en este expediente, ${fmtEur(alojExceso)}) quedan excluidas de la liquidación oficial.`
+
+                              : 'En este expediente el alojamiento justificado se sitúa íntegramente dentro del límite máximo autorizado.'}
+
+                          </p>
+
+                        </div>
+
+                      </div>
+
+
+
+                      <div style={{ height: '100%', padding: '16px', borderRadius: '8px', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+
+                        <FileCheck size={18} style={{ color: '#1E40AF', flexShrink: 0, marginTop: '2px' }} />
+
+                        <div>
+
+                          <span className="font-bold text-zinc-900 block mb-1">
+
+                            {totalKmExp > 0 ? 'Compensación por Uso de Vehículo Particular' : 'Régimen de Locomoción y Transporte'}
+
+                          </span>
+
+                          <p className="text-zinc-700 text-[11px] leading-relaxed">
+
+                            {totalKmExp > 0
+
+                              ? `La indemnización de ${tarifaKm.toFixed(2)} €/km (Orden HFP/792/2023) aplicada sobre ${totalKmExp} km declarados cubre combustible, desgaste mecánico y seguro, no procediendo el reembolso adicional de repostajes.`
+
+                              : 'Conforme al Art. 17 del RD 462/2002 y Presupuestos UEx 2026, el transporte público colectivo (clase turista/estándar) se resarce por el importe íntegro justificado mediante billete y factura oficial.'}
+
+                          </p>
+
+                        </div>
+
+                      </div>
+
+
+
+                      <div style={{ height: '100%', padding: '16px', borderRadius: '8px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+
+                        <Building2 size={18} style={{ color: '#475569', flexShrink: 0, marginTop: '2px' }} />
+
+                        <div>
+
+                          <span className="font-bold text-zinc-900 block mb-1">
+
+                            Destino e Imputación Presupuestaria
+
+                          </span>
+
+                          <p className="text-zinc-700 text-[11px] leading-relaxed">
+
+                            Expediente imputado a proyecto <strong>{proyectoExp}</strong> (orgánica <strong>{organicaExp}</strong>) para su fiscalización por el <strong>SGTRI (UEx)</strong> y tramitación de la orden de pago correspondiente.
+
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
                 </div>
 
-              )}
+                );
+
+              })()}
 
               
 
@@ -5242,6 +6059,8 @@ export function ViewProcesar({
 
                     const inscripcion = liq.conceptos.inscripcion;
 
+                    const suplidos = liq.conceptos.suplidos;
+
 
 
                     const origen = liq.identificacion?.origen || 'Cáceres';
@@ -5257,6 +6076,8 @@ export function ViewProcesar({
                     const showAlojamiento = filtroConcepto === 'alojamiento';
 
                     const showInscripcion = Boolean(inscripcion) && filtroConcepto === 'inscripcion';
+
+                    const showSuplidos = filtroConcepto === 'suplidos';
 
 
 
@@ -5706,7 +6527,7 @@ export function ViewProcesar({
 
                                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
 
-                                    {(balanceFinanciero?.insTotal || 0) > 0 ? 'Abonado Tarjeta UEx (no trans.)' : 'Gasto transferible'}
+                                    {(balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? 'Abonado Tarjeta UEx (no trans.)' : 'Abonado particular (Reembolsable)'}
 
                                   </div>
 
@@ -5718,19 +6539,73 @@ export function ViewProcesar({
 
                                 <div style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: filtroConcepto === 'inscripcion' ? '#176B52' : 'var(--text-primary)' }}>
 
-                                  {fmtEur(inscripcion ? (inscripcion.reembolsable_al_investigador ? inscripcion.importe_reembolsable : 0) : 0)}
+                                  {fmtEur(balanceFinanciero?.insTotal || 0)}
 
                                 </div>
 
-                                <span style={{ fontSize: '10px', fontWeight: 600, color: (balanceFinanciero?.insTotal || 0) > 0 ? '#4338CA' : 'var(--text-secondary)', backgroundColor: (balanceFinanciero?.insTotal || 0) > 0 ? '#E0E7FF' : 'var(--bg-secondary)', padding: '1px 6px', borderRadius: '4px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 600, color: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? '#4338CA' : 'var(--text-secondary)', backgroundColor: (balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? '#E0E7FF' : 'var(--bg-secondary)', padding: '1px 6px', borderRadius: '4px' }}>
 
-                                  {(balanceFinanciero?.insTotal || 0) > 0 ? 'Tarjeta UEx' : 'Transferible'}
+                                  {(balanceFinanciero?.insTarjetaInstImporte || 0) > 0 ? 'Tarjeta UEx' : 'Reembolsable'}
 
                                 </span>
 
                               </div>
 
                             </button>
+
+                            {/* 5. Gastos Suplidos (Peajes / Parking) si aplican */}
+                            {Boolean((balanceFinanciero?.sup || 0) > 0) && (
+                              <button
+                                type="button"
+                                onClick={() => setFiltroConcepto(filtroConcepto === 'suplidos' ? null : 'suplidos')}
+                                style={{
+                                  padding: '14px 16px',
+                                  borderRadius: '10px',
+                                  border: filtroConcepto === 'suplidos' ? '1.5px solid #176B52' : '1px solid var(--border-color)',
+                                  backgroundColor: filtroConcepto === 'suplidos' ? 'rgba(23, 107, 82, 0.08)' : 'var(--bg-app)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  transition: 'all 0.15s ease',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                                }}
+                                className="hover:border-zinc-400 dark:hover:border-zinc-600"
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                                  <div style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '8px',
+                                    backgroundColor: filtroConcepto === 'suplidos' ? '#176B52' : 'var(--bg-secondary)',
+                                    color: filtroConcepto === 'suplidos' ? '#ffffff' : 'var(--text-primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                  }}>
+                                    <Receipt size={18} />
+                                  </div>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 700, color: filtroConcepto === 'suplidos' ? '#176B52' : 'var(--text-primary)', lineHeight: 1.2 }}>
+                                      Gastos Suplidos
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                      Peajes y parking justificados
+                                    </div>
+                                  </div>
+                                </div>
+                                <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: filtroConcepto === 'suplidos' ? '#176B52' : 'var(--text-primary)' }}>
+                                    {fmtEur(balanceFinanciero?.sup || 0)}
+                                  </div>
+                                  <span style={{ fontSize: '10px', fontWeight: 600, color: '#176B52', backgroundColor: '#D1FAE5', padding: '1px 6px', borderRadius: '4px' }}>
+                                    100% Justificado
+                                  </span>
+                                </div>
+                              </button>
+                            )}
 
 
 
@@ -5781,6 +6656,10 @@ export function ViewProcesar({
                                     : filtroConcepto === 'alojamiento'
 
                                     ? 'Alojamiento y Hospedaje'
+
+                                    : filtroConcepto === 'suplidos'
+
+                                    ? 'Gastos Suplidos (Peajes / Parking)'
 
                                     : 'Inscripción al Congreso'}
 
@@ -6560,6 +7439,166 @@ export function ViewProcesar({
 
 
 
+                        {/* PARTIDA 5: GASTOS SUPLIDOS (PEAJES / PARKING) */}
+
+                        {showSuplidos && (() => {
+
+                          const suplidosDetalle: Array<{ concepto?: string; importe?: number; con_justificante?: boolean }> =
+
+                            (suplidos?.detalle && suplidos.detalle.length > 0)
+
+                              ? suplidos.detalle
+
+                              : (result?.extraccion?.suplidos || []);
+
+                          const suplidosTotal = suplidos?.importe ?? balanceFinanciero?.sup ?? 0;
+
+                          return (
+
+                            <div className="space-y-4 pt-2">
+
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+
+                                <div className="flex items-center gap-2.5">
+
+                                  <div className="w-9 h-9 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+
+                                    <Receipt size={18} />
+
+                                  </div>
+
+                                  <div>
+
+                                    <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+
+                                      Gastos Suplidos (Peajes y Parking)
+
+                                    </h4>
+
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+
+                                      Gastos accesorios de locomoción justificados documentalmente (R.D. 462/2002)
+
+                                    </span>
+
+                                  </div>
+
+                                </div>
+
+                                <span className="text-sm font-mono font-bold px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+
+                                  {fmtEur(suplidosTotal)}
+
+                                </span>
+
+                              </div>
+
+
+
+                              <div className="space-y-2.5">
+
+                                {suplidosDetalle.length > 0 ? suplidosDetalle.map((item, idx) => {
+
+                                  const tieneJustificante = item.con_justificante !== false;
+
+                                  return (
+
+                                    <div key={idx} className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+
+                                      <div className="flex items-start gap-3 min-w-0">
+
+                                        <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
+
+                                          <Receipt size={19} />
+
+                                        </div>
+
+                                        <div className="min-w-0 space-y-1">
+
+                                          <div className="flex items-center gap-2 flex-wrap">
+
+                                            <span className="font-bold text-zinc-900 dark:text-zinc-100 text-[13px] tracking-tight">
+
+                                              {item.concepto || `Gasto suplido ${idx + 1}`}
+
+                                            </span>
+
+                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+
+                                              Concepto {idx + 1}
+
+                                            </span>
+
+                                          </div>
+
+                                          <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 flex-wrap">
+
+                                            <span>{tieneJustificante ? 'Con justificante oficial adjunto' : 'Sin justificante documental'}</span>
+
+                                            <span>·</span>
+
+                                            <span>Exento de IRPF (R.D. 462/2002)</span>
+
+                                          </div>
+
+                                        </div>
+
+                                      </div>
+
+
+
+                                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-zinc-100 dark:border-zinc-800">
+
+                                        <span className="font-mono font-extrabold text-base text-zinc-900 dark:text-zinc-100">
+
+                                          {fmtEur(item.importe || 0)}
+
+                                        </span>
+
+                                        <span
+
+                                          className={`text-[10px] font-semibold px-2 py-0.5 rounded border mt-0.5 ${
+
+                                            tieneJustificante
+
+                                              ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200/60 dark:border-emerald-800/50'
+
+                                              : 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border-amber-200/60 dark:border-amber-800/50'
+
+                                          }`}
+
+                                        >
+
+                                          {tieneJustificante ? '100% Justificado' : 'Pendiente justificante'}
+
+                                        </span>
+
+                                      </div>
+
+                                    </div>
+
+                                  );
+
+                                }) : (
+
+                                  <div className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs text-zinc-600 dark:text-zinc-400">
+
+                                    Total gastos suplidos justificados: <strong className="font-mono text-zinc-900 dark:text-zinc-100">{fmtEur(suplidosTotal)}</strong>
+
+                                  </div>
+
+                                )}
+
+                              </div>
+
+                            </div>
+
+                          );
+
+                        })()}
+
+
+
                       </div>
 
                     );
@@ -6768,86 +7807,48 @@ export function ViewProcesar({
 
 
 
-                          <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#6B3E82] dark:text-[#E9D5FF]">
-
-                            <span className="flex items-center gap-2">
-
-                              <CreditCard size={14} /> Inscripción Pagada Directamente por UEx (Tarjeta Institucional)
-
-                            </span>
-
-                            <span className="font-mono font-bold">
-
-                              -{balanceFinanciero.insTotal.toFixed(2)} €
-
-                            </span>
-
-                          </div>
-
-
+                          {balanceFinanciero.insEsTarjetaInst && balanceFinanciero.insTarjetaInstImporte > 0 && (
+                            <div className="flex justify-between items-center py-1.5 border-b border-[#E0D9CB] dark:border-zinc-800 text-[#6B3E82] dark:text-[#E9D5FF]">
+                              <span className="flex items-center gap-2">
+                                <CreditCard size={14} /> Inscripción Pagada Directamente por UEx (Tarjeta Institucional)
+                              </span>
+                              <span className="font-mono font-bold">
+                                -{balanceFinanciero.insTarjetaInstImporte.toFixed(2)} €
+                              </span>
+                            </div>
+                          )}
 
                           <div className="flex justify-between items-center pt-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
-
                             <span>Total Deducciones del Reembolso Personal:</span>
-
                             <span className="font-mono font-extrabold text-base text-red-600 dark:text-red-400">
-
-                              -{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal + balanceFinanciero.irpfRetencion).toFixed(2)} €
-
+                              -{(balanceFinanciero.aloExceso + balanceFinanciero.insTarjetaInstImporte + balanceFinanciero.irpfRetencion).toFixed(2)} €
                             </span>
-
                           </div>
-
                         </div>
-
                       </div>
 
-
-
                       {/* Columna Derecha: Tarjeta de Dictamen Final */}
-
                       <div className="lg:col-span-5 flex flex-col justify-between p-6 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md space-y-5">
-
                         <div className="space-y-3">
-
                           <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-600 block">
-
                             Resultado de la Liquidación
-
                           </span>
-
                           <h3 className="text-xl font-extrabold tracking-tight">
-
                             Importe Neto a Abonar al Investigador
-
                           </h3>
-
                           <p className="text-xs text-zinc-300 dark:text-zinc-700 leading-relaxed">
-
                             Cantidad líquida que se remitirá a la entidad bancaria del perceptor tras auditar topes máximos y medios de pago institucionales.
-
                           </p>
-
                         </div>
 
-
-
                         <div className="p-4 rounded-md bg-zinc-800/80 dark:bg-zinc-200/80 border border-zinc-700 dark:border-zinc-300 space-y-2">
-
                           <div className="flex justify-between text-xs text-zinc-300 dark:text-zinc-700">
-
                             <span>Total Gastos de Misión:</span>
-
                             <span className="font-mono font-bold">{balanceFinanciero.gastoTotalMision.toFixed(2)} €</span>
-
                           </div>
-
                           <div className="flex justify-between text-xs text-red-300 dark:text-red-700">
-
                             <span>Excesos y Pagos UEx:</span>
-
-                            <span className="font-mono font-bold">-{(balanceFinanciero.aloExceso + balanceFinanciero.insTotal + balanceFinanciero.irpfRetencion).toFixed(2)} €</span>
-
+                            <span className="font-mono font-bold">-{(balanceFinanciero.aloExceso + balanceFinanciero.insTarjetaInstImporte + balanceFinanciero.irpfRetencion).toFixed(2)} €</span>
                           </div>
 
                           <div className="pt-2 border-t border-zinc-700/60 dark:border-zinc-300/60 flex justify-between items-center">
@@ -6875,142 +7876,6 @@ export function ViewProcesar({
                       </div>
 
 
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-              )}
-
-
-
-              {/* TAB 3: FUNDAMENTACIÓN JURÍDICO-TRIBUTARIA */}
-
-              {activeTab === 'fundamentacion' && (
-
-                <div className="space-y-6 animate-fade-in text-xs leading-relaxed">
-
-                  <div className="p-6 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-5">
-
-                    <div className="flex items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
-
-                      <Scale size={18} className="text-zinc-700 dark:text-zinc-300" />
-
-                      <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-
-                        Fundamento Jurídico-Tributario de la Liquidación
-
-                      </h4>
-
-                    </div>
-
-
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-
-                      <div className="space-y-4">
-
-                        <div className="p-4 rounded-md bg-[#EEF6F0]/60 dark:bg-[#1A2E22]/30 border border-[#D5E8DA] dark:border-[#22543D]/50 flex items-start gap-3">
-
-                          <ShieldCheck size={18} className="text-[#285735] dark:text-[#86EFAC] shrink-0 mt-0.5" />
-
-                          <div>
-
-                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
-
-                              Régimen de Exención de IRPF (0,00 €)
-
-                            </span>
-
-                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
-
-                              Conforme al <strong>Artículo 9 del Reglamento del IRPF (RD 439/2007)</strong> y el <strong>Real Decreto 462/2002</strong> sobre indemnizaciones por razón del servicio, las asignaciones para gastos de manutención (37,70 €/día) y kilometraje (0,26 €/km) devengadas en este expediente se encuentran <strong>íntegramente dentro de los límites exentos de tributación</strong>. Por tanto, no procede aplicar retención a cuenta del IRPF sobre el importe devengado.
-
-                            </p>
-
-                          </div>
-
-                        </div>
-
-
-
-                        <div className="p-4 rounded-md bg-[#EEF4F8]/60 dark:bg-[#1E293B]/30 border border-[#D0E2F0] dark:border-[#334155]/50 flex items-start gap-3">
-
-                          <FileCheck size={18} className="text-[#2B4C6F] dark:text-[#93C5FD] shrink-0 mt-0.5" />
-
-                          <div>
-
-                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
-
-                              Compensación por Uso de Vehículo Particular
-
-                            </span>
-
-                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
-
-                              La compensación de <strong>0,26 €/km</strong> (Orden HFP/792/2023) cubre de forma íntegra los gastos de combustible, desgaste mecánico, amortización y seguro del vehículo. No procede el reembolso adicional de tickets de repostaje al quedar absorbidos por la indemnización de kilometraje.
-
-                            </p>
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-
-
-                      <div className="space-y-4">
-
-                        <div className="p-4 rounded-md bg-[#FDF7ED]/60 dark:bg-[#342416]/30 border border-[#F7E5CB] dark:border-[#5C3818]/50 flex items-start gap-3">
-
-                          <AlertTriangle size={18} className="text-[#754E20] dark:text-[#FDBA74] shrink-0 mt-0.5" />
-
-                          <div>
-
-                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
-
-                              Aplicación de Topes Máximos de Alojamiento
-
-                            </span>
-
-                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
-
-                              De acuerdo con la normativa del Plan Estatal, el importe máximo liquidable por noche de hotel en territorio nacional es de <strong>65,97 €</strong> (Grupo 2). Las cantidades que excedan dicho umbral (en este caso, 73,72 €) quedan excluidas de la liquidación oficial con cargo a los fondos públicos del proyecto.
-
-                            </p>
-
-                          </div>
-
-                        </div>
-
-
-
-                        <div className="p-4 rounded-md bg-[#FAF8F5] dark:bg-zinc-950 border border-[#ECE7DD] dark:border-zinc-800 flex items-start gap-3">
-
-                          <Building2 size={18} className="text-zinc-500 shrink-0 mt-0.5" />
-
-                          <div>
-
-                            <span className="font-bold text-zinc-900 dark:text-zinc-100 block mb-1">
-
-                              Destino y Fiscalización del Expediente
-
-                            </span>
-
-                            <p className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
-
-                              Expediente fiscalizado para su remisión al <strong>Servicio de Gestión y Transferencia de Resultados de la Investigación (SGTRI)</strong> y tramitación de la orden de transferencia bancaria a la cuenta IBAN acreditada del investigador.
-
-                            </p>
-
-                          </div>
-
-                        </div>
-
-                      </div>
 
                     </div>
 
@@ -7072,7 +7937,33 @@ export function ViewProcesar({
 
 
 
-                  <pre className="p-5 rounded-md bg-zinc-950 text-zinc-300 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner leading-relaxed">
+                  <pre
+
+                    style={{
+
+                      padding: '20px',
+
+                      borderRadius: '8px',
+
+                      backgroundColor: '#0F172A',
+
+                      color: '#E2E8F0',
+
+                      fontFamily: 'var(--font-mono)',
+
+                      fontSize: '12px',
+
+                      overflowX: 'auto',
+
+                      maxHeight: '500px',
+
+                      border: '1px solid #1E293B',
+
+                      lineHeight: 1.6
+
+                    }}
+
+                  >
 
                     {JSON.stringify(jsonTab === 'liquidacion' ? result.liquidacion : result.extraccion, null, 2)}
 
@@ -7164,9 +8055,37 @@ export function ViewProcesar({
 
                     <div className="space-y-3">
 
-                      <pre className="p-5 rounded-md bg-zinc-950 text-emerald-400 font-mono text-xs overflow-x-auto max-h-[500px] border border-zinc-800 shadow-inner whitespace-pre-wrap leading-relaxed">
+                      <pre
 
-                        {result.logs || 'No hay logs de auditoría disponibles.'}
+                        style={{
+
+                          padding: '20px',
+
+                          borderRadius: '8px',
+
+                          backgroundColor: '#0F172A',
+
+                          color: '#6EE7B7',
+
+                          fontFamily: 'var(--font-mono)',
+
+                          fontSize: '12px',
+
+                          overflowX: 'auto',
+
+                          maxHeight: '500px',
+
+                          border: '1px solid #1E293B',
+
+                          whiteSpace: 'pre-wrap',
+
+                          lineHeight: 1.6
+
+                        }}
+
+                      >
+
+                        {result.logs || taskLogs || 'No hay logs de auditoría disponibles.'}
 
                       </pre>
 
@@ -7176,7 +8095,7 @@ export function ViewProcesar({
 
                     <div className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
 
-                      <ViewGrafo />
+                      <ViewGrafo taskId={result.caso_id} />
 
                     </div>
 
@@ -8085,6 +9004,340 @@ export function ViewProcesar({
                   </pre>
                 </div>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal para nombrar nuevo expediente al subir desde cero */}
+      {modalNombrarCasoOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            zIndex: 99999,
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            margin: 0
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setModalNombrarCasoOpen(false);
+              setPendingFiles([]);
+            }
+          }}
+        >
+          <div
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-6 space-y-4 animate-scale-in"
+            style={{ maxWidth: "480px", width: "100%", margin: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <FolderPlus size={18} className="text-[#176B52]" />
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  Nombre del Nuevo Expediente
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setModalNombrarCasoOpen(false); setPendingFiles([]); }}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer"
+                title="Cerrar"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                Va a crear un nuevo expediente aportando <strong>{pendingFiles.length} documento(s)</strong>. Indique el nombre o identificador oficial para registrar la carpeta y el expediente:
+              </p>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Nombre o Identificador del Expediente
+                </label>
+                <input
+                  type="text"
+                  value={nombreNuevoCaso}
+                  onChange={(e) => setNombreNuevoCaso(e.target.value)}
+                  placeholder="Ej: Viaje_Madrid_SISTEDES"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const nombreFinal = nombreNuevoCaso.trim();
+                      setModalNombrarCasoOpen(false);
+                      subirArchivos(pendingFiles, nombreFinal);
+                      setPendingFiles([]);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs font-mono rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                />
+              </div>
+
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 space-y-1">
+                <p>• Se creará una carpeta en el servidor con este identificador.</p>
+                <p>• Si lo deja en blanco, se asignará automáticamente el identificador oficial secuencial (ej: 05_Expediente_Dietas).</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => { setModalNombrarCasoOpen(false); setPendingFiles([]); }}
+                className="px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nombreFinal = nombreNuevoCaso.trim();
+                  setModalNombrarCasoOpen(false);
+                  subirArchivos(pendingFiles, nombreFinal);
+                  setPendingFiles([]);
+                }}
+                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#176B52] hover:bg-[#125842] text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Check size={14} />
+                <span>Crear y Subir Justificantes</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal para renombrar expediente existente */}
+      {modalRenombrarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            zIndex: 99999,
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            margin: 0
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setModalRenombrarOpen(false);
+          }}
+        >
+          <div
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-6 space-y-4 animate-scale-in"
+            style={{ maxWidth: "480px", width: "100%", margin: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Edit3 size={18} className="text-[#176B52]" />
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  Renombrar Expediente
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalRenombrarOpen(false)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer"
+                title="Cerrar"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                Modifique el nombre o identificador del expediente. Se actualizará la carpeta física en el servidor y los registros contables.
+              </p>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Nuevo Nombre / Identificador
+                </label>
+                <input
+                  type="text"
+                  value={nuevoNombreRenombrar}
+                  onChange={(e) => setNuevoNombreRenombrar(e.target.value)}
+                  placeholder="Ej: Viaje_Madrid_SISTEDES"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      ejecutarRenombrarCaso();
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs font-mono rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setModalRenombrarOpen(false)}
+                className="px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={renombrando || !nuevoNombreRenombrar.trim()}
+                onClick={ejecutarRenombrarCaso}
+                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#176B52] hover:bg-[#125842] disabled:opacity-50 text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                {renombrando ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                <span>Guardar Cambios</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de confirmación para eliminar expediente completo */}
+      {modalEliminarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            zIndex: 99999,
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            margin: 0
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !eliminandoCaso) setModalEliminarOpen(false);
+          }}
+        >
+          <div
+            className="bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900/60 rounded-xl shadow-2xl p-6 space-y-4 animate-scale-in"
+            style={{ maxWidth: "480px", width: "100%", margin: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    backgroundColor: '#fee2e2',
+                    color: '#dc2626',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <AlertTriangle size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                    Eliminar Expediente
+                  </h3>
+                  <span className="text-[11px] text-zinc-500 font-mono">
+                    {casoSel}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={eliminandoCaso}
+                onClick={() => setModalEliminarOpen(false)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer disabled:opacity-50"
+                title="Cerrar"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                ¿Está seguro de que desea eliminar permanentemente el expediente <strong className="font-mono text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">{casoSel}</strong>?
+              </p>
+              <div
+                style={{
+                  backgroundColor: '#fff1f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '11px',
+                  color: '#9f1239',
+                  lineHeight: '1.45'
+                }}
+                className="dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300"
+              >
+                <p style={{ fontWeight: 700, marginBottom: '4px' }}>Esta acción es irreversible y permanente.</p>
+                <p>
+                  Se eliminará la carpeta física del expediente en el servidor, todos sus documentos aportados ({casoDetalle?.archivos?.length || 0} archivo(s)) y los informes oficiales o liquidaciones emitidas.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+              <button
+                type="button"
+                disabled={eliminandoCaso}
+                onClick={() => setModalEliminarOpen(false)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  border: '1px solid var(--border-color, #cbd5e1)',
+                  backgroundColor: 'transparent',
+                  color: 'var(--text-secondary, #475569)',
+                  cursor: 'pointer'
+                }}
+                className="hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={eliminandoCaso}
+                onClick={ejecutarEliminarCaso}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  backgroundColor: '#dc2626',
+                  color: '#ffffff',
+                  border: '1px solid #b91c1c',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                }}
+                className="hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {eliminandoCaso ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                <span>Eliminar Definitivamente</span>
+              </button>
             </div>
           </div>
         </div>,

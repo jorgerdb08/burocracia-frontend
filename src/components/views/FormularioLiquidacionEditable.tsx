@@ -9,7 +9,7 @@ import { fmtEur } from '../../lib/utils';
 
 export interface GastoItem {
   id: string;
-  categoria: 'dieta' | 'alojamiento' | 'transporte' | 'inscripcion' | 'factura' | 'otro';
+  categoria: 'dieta' | 'alojamiento' | 'transporte' | 'inscripcion' | 'factura' | 'suplido' | 'otro';
   concepto: string;
   justificante: string;
   detalle: string;
@@ -27,6 +27,16 @@ interface Props {
   onDataUpdated: (nuevaExtraccion: any, nuevaLiquidacion: any, nuevoLiquido: number) => void;
 }
 
+const limpiarFechaHora = (val: any): string => {
+  if (!val) return '';
+  let str = String(val).replace('T', ' ').trim();
+  // Eliminar segundos finales :00 si están presentes
+  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/.test(str)) {
+    str = str.slice(0, 16);
+  }
+  return str;
+};
+
 export function FormularioLiquidacionEditable({
   casoId,
   extraccion,
@@ -36,6 +46,8 @@ export function FormularioLiquidacionEditable({
 }: Props) {
   // 1. Estado de campos de imputación orgánica y proyecto
   const [organica, setOrganica] = useState<string>('');
+  const [organicaSecundaria, setOrganicaSecundaria] = useState<string>('');
+  const [esMultiorganica, setEsMultiorganica] = useState<boolean>(false);
   const [referenciaProyecto, setReferenciaProyecto] = useState<string>('');
   const [investigadorPrincipal, setInvestigadorPrincipal] = useState<string>('');
   const [fuenteFinanciacion, setFuenteFinanciacion] = useState<string>('plan_estatal');
@@ -77,16 +89,21 @@ export function FormularioLiquidacionEditable({
     const inv = ext.investigador || {};
     const com = ext.comision || {};
 
-    setOrganica(proy.organica || ident.organica || '18.IW.A8.FA');
-    setReferenciaProyecto(proy.referencia || ident.proyecto || ident.referencia || 'GR24099');
-    setInvestigadorPrincipal(inv.nombre || ident.investigador || 'Investigador Principal');
+    setOrganica(proy.organica || ident.organica || '');
+    const orgSec = proy.organica_secundaria || ident.organica_secundaria || '';
+    setOrganicaSecundaria(orgSec);
+    setEsMultiorganica(Boolean(orgSec || proy.es_multiorganica || ident.cofinanciacion));
+    setReferenciaProyecto(proy.referencia || ident.proyecto || ident.referencia || '');
+    setInvestigadorPrincipal(inv.nombre || ident.investigador || '');
     setFuenteFinanciacion(proy.fuente_financiacion || ident.fuente_financiacion || 'plan_estatal');
 
-    setMotivoComision(com.motivo || ident.motivo || 'Comisión de Servicio Oficial UEx');
-    setDestino(com.destino || ident.destino || 'Destino Oficial');
-    setFechaSalida(com.fecha_hora_salida || ident.fecha_hora_salida || '');
-    setFechaRegreso(com.fecha_hora_regreso || ident.fecha_hora_regreso || '');
-    setTransportePrincipal(com.tipo_viaje || (ext.transporte?.[0]?.tipo) || 'tren');
+    setMotivoComision(com.motivo || ident.motivo || '');
+    setDestino(com.destino || ident.destino || '');
+    setFechaSalida(limpiarFechaHora(com.fecha_hora_salida || ident.fecha_hora_salida || ''));
+    setFechaRegreso(limpiarFechaHora(com.fecha_hora_regreso || ident.fecha_hora_regreso || ''));
+    const tipoTrans = ext.transporte?.[0]?.tipo || liq.conceptos?.transporte?.detalle?.[0]?.tipo;
+    const esVehTrans = tipoTrans === 'vehiculo_particular' || (!tipoTrans && (ext.transporte?.[0]?.km || liq.conceptos?.transporte?.detalle?.[0]?.km));
+    setTransportePrincipal(esVehTrans ? 'vehiculo_particular' : (tipoTrans || 'tren'));
 
     setPerceptorNombre(inv.nombre || ident.investigador || '');
     setPerceptorNif(inv.nif || ident.nif || '');
@@ -140,31 +157,65 @@ export function FormularioLiquidacionEditable({
       });
     }
 
-    // Transporte / Billetes o Vehículo
+    // Transporte / Billetes o Vehículo con denominación formal y sin símbolos informáticos (@)
+    const formatearTransporte = (tra: any) => {
+      const esVehiculo = tra.tipo === 'vehiculo_particular' || (!tra.tipo && tra.km);
+      let concepto = tra.descripcion;
+      if (!concepto || concepto.toLowerCase().includes('vehiculo_particular')) {
+        concepto = esVehiculo ? 'Desplazamiento en vehículo particular' : (tra.tipo ? `Transporte (${tra.tipo.replace(/_/g, ' ')})` : 'Transporte');
+      }
+
+      let detalle = 'Transporte público';
+      if (esVehiculo) {
+        const kmNum = Number(tra.km || 0);
+        const kmStr = kmNum > 0 ? kmNum.toLocaleString('es-ES') : '0';
+        detalle = `${kmStr} km a 0,26 €/km`;
+      } else if (tra.tipo === 'tren') {
+        detalle = 'Ferrocarril / Renfe';
+      } else if (tra.tipo === 'avion') {
+        detalle = 'Vuelo comercial';
+      } else if (tra.tipo === 'autobus') {
+        detalle = 'Autobús de línea';
+      } else if (tra.detalle && !tra.detalle.includes('@')) {
+        detalle = tra.detalle;
+      } else if (tra.tipo) {
+        detalle = String(tra.tipo).replace(/_/g, ' ');
+      }
+
+      return {
+        concepto,
+        detalle,
+        justificante: tra.billete_numero || tra.billete || (esVehiculo ? 'Declaración Kilometraje UEx' : 'Billete / Factura Transporte'),
+        tipo_especifico: tra.tipo || (esVehiculo ? 'vehiculo_particular' : 'tren')
+      };
+    };
+
     if (liq.conceptos?.transporte?.detalle && Array.isArray(liq.conceptos.transporte.detalle)) {
       liq.conceptos.transporte.detalle.forEach((tra: any, idx: number) => {
+        const fmt = formatearTransporte(tra);
         items.push({
           id: `tra_${idx + 1}`,
           categoria: 'transporte',
-          concepto: tra.descripcion || `Transporte ${tra.tipo || ''}`,
-          justificante: tra.billete_numero || (tra.tipo === 'vehiculo_particular' ? 'Declaración Kilometraje UEx' : 'Billete / Tique de viaje'),
-          detalle: tra.tipo === 'vehiculo_particular' ? `${tra.km || 0} km @ 0,26 €/km` : (tra.tipo || 'Público'),
+          concepto: fmt.concepto,
+          justificante: fmt.justificante,
+          detalle: fmt.detalle,
           importe_solicitado: Number(tra.importe || 0),
           importe_abonable: Number(tra.importe || 0),
-          tipo_especifico: tra.tipo || 'tren'
+          tipo_especifico: fmt.tipo_especifico
         });
       });
     } else if (ext.transporte && Array.isArray(ext.transporte)) {
       ext.transporte.forEach((tra: any, idx: number) => {
+        const fmt = formatearTransporte(tra);
         items.push({
           id: `tra_${idx + 1}`,
           categoria: 'transporte',
-          concepto: tra.descripcion || `Transporte ${tra.tipo || ''}`,
-          justificante: 'Billete / Factura Transporte',
-          detalle: tra.tipo || 'Público',
+          concepto: fmt.concepto,
+          justificante: fmt.justificante,
+          detalle: fmt.detalle,
           importe_solicitado: Number(tra.importe || 0),
           importe_abonable: Number(tra.importe || 0),
-          tipo_especifico: tra.tipo || 'tren'
+          tipo_especifico: fmt.tipo_especifico
         });
       });
     }
@@ -198,6 +249,27 @@ export function FormularioLiquidacionEditable({
         importe_solicitado: Number(ext.factura.importe_total || 0),
         importe_abonable: Number(ext.factura.importe_total || 0),
         tipo_especifico: 'proveedor'
+      });
+    }
+
+    // Suplidos (Peajes, Aparcamiento, etc.)
+    const suplidosExt = ext.suplidos || [];
+    const suplidosLiq = liq.conceptos?.suplidos?.detalle || [];
+    const suplidosList = suplidosLiq.length > 0 ? suplidosLiq : suplidosExt;
+    if (Array.isArray(suplidosList) && suplidosList.length > 0) {
+      suplidosList.forEach((sup: any, idx: number) => {
+        const concepto = sup.concepto || (sup.tipo === 'peaje' ? 'Peaje autopista AP-36' : (sup.tipo === 'parking' ? 'Aparcamiento / Parking' : 'Gasto suplido'));
+        const detalle = sup.descripcion || sup.detalle || (sup.tipo ? String(sup.tipo).toUpperCase() : 'Justificante suplido de viaje');
+        items.push({
+          id: `sup_${idx + 1}`,
+          categoria: 'suplido',
+          concepto,
+          justificante: sup.justificante || `Ticket / Factura Nº ${idx + 1}`,
+          detalle,
+          importe_solicitado: Number(sup.importe || 0),
+          importe_abonable: Number(sup.importe || 0),
+          tipo_especifico: 'suplido'
+        });
       });
     }
 
@@ -279,6 +351,10 @@ export function FormularioLiquidacionEditable({
       extActualizada.proyecto = {
         ...(extActualizada.proyecto || {}),
         organica: organica,
+        ...(esMultiorganica || organicaSecundaria ? {
+          organica_secundaria: organicaSecundaria,
+          es_multiorganica: true
+        } : {}),
         referencia: referenciaProyecto,
         fuente_financiacion: fuenteFinanciacion
       };
@@ -304,21 +380,49 @@ export function FormularioLiquidacionEditable({
 
       // 4. Transporte reconstruido desde lista de gastos
       const gastosTra = lista.filter(g => g.categoria === 'transporte');
-      extActualizada.transporte = gastosTra.map(g => ({
-        tipo: g.tipo_especifico || 'tren',
-        descripcion: g.concepto,
-        importe: Number(g.importe_solicitado || g.importe_abonable || 0),
-        billete: g.justificante
-      }));
+      extActualizada.transporte = gastosTra.map(g => {
+        const esVeh = g.tipo_especifico === 'vehiculo_particular' || /km/i.test(g.detalle || '');
+        let km = 0;
+        if (esVeh) {
+          const mKm = (g.detalle || '').match(/([0-9.,]+)\s*km/i);
+          if (mKm) {
+            km = parseFloat(mKm[1].replace(/\./g, '').replace(',', '.')) || 0;
+          }
+          if (!km && (g as any).km) km = (g as any).km;
+          if (!km && extraccion?.transporte?.[0]?.km) km = extraccion.transporte[0].km;
+        }
+        return {
+          tipo: esVeh ? 'vehiculo_particular' : (g.tipo_especifico || 'tren'),
+          descripcion: g.concepto,
+          km: esVeh ? km : undefined,
+          matricula: extraccion?.transporte?.[0]?.matricula || '',
+          marca: extraccion?.transporte?.[0]?.marca || '',
+          modelo: extraccion?.transporte?.[0]?.modelo || '',
+          importe: esVeh ? (km * 0.26) : Number(g.importe_solicitado || g.importe_abonable || 0),
+          billete: g.justificante
+        };
+      });
 
       // 5. Alojamiento reconstruido
       const gastosAlo = lista.filter(g => g.categoria === 'alojamiento');
-      extActualizada.alojamiento = gastosAlo.map(g => ({
-        establecimiento: g.concepto,
-        importe_total: Number(g.importe_solicitado || g.importe_abonable || 0),
-        num_factura: g.justificante,
-        noches: 1
-      }));
+      extActualizada.alojamiento = gastosAlo.map((g, idx) => {
+        let noches = 1;
+        const mNoches = (g.detalle || '').match(/([0-9]+)\s*noche/i);
+        if (mNoches) {
+          noches = parseInt(mNoches[1], 10);
+        } else if (extraccion?.alojamiento?.[idx]?.noches) {
+          noches = extraccion.alojamiento[idx].noches;
+        } else if (fechaSalida && fechaRegreso) {
+          const dDiff = Math.round((new Date(fechaRegreso.split(' ')[0]).getTime() - new Date(fechaSalida.split(' ')[0]).getTime()) / 86400000);
+          if (dDiff > 0) noches = dDiff;
+        }
+        return {
+          establecimiento: g.concepto,
+          importe_total: Number(g.importe_solicitado || g.importe_abonable || 0),
+          num_factura: g.justificante,
+          noches: noches
+        };
+      });
 
       // 6. Inscripción
       const gastoIns = lista.find(g => g.categoria === 'inscripcion');
@@ -333,6 +437,17 @@ export function FormularioLiquidacionEditable({
         delete extActualizada.inscripcion;
       }
 
+      // 7. Suplidos reconstruidos desde lista de gastos
+      const gastosSup = lista.filter(g => g.categoria === 'suplido');
+      if (gastosSup.length > 0) {
+        extActualizada.suplidos = gastosSup.map(g => ({
+          concepto: g.concepto,
+          importe: Number(g.importe_solicitado || g.importe_abonable || 0),
+          justificante: g.justificante,
+          tipo: /peaje/i.test(g.concepto) ? 'peaje' : (/parking/i.test(g.concepto) ? 'parking' : 'otro')
+        }));
+      }
+
       // Reconstruir liquidación sincronizada
       const liqActualizada = JSON.parse(JSON.stringify(liquidacion || {}));
       liqActualizada.identificacion = {
@@ -342,6 +457,9 @@ export function FormularioLiquidacionEditable({
         iban: perceptorIban,
         grupo_dieta: grupoDieta,
         organica: organica,
+        ...(esMultiorganica || organicaSecundaria ? {
+          organica_secundaria: organicaSecundaria
+        } : {}),
         proyecto: referenciaProyecto,
         referencia: referenciaProyecto,
         motivo: motivoComision,
@@ -371,8 +489,13 @@ export function FormularioLiquidacionEditable({
         totIns = Number(gastoIns.importe_abonable || 0);
       }
 
-      const totalDevengado = totMan + totTra + totAloReal + (gastoIns ? Number(gastoIns.importe_solicitado || 0) : 0);
-      const liquidoAbonar = totMan + totTra + totAlo + totIns;
+      let totSup = 0;
+      if (extActualizada.suplidos && Array.isArray(extActualizada.suplidos)) {
+        extActualizada.suplidos.forEach((s: any) => { totSup += Number(s.importe || 0); });
+      }
+
+      const totalDevengado = totMan + totTra + totAloReal + (gastoIns ? Number(gastoIns.importe_solicitado || 0) : 0) + totSup;
+      const liquidoAbonar = totMan + totTra + totAlo + totIns + totSup;
 
       liqActualizada.resumen_economico = {
         ...(liqActualizada.resumen_economico || {}),
@@ -454,29 +577,34 @@ export function FormularioLiquidacionEditable({
             </span>
           )}
 
-          <button
-            type="button"
-            onClick={() => sincronizarYRecalcular()}
-            disabled={isSaving}
-            className={`btn btn-sm text-xs font-semibold flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg shadow-xs transition-all ${
-              hasChanges
-                ? 'bg-[#176B52] hover:bg-[#125440] text-white ring-2 ring-[#176B52]/30'
-                : 'bg-emerald-50 text-[#176B52] border border-[#176B52]/30 hover:bg-[#176B52] hover:text-white dark:bg-emerald-950/30'
-            }`}
-            title="Guardar cambios y recalcular liquidación oficial"
-          >
-            {isSaving ? (
-              <>
-                <RefreshCw size={14} className="animate-spin" />
-                <span>Recalculando...</span>
-              </>
-            ) : (
-              <>
-                <Save size={14} />
-                <span>{hasChanges ? 'Guardar Cambios y Recalcular' : 'Sincronizar Datos'}</span>
-              </>
-            )}
-          </button>
+          {hasChanges && (
+            <button
+              type="button"
+              onClick={() => sincronizarYRecalcular()}
+              disabled={isSaving}
+              className="btn btn-md btn-uex"
+              style={{
+                borderRadius: '8px',
+                padding: '7px 14px',
+                fontWeight: 700,
+                boxShadow: '0 2px 6px rgba(23, 107, 82, 0.28)',
+                cursor: isSaving ? 'wait' : 'pointer'
+              }}
+              title="Guardar cambios realizados en este formulario"
+            >
+              {isSaving ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span>Guardar Cambios</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -493,7 +621,7 @@ export function FormularioLiquidacionEditable({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1">
-                  Aplicación Orgánica:
+                  Aplicación Orgánica Principal:
                 </label>
                 <input
                   type="text"
@@ -503,6 +631,21 @@ export function FormularioLiquidacionEditable({
                   className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
                 />
               </div>
+
+              {esMultiorganica && (
+                <div>
+                  <label className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 block mb-1">
+                    Orgánica Secundaria UEx:
+                  </label>
+                  <input
+                    type="text"
+                    value={organicaSecundaria}
+                    onChange={e => { setOrganicaSecundaria(e.target.value); setHasChanges(true); }}
+                    placeholder="ej. 18.IW.00"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50/30 dark:bg-zinc-900 font-mono text-indigo-900 dark:text-indigo-200 focus:outline-none focus:ring-1 focus:ring-indigo-600"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1">
@@ -606,7 +749,7 @@ export function FormularioLiquidacionEditable({
                   <input
                     type="text"
                     value={fechaSalida}
-                    onChange={e => { setFechaSalida(e.target.value); setHasChanges(true); }}
+                    onChange={e => { setFechaSalida(limpiarFechaHora(e.target.value)); setHasChanges(true); }}
                     placeholder="AAAA-MM-DD HH:MM"
                     className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
                   />
@@ -619,7 +762,7 @@ export function FormularioLiquidacionEditable({
                   <input
                     type="text"
                     value={fechaRegreso}
-                    onChange={e => { setFechaRegreso(e.target.value); setHasChanges(true); }}
+                    onChange={e => { setFechaRegreso(limpiarFechaHora(e.target.value)); setHasChanges(true); }}
                     placeholder="AAAA-MM-DD HH:MM"
                     className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
                   />
@@ -636,9 +779,9 @@ export function FormularioLiquidacionEditable({
             <span>Datos del Comisionado / Perceptor de la Liquidación</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-            <div className="sm:col-span-2">
-              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div>
+              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
                 Nombre y Apellidos del Comisionado:
               </label>
               <input
@@ -651,7 +794,7 @@ export function FormularioLiquidacionEditable({
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1">
+              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1 whitespace-nowrap">
                 NIF / DNI / NIE:
               </label>
               <input
@@ -664,7 +807,7 @@ export function FormularioLiquidacionEditable({
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1">
+              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1 whitespace-nowrap">
                 Grupo de Dieta (RD 462/2002):
               </label>
               <select
@@ -678,9 +821,9 @@ export function FormularioLiquidacionEditable({
               </select>
             </div>
 
-            <div className="sm:col-span-4">
-              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1">
-                Cuenta Bancaria de Abono (Código IBAN con espacios):
+            <div>
+              <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 block mb-1 whitespace-nowrap">
+                Cuenta Bancaria (IBAN):
               </label>
               <input
                 type="text"
@@ -740,21 +883,34 @@ export function FormularioLiquidacionEditable({
                 ) : (
                   gastosList.map((gasto, idx) => {
                     // Estilos de badge por categoría
-                    let badgeBg = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+                    let badgeStyle: React.CSSProperties = {
+                      backgroundColor: '#F1F5F9',
+                      color: '#334155',
+                      border: '1px solid #CBD5E1'
+                    };
+                    let badgeLabel: string = gasto.categoria;
                     let IconComponent = FileText;
 
                     if (gasto.categoria === 'dieta') {
-                      badgeBg = 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300';
+                      badgeStyle = { backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' };
+                      badgeLabel = 'Dieta';
                       IconComponent = Utensils;
                     } else if (gasto.categoria === 'alojamiento') {
-                      badgeBg = 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300';
+                      badgeStyle = { backgroundColor: '#E0F2FE', color: '#075985', border: '1px solid #BAE6FD' };
+                      badgeLabel = 'Alojamiento';
                       IconComponent = BedDouble;
                     } else if (gasto.categoria === 'transporte') {
-                      badgeBg = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300';
+                      badgeStyle = { backgroundColor: '#D1FAE5', color: '#065F46', border: '1px solid #A7F3D0' };
+                      badgeLabel = 'Transporte';
                       IconComponent = Train;
                     } else if (gasto.categoria === 'inscripcion') {
-                      badgeBg = 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300';
+                      badgeStyle = { backgroundColor: '#F3E8FF', color: '#6B21A8', border: '1px solid #E9D5FF' };
+                      badgeLabel = 'Inscripción';
                       IconComponent = Award;
+                    } else if (gasto.categoria === 'suplido') {
+                      badgeStyle = { backgroundColor: '#DBEAFE', color: '#1E40AF', border: '1px solid #BFDBFE' };
+                      badgeLabel = 'Suplido';
+                      IconComponent = Receipt;
                     }
 
                     return (
@@ -764,9 +920,21 @@ export function FormularioLiquidacionEditable({
                         </td>
 
                         <td className="py-2.5 px-3">
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${badgeBg}`}>
+                          <span
+                            style={{
+                              ...badgeStyle,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '3px 9px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
                             <IconComponent size={12} />
-                            <span className="capitalize">{gasto.categoria}</span>
+                            <span>{badgeLabel}</span>
                           </span>
                         </td>
 
@@ -796,12 +964,13 @@ export function FormularioLiquidacionEditable({
                         </td>
 
                         <td className="py-2.5 px-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               type="button"
                               onClick={() => handleAbrirEditarGasto(gasto)}
-                              className="p-1 rounded text-zinc-500 hover:text-[#176B52] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all cursor-pointer"
+                              className="action-btn-edit"
                               title="Editar este concepto de gasto"
+                              aria-label="Editar este concepto de gasto"
                             >
                               <Edit3 size={14} />
                             </button>
@@ -809,8 +978,9 @@ export function FormularioLiquidacionEditable({
                             <button
                               type="button"
                               onClick={() => handleEliminarGasto(gasto.id)}
-                              className="p-1 rounded text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all cursor-pointer"
+                              className="action-btn-delete"
                               title="Eliminar este concepto de gasto de la liquidación"
+                              aria-label="Eliminar este concepto de gasto"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -909,7 +1079,7 @@ export function FormularioLiquidacionEditable({
                   })}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
                 >
-                  <option value="transporte">Transporte (Tren, Autobús, Avión, Barco)</option>
+                  <option value="transporte">Transporte (Tren, Autobús, Avión, Vehículo particular)</option>
                   <option value="alojamiento">Alojamiento (Hotel, Residencia)</option>
                   <option value="dieta">Manutención / Dietas oficiales</option>
                   <option value="inscripcion">Cuota de Inscripción / Congreso</option>
@@ -925,7 +1095,7 @@ export function FormularioLiquidacionEditable({
                   type="text"
                   value={gastoEnEdicion.concepto}
                   onChange={e => setGastoEnEdicion({ ...gastoEnEdicion, concepto: e.target.value })}
-                  placeholder="ej. AVE Madrid-Atocha o Hotel Silken Puerta Madrid"
+                  placeholder="ej. Desplazamiento en vehículo particular o AVE Madrid-Atocha"
                   className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
                 />
               </div>
@@ -938,7 +1108,7 @@ export function FormularioLiquidacionEditable({
                   type="text"
                   value={gastoEnEdicion.justificante}
                   onChange={e => setGastoEnEdicion({ ...gastoEnEdicion, justificante: e.target.value })}
-                  placeholder="ej. Factura F-2026-902 o Billete Localizador XYZ"
+                  placeholder="ej. Declaración Kilometraje UEx o Billete Renfe"
                   className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
                 />
               </div>
@@ -951,7 +1121,7 @@ export function FormularioLiquidacionEditable({
                   type="text"
                   value={gastoEnEdicion.detalle}
                   onChange={e => setGastoEnEdicion({ ...gastoEnEdicion, detalle: e.target.value })}
-                  placeholder="ej. Trayecto Cáceres - Madrid Ida y Vuelta"
+                  placeholder="ej. 1.200 km a 0,26 €/km o Trayecto Cáceres - Madrid Ida y Vuelta"
                   className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#176B52]"
                 />
               </div>

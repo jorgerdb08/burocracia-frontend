@@ -3,12 +3,13 @@ import { Loader2, RefreshCw, Search, Eye, ArrowRight } from 'lucide-react';
 import { AlertErr } from '../ui/Alerts';
 import { Btn } from '../ui/Btn';
 import { cn } from '../../lib/utils';
+import { api } from '../../services/api';
 
 export function ViewExpedientes({
   onProcesar,
   onInspeccionar
 }: {
-  onProcesar: (id: string) => void;
+  onProcesar: (id: string, tipo?: string) => void;
   onInspeccionar: (id: string) => void;
 }) {
   const [casos, setCasos] = useState<{ 
@@ -29,8 +30,7 @@ export function ViewExpedientes({
   const cargar = useCallback(async () => {
     setStatus('loading');
     try {
-      const res = await fetch('/api/casos');
-      const data = await res.json();
+      const data = await api.getCasos();
       setCasos(data.casos || []);
       setStatus('done');
     } catch {
@@ -40,29 +40,81 @@ export function ViewExpedientes({
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  const counts = useMemo(() => {
+    let dietas = 0;
+    let proveedores = 0;
+    let honorarios = 0;
+    for (const c of casos) {
+      const t = (c.tipo || '').toLowerCase();
+      if (t === 'dietas' || t === 'dieta') dietas++;
+      else if (t === 'proveedores' || t === 'pago_proveedor' || t === 'proveedor') proveedores++;
+      else if (t === 'honorarios' || t === 'honorario') honorarios++;
+    }
+    return {
+      todos: casos.length,
+      dietas,
+      pago_proveedor: proveedores,
+      honorarios
+    };
+  }, [casos]);
+
   const filteredCasos = useMemo(() => {
+    const q = search.toLowerCase().trim();
     return casos.filter(c => {
-      const q = search.toLowerCase();
-      const matchSearch = 
-        c.id.toLowerCase().includes(q) || 
+      const tipoNorm = (c.tipo || '').toLowerCase();
+      let matchTipo = true;
+      if (tipoFiltro === 'dietas') {
+        matchTipo = tipoNorm === 'dietas' || tipoNorm === 'dieta';
+      } else if (tipoFiltro === 'pago_proveedor') {
+        matchTipo = tipoNorm === 'proveedores' || tipoNorm === 'pago_proveedor' || tipoNorm === 'proveedor';
+      } else if (tipoFiltro === 'honorarios') {
+        matchTipo = tipoNorm === 'honorarios' || tipoNorm === 'honorario';
+      }
+      if (!matchTipo) return false;
+
+      if (!q) return true;
+      return (
+        (c.id && c.id.toLowerCase().includes(q)) || 
         (c.titulo && c.titulo.toLowerCase().includes(q)) || 
         (c.codigo && c.codigo.toLowerCase().includes(q)) ||
         (c.descripcion && c.descripcion.toLowerCase().includes(q)) ||
-        c.tipo.toLowerCase().includes(q);
-      const matchTipo = tipoFiltro === 'todos' || c.tipo === tipoFiltro || (tipoFiltro === 'pago_proveedor' && c.tipo === 'proveedores');
-      return matchSearch && matchTipo;
+        (c.tipo && c.tipo.toLowerCase().includes(q))
+      );
     });
   }, [casos, search, tipoFiltro]);
 
-  const getTipoNombre = (tipo: string) => {
-    switch (tipo) {
-      case 'dietas': return 'Dietas y Desplazamientos';
-      case 'pago_proveedor':
-      case 'proveedores': return 'Pago a Proveedor y Facturas';
-      case 'honorarios': return 'Honorarios SGTRI';
-      case 'adquisiciones': return 'Contratos Menores';
-      default: return tipo;
+  const getTipoBadge = (tipo: string) => {
+    const t = (tipo || '').toLowerCase();
+    if (t === 'dietas' || t === 'dieta') {
+      return {
+        label: 'Dietas y Desplazamientos',
+        bg: '#EEF7F3',
+        color: '#176B52',
+        border: '#C6E3D7'
+      };
     }
+    if (t === 'proveedores' || t === 'pago_proveedor' || t === 'proveedor') {
+      return {
+        label: 'Pago a Proveedor',
+        bg: '#FDF6EC',
+        color: '#9A5B13',
+        border: '#F2DCBA'
+      };
+    }
+    if (t === 'honorarios' || t === 'honorario') {
+      return {
+        label: 'Honorarios SGTRI',
+        bg: '#EFF4FB',
+        color: '#174F91',
+        border: '#CEDDF0'
+      };
+    }
+    return {
+      label: tipo || 'General',
+      bg: '#F1F5F9',
+      color: '#334155',
+      border: '#CBD5E1'
+    };
   };
 
   return (
@@ -103,10 +155,10 @@ export function ViewExpedientes({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
           {[
-            { id: 'todos', label: 'Todos' },
-            { id: 'dietas', label: 'Dietas y Desplazamientos' },
-            { id: 'pago_proveedor', label: 'Pago a Proveedor' },
-            { id: 'honorarios', label: 'Honorarios' },
+            { id: 'todos', label: `Todos (${counts.todos})` },
+            { id: 'dietas', label: `Dietas y Desplazamientos (${counts.dietas})` },
+            { id: 'pago_proveedor', label: `Pago a Proveedor (${counts.pago_proveedor})` },
+            { id: 'honorarios', label: `Honorarios (${counts.honorarios})` },
           ].map(f => (
             <button
               key={f.id}
@@ -119,14 +171,15 @@ export function ViewExpedientes({
           ))}
         </div>
 
-        <div className="search-input-box" style={{ minWidth: '260px' }}>
-          <Search size={13} className="search-icon" />
+        <div className="search-input-box" style={{ minWidth: '280px', position: 'relative' }}>
+          <Search size={14} className="search-icon" style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none', zIndex: 2 }} />
           <input
             type="text"
             placeholder="Filtrar por código de expediente..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="search-input"
+            style={{ paddingLeft: '38px', paddingRight: '12px' }}
           />
         </div>
       </div>
@@ -197,8 +250,27 @@ export function ViewExpedientes({
                         )}
                       </div>
                     </td>
-                    <td style={{ color: 'var(--text-primary)', fontWeight: 400 }}>
-                      {getTipoNombre(c.tipo)}
+                    <td>
+                      {(() => {
+                        const badge = getTipoBadge(c.tipo);
+                        return (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              backgroundColor: badge.bg,
+                              color: badge.color,
+                              border: `1px solid ${badge.border}`,
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>
                       {c.total_archivos || 0} archivo(s)
@@ -236,7 +308,7 @@ export function ViewExpedientes({
                         <Btn
                           size="sm"
                           variant="primary"
-                          onClick={() => onProcesar(c.id)}
+                          onClick={() => onProcesar(c.id, c.tipo)}
                         >
                           <span>Tramitar</span>
                           <ArrowRight size={12} />

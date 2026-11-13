@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  FolderOpen, ChevronUp,
-  UploadCloud, Upload, FileSpreadsheet, Download, Sparkles, AlertOctagon, CheckCircle2,
+  FolderOpen, FolderPlus, ChevronUp,
+  UploadCloud, Upload, FileSpreadsheet, Download, AlertOctagon, CheckCircle2,
   AlertTriangle, FileCheck, Award, GraduationCap, Briefcase, HelpCircle,
   Building2, Scale, Clock, ShieldAlert, ArrowRight, Loader2, Eye, Edit3,
   Plus, Trash2, Check, X, ChevronRight, ChevronDown, ArrowLeft, ShieldCheck,
@@ -476,7 +476,7 @@ export function evaluarDiagnosticoExpediente(
 
     // 8. Declaración Responsable (Documento de Salida: NUNCA BLOQUEA LA TRAMITACIÓN)
     if (esCasoB) {
-      comps['declaracion_responsable'] = { estado: 'NO_APLICA', etiqueta: 'Declaración Responsable', mensaje: 'No aplica en convenios y contratos (Caso B)' };
+      comps['declaracion_responsable'] = { estado: 'NO_APLICA', etiqueta: 'Declaración Responsable', mensaje: 'No aplica en convenios y contratos' };
     } else {
       const decs = p.declaraciones_responsables || {};
       const pert = (p.pertenencia_uex || (p.es_miembro_uex === true ? 'uex' : (p.es_miembro_uex === false ? 'ajeno' : 'pendiente'))).toLowerCase();
@@ -559,7 +559,7 @@ export function evaluarDiagnosticoExpediente(
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function GeneradorHonorariosInteligente() {
+export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoId?: string | null } = {}) {
   const [paso, setPaso] = useState<number>(1);
   const [casoId, setCasoId] = useState<string | null>(null);
   const [archivosAnalizados, setArchivosAnalizados] = useState<ArchivoEntrada[]>([]);
@@ -658,9 +658,34 @@ export function GeneradorHonorariosInteligente() {
   const [nombreArchivoAdenda, setNombreArchivoAdenda] = useState<string>('05_Adenda_Modificativa_Presupuesto.docx');
   const [archivoAdendaTamano, setArchivoAdendaTamano] = useState<number>(37680);
   const [archivoAdendaSubido, setArchivoAdendaSubido] = useState<boolean>(false);
-  const [tabCasos, setTabCasos] = useState<'conformes' | 'discrepancias'>('conformes');
+  const [casosGuardados, setCasosGuardados] = useState<any[]>([]);
+  const [nombreNuevoCaso, setNombreNuevoCaso] = useState<string>('');
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
+  const [modalNombrarOpen, setModalNombrarOpen] = useState<boolean>(false);
+  const [casoObjetivoAccion, setCasoObjetivoAccion] = useState<{ id: string; titulo: string } | null>(null);
+  const [modalRenombrarOpen, setModalRenombrarOpen] = useState<boolean>(false);
+  const [nuevoNombreRenombrar, setNuevoNombreRenombrar] = useState<string>('');
+  const [renombrando, setRenombrando] = useState<boolean>(false);
+  const [modalEliminarOpen, setModalEliminarOpen] = useState<boolean>(false);
+  const [eliminandoCaso, setEliminandoCaso] = useState<boolean>(false);
   const inputAdendaRef = useRef<HTMLInputElement>(null);
   const [mensajeToast, setMensajeToast] = useState<{ texto: string; tipo: 'success' | 'info' | 'warning' } | null>(null);
+
+  const recargarCasosGuardados = async () => {
+    try {
+      const r = await fetch('/api/honorarios/casos_precargados');
+      const d = await r.json();
+      if (d?.ok && Array.isArray(d.casos)) {
+        setCasosGuardados(d.casos);
+      }
+    } catch {
+      // silencioso
+    }
+  };
+
+  useEffect(() => {
+    recargarCasosGuardados();
+  }, []);
 
   const mostrarToast = (texto: string, tipo: 'success' | 'info' | 'warning' = 'success') => {
     setMensajeToast({ texto, tipo });
@@ -1216,9 +1241,36 @@ export function GeneradorHonorariosInteligente() {
     }
   };
 
-  // Subida y análisis de archivos
-  const handleAnalizarArchivos = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  useEffect(() => {
+    if (initialCasoId) {
+      handleCargarDemo(initialCasoId);
+    }
+  }, [initialCasoId]);
+
+  const handleEliminarArchivo = async (nombreArchivo: string) => {
+    if (!casoId) return;
+    if (!window.confirm(`¿Desea eliminar el documento "${nombreArchivo}" de este expediente?`)) return;
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(casoId)}/archivo/${encodeURIComponent(nombreArchivo)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok && res.status !== 404) {
+        throw new Error(data?.error || 'Error al eliminar el documento.');
+      }
+      setArchivosAnalizados(prev => prev.filter(a => a.nombre !== nombreArchivo));
+      if (docEnVisor?.nombre === nombreArchivo) {
+        setDocEnVisor(null);
+      }
+      await recargarCasosGuardados();
+      mostrarToast(`Documento "${nombreArchivo}" eliminado del expediente.`, 'info');
+    } catch (err: any) {
+      alert(err?.message || 'Error al eliminar el documento.');
+    }
+  };
+
+  // Subida y análisis de archivos con nombre opcional de expediente
+  const subirYAnalizarArchivos = async (files: File[], nombrePersonalizado: string) => {
     if (!files || files.length === 0) return;
 
     setLoading(true);
@@ -1226,6 +1278,9 @@ export function GeneradorHonorariosInteligente() {
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
       formData.append('archivos', files[i]);
+    }
+    if (nombrePersonalizado.trim()) {
+      formData.append('nombre_caso', nombrePersonalizado.trim());
     }
 
     try {
@@ -1238,7 +1293,9 @@ export function GeneradorHonorariosInteligente() {
         setCasoId(data.caso_id);
         setExpediente(data.expediente);
         setArchivosAnalizados(normalizarArchivos(data.archivos || []));
-        setResultado(null); // Documentos de salida no se muestran hasta que el usuario solicite la generación
+        setResultado(null);
+        setNombreNuevoCaso('');
+        await recargarCasosGuardados();
         setPaso(2);
       } else {
         alert(`Error al analizar expediente: ${data.error || 'Respuesta inválida'}`);
@@ -1250,6 +1307,229 @@ export function GeneradorHonorariosInteligente() {
       setLoadingMsg('');
     }
   };
+
+  const handleAnalizarArchivos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const filesArr = Array.from(fileList);
+    e.target.value = '';
+    if (nombreNuevoCaso.trim()) {
+      subirYAnalizarArchivos(filesArr, nombreNuevoCaso.trim());
+    } else {
+      setPendingUploadFiles(filesArr);
+      setModalNombrarOpen(true);
+    }
+  };
+
+  const ejecutarRenombrarCaso = async () => {
+    const cidTarget = casoObjetivoAccion?.id || casoId;
+    if (!cidTarget || !nuevoNombreRenombrar.trim()) return;
+    setRenombrando(true);
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(cidTarget)}/renombrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nuevo_nombre: nuevoNombreRenombrar.trim() })
+      });
+      const data = await res.json();
+      if (data.error || !res.ok) throw new Error(data.error || 'Error al renombrar el expediente.');
+      setModalRenombrarOpen(false);
+      if (data.caso_id && casoId === cidTarget) {
+        setCasoId(data.caso_id);
+      }
+      setCasoObjetivoAccion(null);
+      await recargarCasosGuardados();
+      mostrarToast(`Expediente renombrado a "${data.caso_id || nuevoNombreRenombrar.trim()}".`, 'success');
+    } catch (err: any) {
+      alert(err.message || 'Error al renombrar el expediente.');
+    } finally {
+      setRenombrando(false);
+    }
+  };
+
+  const ejecutarEliminarCaso = async () => {
+    const cidTarget = casoObjetivoAccion?.id || casoId;
+    if (!cidTarget) return;
+    setEliminandoCaso(true);
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(cidTarget)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.error || !res.ok) throw new Error(data.error || 'Error al eliminar el expediente.');
+      setModalEliminarOpen(false);
+      if (casoId === cidTarget) {
+        setCasoId(null);
+        setExpediente(null);
+        setArchivosAnalizados([]);
+        setResultado(null);
+        setPaso(1);
+      }
+      setCasoObjetivoAccion(null);
+      await recargarCasosGuardados();
+      mostrarToast(`Expediente "${cidTarget}" eliminado correctamente.`, 'info');
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar el expediente.');
+    } finally {
+      setEliminandoCaso(false);
+    }
+  };
+
+  const renderModalesGestionCaso = () => (
+    <>
+      {modalNombrarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 animate-fade-in"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 99999, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', margin: 0 }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setModalNombrarOpen(false); setPendingUploadFiles([]); } }}
+        >
+          <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px', maxWidth: '480px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FolderPlus size={18} style={{ color: '#176B52' }} />
+                <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Nombre del Nuevo Expediente
+                </h3>
+              </div>
+              <button type="button" onClick={() => { setModalNombrarOpen(false); setPendingUploadFiles([]); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                Va a crear un nuevo expediente de honorarios aportando <strong>{pendingUploadFiles.length} documento(s)</strong>. Indique un nombre identificativo para guardarlo:
+              </p>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                  Nombre o Referencia del Expediente
+                </label>
+                <input
+                  type="text"
+                  value={nombreNuevoCaso}
+                  onChange={(e) => setNombreNuevoCaso(e.target.value)}
+                  placeholder="Ej: Conferencia_IA_UEx_2026"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const n = nombreNuevoCaso.trim();
+                      const filesCopy = pendingUploadFiles;
+                      setModalNombrarOpen(false);
+                      setPendingUploadFiles([]);
+                      subirYAnalizarArchivos(filesCopy, n);
+                    }
+                  }}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '12.5px', fontFamily: 'var(--font-mono)', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                />
+              </div>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+                Si lo deja vacío, se asignará automáticamente un identificador con fecha y hora.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => { setModalNombrarOpen(false); setPendingUploadFiles([]); }}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-uex"
+                onClick={() => {
+                  const n = nombreNuevoCaso.trim();
+                  const filesCopy = pendingUploadFiles;
+                  setModalNombrarOpen(false);
+                  setPendingUploadFiles([]);
+                  subirYAnalizarArchivos(filesCopy, n);
+                }}
+              >
+                <Check size={14} />
+                <span>Crear y Analizar</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {modalRenombrarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 animate-fade-in"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 99999, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', margin: 0 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !renombrando) setModalRenombrarOpen(false); }}
+        >
+          <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px', maxWidth: '460px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Edit3 size={17} style={{ color: '#176B52' }} />
+                <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Renombrar Expediente
+                </h3>
+              </div>
+              <button type="button" onClick={() => setModalRenombrarOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Nuevo nombre o identificador para <span className="font-mono">{casoObjetivoAccion?.id || casoId}</span>:
+              </label>
+              <input
+                type="text"
+                value={nuevoNombreRenombrar}
+                onChange={(e) => setNuevoNombreRenombrar(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter' && !renombrando && nuevoNombreRenombrar.trim()) ejecutarRenombrarCaso(); }}
+                style={{ width: '100%', padding: '8px 12px', fontSize: '12.5px', fontFamily: 'var(--font-mono)', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setModalRenombrarOpen(false)} disabled={renombrando}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-sm btn-uex" onClick={ejecutarRenombrarCaso} disabled={renombrando || !nuevoNombreRenombrar.trim()}>
+                <Check size={14} />
+                <span>{renombrando ? 'Renombrando...' : 'Guardar Nombre'}</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {modalEliminarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 animate-fade-in"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 99999, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', margin: 0 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !eliminandoCaso) setModalEliminarOpen(false); }}
+        >
+          <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid #FECACA', borderRadius: '12px', padding: '24px', maxWidth: '460px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Trash2 size={17} style={{ color: '#DC2626' }} />
+                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#991B1B', margin: 0 }}>
+                  Eliminar Expediente Guardado
+                </h3>
+              </div>
+              <button type="button" onClick={() => setModalEliminarOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+              ¿Está seguro de que desea eliminar permanentemente el expediente <strong className="font-mono" style={{ color: 'var(--text-primary)' }}>{casoObjetivoAccion?.id || casoId}</strong> y sus documentos asociados?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '18px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setModalEliminarOpen(false)} disabled={eliminandoCaso}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-sm btn-danger" onClick={ejecutarEliminarCaso} disabled={eliminandoCaso}>
+                <Trash2 size={14} />
+                <span>{eliminandoCaso ? 'Eliminando...' : 'Eliminar Definitivamente'}</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
 
   // Generación de documentos oficiales
     const handleVerDocumento = async (archivo: ArchivoEntrada) => {
@@ -1344,6 +1624,12 @@ export function GeneradorHonorariosInteligente() {
     }
   };
 
+  useEffect(() => {
+    if (initialCasoId) {
+      handleCargarDemo(initialCasoId);
+    }
+  }, [initialCasoId]);
+
   const handleDescargarInformeIncidencias = () => {
     if (!casoId) return;
     window.open(`/api/honorarios/descargar_informe_incidencias/${casoId}`, '_blank');
@@ -1361,318 +1647,390 @@ export function GeneradorHonorariosInteligente() {
   // RENDER: PASO 1 - CARGA DE EXPEDIENTE
   // ---------------------------------------------------------------------------
   if (paso === 1) {
+    const BUILTIN_HONORARIOS_IDS = new Set([
+      '01_Premio_Catedra_Telefonica',
+      '02_Conferencia_Profesor_Externo',
+      '03_Contrato_Articulo_83',
+      '04_Control_Discrepancias',
+      '05_Premios_Alta_Parcial',
+      '06_Convenio_Completo',
+    ]);
+
+    const getModBadgeMeta = (modLabel: string): { style: React.CSSProperties; icon: React.ReactNode } => {
+      const m = modLabel.toLowerCase();
+      const base: React.CSSProperties = {
+        padding: '2px 8px',
+        borderRadius: '4px',
+        fontSize: '11px',
+        fontWeight: 600,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '5px',
+        whiteSpace: 'nowrap'
+      };
+      if (m.includes('premio')) {
+        return {
+          style: { ...base, backgroundColor: '#FDF6EC', color: '#9A5B13', border: '1px solid #F2DCBA' },
+          icon: <Award size={12} />
+        };
+      }
+      if (m.includes('conferencia')) {
+        return {
+          style: { ...base, backgroundColor: '#EFF4FB', color: '#174F91', border: '1px solid #CEDDF0' },
+          icon: <GraduationCap size={12} />
+        };
+      }
+      if (m.includes('contrato') || m.includes('art. 83')) {
+        return {
+          style: { ...base, backgroundColor: '#F4F1FA', color: '#4E3787', border: '1px solid #DCD5EE' },
+          icon: <Scale size={12} />
+        };
+      }
+      if (m.includes('convenio')) {
+        return {
+          style: { ...base, backgroundColor: '#EEF7F3', color: '#176B52', border: '1px solid #C6E3D7' },
+          icon: <Building2 size={12} />
+        };
+      }
+      return {
+        style: { ...base, backgroundColor: '#F1F5F9', color: '#334155', border: '1px solid #CBD5E1' },
+        icon: <FileText size={12} />
+      };
+    };
+
     const casosDemo = [
       {
         id: '01_Premio_Catedra_Telefonica',
-        codigo: 'CASO 01',
-        nombre: 'Premio Cátedra Telefónica (4 beneficiarios)',
-        modalidad: 'Caso A (Premios)',
-        modalidadClase: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
-        perceptores: '4 beneficiarios • 300,00 € c/u (1.200,00 € total)',
-        resultadoEsperado: '✓ Listo para tramitar',
-        resultadoBadge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300',
-        desc: 'Convocatoria y resolución definitivas. 4 beneficiarios con DNI, certificados bancarios, Alta en Terceros (SICAP) y Declaraciones Responsables (4/4 confirmadas). Genera Anexo I + 4 Liquidaciones + 4 Declaraciones Responsables.'
+        nombre: 'Premio Cátedra Telefónica',
+        modalidad: 'Premio',
+        perceptores: '4 beneficiarios · 1.200,00 € total',
+        estadoOk: true,
+        resultadoEsperado: 'Listo para tramitar',
+        desc: 'Convocatoria y resolución definitivas con 4 beneficiarios, certificados bancarios, SICAP y declaraciones responsables.'
       },
       {
         id: '02_Conferencia_Profesor_Externo',
-        codigo: 'CASO 02',
         nombre: 'Conferencia Ponente Externa UEx',
-        modalidad: 'Caso A (Conferencias)',
-        modalidadClase: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
-        perceptores: '1 ponente • 400,00 € (2 horas a 200,00 €/h)',
-        resultadoEsperado: '✓ Listo para tramitar',
-        resultadoBadge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300',
-        desc: 'Actividad y fecha documentadas, tarifa dentro del límite oficial (< 320 €/h para personal externo). Acreditación bancaria, Alta Terceros y Declaración Responsable. Genera Anexo I + Liquidación + Declaración + Modelo 7 (Certificación).'
+        modalidad: 'Conferencia',
+        perceptores: '1 ponente · 400,00 € (200,00 €/h)',
+        estadoOk: true,
+        resultadoEsperado: 'Listo para tramitar',
+        desc: 'Ponencia acreditada dentro del límite oficial (< 320 €/h) con alta de terceros y Modelo 7.'
       },
       {
         id: '03_Contrato_Articulo_83',
-        codigo: 'CASO 03',
         nombre: 'Contrato Art. 83 / Art. 60 LOSU',
-        modalidad: 'Caso B (Contratos)',
-        modalidadClase: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300',
-        perceptores: '1 perceptor • 900,00 € bruto',
-        resultadoEsperado: '✓ Listo para tramitar',
-        resultadoBadge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300',
-        desc: 'Contrato firmado, alta terceros y justificante bancario de cobro íntegro de la anualidad acreditado. Genera Anexo I + Liquidación + Memoria Económica Justificativa. Sin Declaración Responsable ni Modelo 7.'
-      },
-      {
-        id: '04_Control_Discrepancias',
-        codigo: 'CASO 04',
-        nombre: 'Premio con Discrepancia Económica',
-        modalidad: 'Caso A (Premios)',
-        modalidadClase: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300',
-        perceptores: '1 beneficiaria • 800,00 € vs 1.200,00 €',
-        resultadoEsperado: 'Requiere subsanación (Discrepancia)',
-        resultadoBadge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300',
-        desc: 'ÚNICO CASO CON ERROR INTENCIONADO: Resolución aprueba 800 € pero se solicitan 1.200 € sin resolución rectificativa. Documentación personal y bancaria completa. Bloqueo preventivo con detalle de importes e instrucciones de subsanación.'
-      },
-      {
-        id: '05_Premios_Alta_Parcial',
-        codigo: 'CASO 05',
-        nombre: 'Premios con Varios Beneficiarios',
-        modalidad: 'Caso A (Premios)',
-        modalidadClase: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
-        perceptores: '4 beneficiarios • 250,00 € c/u (1.000,00 € total)',
-        resultadoEsperado: '✓ Listo para tramitar',
-        resultadoBadge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300',
-        desc: 'Convocatoria y resolución definitivas. Cuatro beneficiarios con importes coincidentes, certificados bancarios, Alta en Terceros UEx y Declaraciones (4/4 confirmadas). Genera Anexo I + 4 Liquidaciones + 4 Declaraciones.'
+        modalidad: 'Contrato Art. 83',
+        perceptores: '1 perceptor · 900,00 € bruto',
+        estadoOk: true,
+        resultadoEsperado: 'Listo para tramitar',
+        desc: 'Contrato formalizado, alta de terceros y justificante bancario de ingreso de la anualidad.'
       },
       {
         id: '06_Convenio_Completo',
-        codigo: 'CASO 06',
         nombre: 'Convenio de Colaboración',
-        modalidad: 'Caso B (Convenios)',
-        modalidadClase: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300',
-        perceptores: '1 colaborador • 1.800,00 € bruto',
-        resultadoEsperado: '✓ Listo para tramitar',
-        resultadoBadge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300',
-        desc: 'Convenio formalizado, datos bancarios acreditados y justificante bancario de ingreso de fondos de la anualidad. Genera Anexo I + Liquidación + Memoria Económica Justificativa. Sin Declaración Responsable ni Modelo 7.'
+        modalidad: 'Convenio',
+        perceptores: '1 colaborador · 1.800,00 € bruto',
+        estadoOk: true,
+        resultadoEsperado: 'Listo para tramitar',
+        desc: 'Convenio formalizado con acreditación bancaria y memoria económica justificativa.'
       }
     ];
 
-    const casosDiscrepancias = [
-      {
-        id: 'caso_d1_contradiccion',
-        codigo: 'DISCREPANCIA D1',
-        nombre: 'Contradicción Económica (800 € vs 1.200 €)',
-        modalidad: 'Caso A (Premios)',
-        modalidadClase: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
-        perceptores: '1 beneficiaria • 800,00 € vs 1.200,00 €',
-        resultadoEsperado: 'Bloqueo Intervención (Requiere Adenda)',
-        resultadoBadge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300',
-        desc: 'Resolución aprueba 800 € pero se solicitan 1.200 € sin adenda rectificativa previa. Permite subsanar ajustando a 800 € o adjuntando e incorporando la Adenda oficial de 1.200 €.'
-      },
-      {
-        id: 'caso_d2_descuadre_suma',
-        codigo: 'DISCREPANCIA D2',
-        nombre: 'Descuadre en Suma de Perceptores',
-        modalidad: 'Caso A (Premios Colectivos)',
-        modalidadClase: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300',
-        perceptores: '4 beneficiarios • 1.300,00 € total vs 1.200,00 € presupuesto',
-        resultadoEsperado: 'Bloqueo Contable (Descuadre)',
-        resultadoBadge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300',
-        desc: 'La suma de importes individuales (4 x 325 € = 1.300 €) supera la dotación autorizada de 1.200 €. Permite cuadrar automáticamente las cuantías a 300 € c/u.'
-      },
-      {
-        id: 'caso_d3_art83_sin_anualidad',
-        codigo: 'DISCREPANCIA D3',
-        nombre: 'Contrato Art. 83 sin Justificante de Anualidad',
-        modalidad: 'Caso B (Contratos Art. 83 / 60 LOSU)',
-        modalidadClase: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300',
-        perceptores: '1 perceptor • 900,00 € bruto',
-        resultadoEsperado: 'Bloqueo Normativo (Falta Anualidad)',
-        resultadoBadge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300',
-        desc: 'Falta acreditar documentalmente el ingreso previo en cuenta de la UEx de los fondos de la anualidad del contrato. Permite convalidar e incorporar el justificante bancario.'
-      },
-      {
-        id: 'caso_d4_sin_titularidad_bancaria',
-        codigo: 'DISCREPANCIA D4',
-        nombre: 'Titularidad Bancaria No Acreditada',
-        modalidad: 'Caso A (Conferencias / Ponentes)',
-        modalidadClase: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
-        perceptores: '1 ponente • 400,00 € (IBAN sin certificado)',
-        resultadoEsperado: 'Bloqueo Pagos (Falta Titularidad)',
-        resultadoBadge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300',
-        desc: 'El perceptor aporta cuenta IBAN pero carece de certificado o extracto que acredite la titularidad. Permite convalidar e incorporar el certificado de titularidad bancaria.'
-      },
-      {
-        id: 'caso_d5_alta_terceros_pendiente',
-        codigo: 'DISCREPANCIA D5',
-        nombre: 'Alta de Terceros en SICAP Pendiente',
-        modalidad: 'Personal Ajeno a la UEx',
-        modalidadClase: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
-        perceptores: '1 ponente externa • 400,00 €',
-        resultadoEsperado: 'Bloqueo SICAP (Alta Pendiente)',
-        resultadoBadge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300',
-        desc: 'La ponente externa no figura registrada en el censo económico de Terceros de la UEx. Permite tramitar y validar el Alta en el sistema contable SICAP.'
-      },
-      {
-        id: 'caso_d6_tarifa_conferencia_excedida',
-        codigo: 'DISCREPANCIA D6',
-        nombre: 'Tarifa Horaria Excedida en Conferencia',
-        modalidad: 'Límites Retributivos SGTRI',
-        modalidadClase: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
-        perceptores: '1 ponente • 800,00 € (400,00 €/h > 320,00 €/h)',
-        resultadoEsperado: 'Bloqueo Normativo (Tarifa Excedida)',
-        resultadoBadge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300',
-        desc: 'La tarifa de 400 €/h supera el tope legal de 320 €/h para personal ajeno a la UEx. Permite ajustar automáticamente la retribución al máximo normativo legal.'
-      },
-      {
-        id: 'caso_d7_tramitacion_separable',
-        codigo: 'DISCREPANCIA D7',
-        nombre: 'Tramitación Separable en Colectivo',
-        modalidad: 'Gestión Colectiva Diferenciada',
-        modalidadClase: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300',
-        perceptores: '4 beneficiarios (3 conformes / 1 pendiente)',
-        resultadoEsperado: 'Tramitación Parcial Autorizable',
-        resultadoBadge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300',
-        desc: '3 perceptores cumplen todos los requisitos y 1 tiene documentación pendiente. Permite tramitar de inmediato los conformes sin paralizar al resto del grupo.'
-      }
-    ];
-
+    const casosPropios = casosGuardados.filter((c) => !BUILTIN_HONORARIOS_IDS.has(c.id));
 
     return (
       <div ref={paso2TopRef} className="space-y-6 max-w-6xl mx-auto p-4 animate-fade-in">
-        {/* Encabezado Principal de Alta Legibilidad */}
-        <div className="bg-white dark:bg-zinc-900 border-l-4 border-l-[#176B52] border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-2 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-[#176B52] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-              <Sparkles size={13} />
-              <span>SGTRI • Universidad de Extremadura</span>
+        {/* Encabezado Editorial SGTRI */}
+        <div className="view-header" style={{ marginBottom: 0 }}>
+          <div>
+            <div className="view-breadcrumb">
+              <span>Sede Electrónica UEx</span>
+              <span>/</span>
+              <span>Gestión Económica</span>
+              <span>/</span>
+              <span>Liquidación de Honorarios</span>
             </div>
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Módulo Inteligente de Liquidación de Honorarios
-            </h2>
-            <p className="text-zinc-600 dark:text-zinc-300 text-xs md:text-sm leading-relaxed">
-              Tramitación automatizada conforme al procedimiento oficial del SGTRI de la Universidad de Extremadura: Propuesta de Pago (Anexo I oficial), Liquidación de Honorarios, Declaración Responsable (como documento de salida) y Memoria Económica Justificativa.
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+              <h1 className="view-title">Liquidación de Honorarios</h1>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 400 }}>
+                SGTRI UEx
+              </span>
+            </div>
+            <p className="view-desc">
+              Análisis documental, verificación normativa y fiscal y generación de Propuesta de Pago (Anexo I), Liquidación de Honorarios, Declaración Responsable y Memoria Económica.
             </p>
           </div>
-          <div className="p-3 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl shrink-0 flex items-center gap-3">
-            <Building2 size={32} className="text-[#176B52] dark:text-emerald-400" />
-            <div className="text-right text-xs">
-              <div className="font-bold text-zinc-900 dark:text-zinc-100">Plantillas Oficiales</div>
-              <div className="text-[#176B52] dark:text-emerald-400 font-semibold">SGTRI UEx Vigentes</div>
-            </div>
+          <div className="view-actions">
+            <span className="badge">
+              <span className="badge-dot badge-dot-accent" />
+              Plantillas Oficiales 2026
+            </span>
           </div>
         </div>
 
-        {/* Zona de Subida y Carga de Archivos */}
-        <div className="bg-white dark:bg-zinc-900 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-6 text-center hover:border-[#176B52] transition-colors flex flex-col items-center justify-center min-h-[160px] shadow-xs">
-          <UploadCloud size={36} className="text-[#176B52] mb-2 animate-bounce" />
-          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 mb-1">
-            Subir Expediente de Honorarios Completo (Archivos o ZIP)
-          </h3>
-          <p className="text-zinc-500 text-xs max-w-md mb-3">
-            Arrastre o seleccione documentos de solicitud, bases de convocatoria, listados Excel de beneficiarios o justificaciones bancarias.
-          </p>
-          <label className="btn btn-primary btn-sm bg-[#176B52] hover:bg-[#125440] text-white cursor-pointer px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-xs">
-            <Plus size={14} />
-            <span>Seleccionar Archivos del Expediente</span>
-            <input
-              type="file"
-              multiple
-              onChange={handleAnalizarArchivos}
-              disabled={loading}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        {/* Selector de Pestañas: Casos Conformes vs Banco de Pruebas de Discrepancias */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3 flex-wrap gap-3">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <button
-                type="button"
-                data-testid="tab-casos-conformes"
-                onClick={() => setTabCasos('conformes')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  tabCasos === 'conformes'
-                    ? 'bg-[#176B52] text-white shadow-xs'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                }`}
-              >
-                <CheckCircle2 size={15} />
-                <span>Expedientes Conformes de Referencia (5)</span>
-              </button>
-
-              <button
-                type="button"
-                data-testid="tab-banco-discrepancias"
-                onClick={() => setTabCasos('discrepancias')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  tabCasos === 'discrepancias'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 hover:bg-rose-100'
-                }`}
-              >
-                <ShieldAlert size={15} />
-                <span>Banco de Pruebas de Discrepancias (7 Casos)</span>
-              </button>
+        {/* Panel de Subida con Nombre Personalizado */}
+        <div
+          className="panel"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const dropped = Array.from(e.dataTransfer.files || []);
+            if (dropped.length === 0 || loading) return;
+            if (nombreNuevoCaso.trim()) {
+              subirYAnalizarArchivos(dropped, nombreNuevoCaso.trim());
+            } else {
+              setPendingUploadFiles(dropped);
+              setModalNombrarOpen(true);
+            }
+          }}
+          style={{
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ fontSize: '0.94rem', fontWeight: 600, color: 'var(--color-navy)', margin: 0 }}>
+                Aportar documentación del expediente
+              </h2>
+              <p style={{ fontSize: '0.79rem', color: 'var(--text-secondary)', margin: '3px 0 0 0' }}>
+                Arrastre o seleccione solicitudes, listados Excel de beneficiarios, certificados bancarios o contratos.
+              </p>
             </div>
 
-            <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
-              {tabCasos === 'conformes' ? '5 Expedientes Listos para Tramitar' : '7 Casuísticas de Bloqueo y Subsanación'}
+            <label
+              className="btn btn-sm btn-outline"
+              style={{ cursor: loading ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <UploadCloud size={14} />
+              <span>Examinar archivos...</span>
+              <input
+                type="file"
+                multiple
+                onChange={handleAnalizarArchivos}
+                disabled={loading}
+                className="hidden"
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              Nombre del expediente <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opcional)</span>:
+            </label>
+            <input
+              type="text"
+              value={nombreNuevoCaso}
+              onChange={(e) => setNombreNuevoCaso(e.target.value)}
+              placeholder="Ej: Conferencia_IA_UEx_2026 o Premio_Investigacion"
+              style={{ flex: 1, minWidth: '240px', padding: '7px 11px', fontSize: '12.5px', fontFamily: 'var(--font-mono)', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+            />
+          </div>
+        </div>
+
+        {/* Expedientes Guardados del Usuario en Modo Lista */}
+        {casosPropios.length > 0 && (
+          <div className="space-y-2.5">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                Expedientes Guardados ({casosPropios.length})
+              </span>
+            </div>
+
+            <div className="admin-table-container" style={{ borderRadius: '10px', overflow: 'hidden' }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '150px' }}>Modalidad</th>
+                    <th>Expediente</th>
+                    <th style={{ width: '220px' }}>Perceptores e Importe</th>
+                    <th style={{ width: '80px', textAlign: 'center' }}>Docs</th>
+                    <th style={{ width: '215px', textAlign: 'right' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {casosPropios.map((c) => {
+                    const modLabel = c.modalidad_label || 'Honorarios';
+                    const modMeta = getModBadgeMeta(modLabel);
+                    return (
+                      <tr key={c.id} data-testid={`row-guardado-${c.id}`}>
+                        <td>
+                          <span style={modMeta.style}>
+                            {modMeta.icon}
+                            <span>{modLabel}</span>
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
+                            {c.titulo || c.id}
+                          </div>
+                          {c.titulo && c.titulo !== c.id && (
+                            <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                              {c.id}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ fontSize: '12px', fontWeight: 500, color: '#334155', fontFamily: 'var(--font-mono)' }}>
+                          {c.perceptores_texto || c.importe_texto}
+                        </td>
+                        <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {c.archivos_count ?? 0}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCasoObjetivoAccion({ id: c.id, titulo: c.titulo || c.id });
+                                setNuevoNombreRenombrar(c.id);
+                                setModalRenombrarOpen(true);
+                              }}
+                              className="action-btn-edit"
+                              title="Renombrar expediente guardado"
+                              aria-label="Renombrar expediente"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCasoObjetivoAccion({ id: c.id, titulo: c.titulo || c.id });
+                                setModalEliminarOpen(true);
+                              }}
+                              className="action-btn-delete"
+                              title="Eliminar expediente guardado"
+                              aria-label="Eliminar expediente"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCargarDemo(c.id)}
+                              disabled={loading}
+                              className="btn btn-sm btn-outline"
+                            >
+                              {loadingCasoId === c.id ? (
+                                <>
+                                  <Loader2 size={12} className="animate-spin" />
+                                  <span>Abriendo...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>Abrir</span>
+                                  <ArrowRight size={13} />
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Casos de Referencia en Modo Lista */}
+        <div className="space-y-2.5">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+              Casos de Referencia ({casosDemo.length})
             </span>
           </div>
 
-          {tabCasos === 'discrepancias' && (
-            <div className="p-3.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3 text-xs animate-fade-in">
-              <ShieldAlert size={18} className="text-rose-600 shrink-0 mt-0.5" />
-              <div className="text-rose-900 dark:text-rose-200 leading-relaxed">
-                <strong>Banco Oficial de Pruebas de Discrepancias SGTRI / Intervención:</strong> Seleccione cualquiera de los 7 supuestos de discordancia normativa (contradicción económica, descuadre de sumas, falta de anualidad en Art. 83, ausencia de titularidad bancaria, alta de terceros pendiente en SICAP, exceso de tarifa horaria o tramitación separable) para analizar el bloqueo preventivo y verificar la subsanación interactiva con incorporación documental.
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(tabCasos === 'conformes' ? casosDemo : casosDiscrepancias).map((c) => (
-              <div
-                key={c.id}
-                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-[#176B52] dark:hover:border-emerald-600 rounded-xl p-4 shadow-xs transition-all flex flex-col justify-between gap-3 group"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
-                      {c.codigo}
-                    </span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${c.modalidadClase}`}>
-                      {c.modalidad}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-xs text-zinc-900 dark:text-zinc-100 group-hover:text-[#176B52] transition-colors">
-                      {c.nombre}
-                    </h4>
-                    <div className="text-[11px] font-semibold text-[#176B52] dark:text-emerald-400 mt-0.5">
-                      {c.perceptores}
-                    </div>
-                  </div>
-
-                  <p className="text-[11.5px] text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                    {c.desc}
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${c.resultadoBadge}`}>
-                    {c.resultadoEsperado}
-                  </span>
-
-                  <button
-                    type="button"
-                    data-testid={`btn-cargar-demo-${c.id}`}
-                    onClick={() => handleCargarDemo(c.id)}
-                    disabled={loading}
-                    className="btn btn-sm btn-primary btn-uex text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs"
-                    style={{ backgroundColor: "#176B52", borderColor: "#176B52", color: "#FFFFFF" }}
-                  >
-                    {loadingCasoId === c.id ? (
-                      <>
-                        <Loader2 size={12} className="animate-spin" />
-                        <span>Analizando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Cargar Expediente</span>
-                        <ChevronRight size={13} />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="admin-table-container" style={{ borderRadius: '10px', overflow: 'hidden' }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '150px' }}>Modalidad</th>
+                  <th>Expediente</th>
+                  <th style={{ width: '240px' }}>Perceptores e Importe</th>
+                  <th style={{ width: '140px' }}>Estado</th>
+                  <th style={{ width: '130px', textAlign: 'right' }}>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {casosDemo.map((c) => {
+                  const modMeta = getModBadgeMeta(c.modalidad);
+                  return (
+                    <tr key={c.id} data-testid={`row-demo-${c.id}`}>
+                      <td>
+                        <span style={modMeta.style}>
+                          {modMeta.icon}
+                          <span>{c.modalidad}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
+                          {c.nombre}
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {c.desc}
+                        </div>
+                      </td>
+                      <td style={{ fontSize: '12px', fontWeight: 500, color: '#334155', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                        {c.perceptores}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            color: '#15803D',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#16A34A', display: 'inline-block' }} />
+                          <span>{c.resultadoEsperado}</span>
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          data-testid={`btn-cargar-demo-${c.id}`}
+                          onClick={() => handleCargarDemo(c.id)}
+                          disabled={loading}
+                          className="btn btn-sm btn-outline"
+                        >
+                          {loadingCasoId === c.id ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin" />
+                              <span>Cargando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Cargar</span>
+                              <ArrowRight size={13} />
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* Loading overlay */}
         {loading && (
-          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-3 text-xs text-emerald-900 dark:text-emerald-200 shadow-xs">
-            <Loader2 size={18} className="animate-spin text-[#176B52] shrink-0" />
-            <div className="font-medium">{loadingMsg}</div>
+          <div style={{ padding: '14px 16px', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: '#065F46' }}>
+            <Loader2 size={18} className="animate-spin" style={{ color: '#176B52', flexShrink: 0 }} />
+            <div style={{ fontWeight: 600 }}>{loadingMsg}</div>
           </div>
         )}
+
+        {renderModalesGestionCaso()}
       </div>
     );
   }
@@ -1692,9 +2050,9 @@ export function GeneradorHonorariosInteligente() {
 
     const getNombreModalidad = (m: string) => {
       switch (m) {
-        case 'conferencia': return 'Conferencia / Docencia Extraordinaria (Caso A)';
-        case 'premio': return 'Premio Académico / Científico (Caso A)';
-        case 'colaboracion_convenio_proyecto': return 'Colaboración en Proyecto / Contrato Art. 83 (Caso B)';
+        case 'conferencia': return 'Conferencia / Docencia Extraordinaria';
+        case 'premio': return 'Premio Académico / Científico';
+        case 'colaboracion_convenio_proyecto': return 'Contrato Art. 83 / Convenio de Colaboración';
         default: return 'Otros Supuestos de Honorarios';
       }
     };
@@ -1710,6 +2068,7 @@ export function GeneradorHonorariosInteligente() {
 
     return (
       <div className="space-y-6 max-w-6xl mx-auto p-4 animate-fade-in">
+        {renderModalesGestionCaso()}
         {/* Barra Superior de Navegación y Acciones */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
           <button
@@ -1725,6 +2084,58 @@ export function GeneradorHonorariosInteligente() {
             <span className="text-xs text-zinc-500 font-mono">
               Expte: <strong>{casoId}</strong>
             </span>
+
+            {casoId && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCasoObjetivoAccion({ id: casoId, titulo: casoId });
+                    setNuevoNombreRenombrar(casoId);
+                    setModalRenombrarOpen(true);
+                  }}
+                  style={{
+                    fontSize: '11px',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-surface)',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Renombrar este expediente"
+                >
+                  <Edit3 size={11} />
+                  <span>Renombrar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCasoObjetivoAccion({ id: casoId, titulo: casoId });
+                    setModalEliminarOpen(true);
+                  }}
+                  style={{
+                    fontSize: '11px',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid #FECACA',
+                    backgroundColor: '#FEF2F2',
+                    color: '#B91C1C',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Eliminar este expediente guardado"
+                >
+                  <Trash2 size={11} />
+                  <span>Eliminar</span>
+                </button>
+              </>
+            )}
 
             {archivosAnalizados.length > 0 && (
               <button
@@ -2100,22 +2511,9 @@ export function GeneradorHonorariosInteligente() {
                       iconBorder = '#E9D5FF';
                     }
 
-                    // Categoría badge
-                    let catBg = '#F1F5F9';
-                    let catColor = '#475569';
-                    if (archivo.categoria?.includes('Excel') || archivo.categoria?.includes('Perceptores')) {
-                      catBg = '#ECFDF5';
-                      catColor = '#047857';
-                    } else if (archivo.categoria?.includes('Bancario') || archivo.categoria?.includes('IBAN')) {
-                      catBg = '#FFFBEB';
-                      catColor = '#B45309';
-                    } else if (archivo.categoria?.includes('Terceros')) {
-                      catBg = '#FAF5FF';
-                      catColor = '#7E22CE';
-                    } else if (archivo.categoria?.includes('Convocatoria') || archivo.categoria?.includes('Expediente')) {
-                      catBg = '#EFF6FF';
-                      catColor = '#1D4ED8';
-                    }
+                    // Categoría badge uniforme profesional
+                    const catBg = '#F1F5F9';
+                    const catColor = '#334155';
 
                     return (
                       <div
@@ -2240,6 +2638,17 @@ export function GeneradorHonorariosInteligente() {
                             <Download size={12} />
                             <span>Descargar</span>
                           </a>
+
+                          <button
+                            type="button"
+                            onClick={() => handleEliminarArchivo(archivo.nombre)}
+                            className="action-btn-delete"
+                            style={{ width: '28px', height: '28px', borderRadius: '6px' }}
+                            title={`Eliminar ${archivo.nombre} del expediente`}
+                            aria-label={`Eliminar ${archivo.nombre}`}
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </div>
                       </div>
                     );
@@ -2467,7 +2876,7 @@ export function GeneradorHonorariosInteligente() {
                       {/* Declaración Responsable */}
                       <td className="py-2 px-2.5 text-center text-xs">
                         {modalidad === 'colaboracion_convenio_proyecto' || expediente.caso_procedimiento === 'CASO_B' ? (
-                          <span className="text-[11px] text-zinc-400 italic">No procede (Caso B)</span>
+                          <span className="text-[11px] text-zinc-400 italic">No procede en contratos/convenios</span>
                         ) : (() => {
                           const decs = p.declaraciones_responsables || {};
                           const confirmedCount = ['opc1', 'opc2', 'opc3', 'opc4'].filter(k => getDecStatus((decs as any)[k]) === 'confirmada').length;
@@ -2573,12 +2982,12 @@ export function GeneradorHonorariosInteligente() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="text-xs">
             {diagnostico.tiene_bloqueos_rojos ? (
-              <span className="text-rose-700 dark:text-rose-400 font-semibold flex items-center gap-1.5">
+              <span style={{ color: '#B91C1C', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <ShieldAlert size={16} />
-                <span>Expediente bloqueado: Subsanar la discrepancia económica antes de emitir la documentación de pago.</span>
+                <span>Expediente bloqueado: Subsanar {diagnostico.total_bloqueos_rojos} incidencia(s) antes de emitir la documentación de pago.</span>
               </span>
             ) : (
-              <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+              <span style={{ color: '#047857', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <CheckCircle2 size={16} />
                 <span>Expediente conforme: Toda la información preceptiva está verificada. Puede generar los documentos oficiales.</span>
               </span>
@@ -2646,7 +3055,7 @@ export function GeneradorHonorariosInteligente() {
         </div>
 
         
-        {/* Modal Flotante de Incidencias Críticas / Bloqueo SGTRI (Alta Legibilidad, Fundamentación y Desglose Visual) */}
+        {/* Modal Flotante de Incidencias Críticas / Bloqueo SGTRI */}
         {modalBloqueoOpen && bloqueoData && typeof document !== 'undefined' && (() => {
           const incContradiccion = bloqueoData.incidencias.find((i: any) => i.codigo === 'EXPEDIENTE_CONTRADICCION_ECONOMICA');
           const totalAut = incContradiccion?.datosContradiccion?.importeAutorizado ?? Number(expediente?.datos_economicos_fiscales?.importe_bruto || (expediente as any)?.importe_total || 0);
@@ -2658,19 +3067,20 @@ export function GeneradorHonorariosInteligente() {
 
           return createPortal(
           <div
-            className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 animate-fade-in"
+            className="animate-fade-in"
             style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              inset: 0,
               width: '100vw',
               height: '100vh',
               zIndex: 99999,
-              backgroundColor: 'rgba(15, 23, 42, 0.75)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
+              backgroundColor: 'rgba(15, 23, 42, 0.72)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
               margin: 0
             }}
             onClick={(e) => {
@@ -2678,43 +3088,76 @@ export function GeneradorHonorariosInteligente() {
             }}
           >
             <div
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl flex flex-col my-auto transition-all overflow-hidden"
-              style={{ maxWidth: '860px', width: '95%', maxHeight: '94vh' }}
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: '14px',
+                boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
+                maxWidth: '820px',
+                width: '100%',
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Cabecera del Flotante (Institucional, limpia y destacada) */}
-              <div className="p-6 sm:p-7 pb-5 flex items-start justify-between gap-4 border-b border-rose-100 dark:border-rose-950/60 bg-gradient-to-r from-rose-50/70 via-white to-white dark:from-rose-950/30 dark:via-zinc-900 dark:to-zinc-900">
-                <div className="flex items-start gap-4">
+              {/* Cabecera Institucional */}
+              <div
+                style={{
+                  padding: '20px 24px',
+                  backgroundColor: '#FFF1F2',
+                  borderBottom: '1px solid #FECDD3',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '16px',
+                  flexShrink: 0
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                   <div
                     style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '14px',
-                      backgroundColor: '#dc2626',
-                      color: '#ffffff',
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '10px',
+                      backgroundColor: '#DC2626',
+                      color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
-                      boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)'
+                      boxShadow: '0 4px 10px rgba(220, 38, 38, 0.25)'
                     }}
                   >
-                    <ShieldAlert size={26} />
+                    <ShieldAlert size={22} />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-3 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                      <span
+                        style={{
+                          padding: '2px 9px',
+                          borderRadius: '999px',
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                          backgroundColor: '#FEE2E2',
+                          color: '#991B1B',
+                          border: '1px solid #FECACA'
+                        }}
+                      >
                         Bloqueo SGTRI / Intervención
                       </span>
-                      <span className="text-xs text-rose-700 dark:text-rose-300 font-semibold font-mono">
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#B91C1C', fontFamily: 'var(--font-mono)' }}>
                         {bloqueoData.total} incidencia(s) crítica(s)
                       </span>
                     </div>
-                    <h3 className="font-bold text-xl sm:text-2xl text-zinc-900 dark:text-zinc-100 mt-1.5 tracking-tight">
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#14213D', margin: 0, lineHeight: 1.25 }}>
                       {bloqueoData.titulo || 'Expediente Bloqueado por Intervención'}
                     </h3>
-                    <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
-                      Se han detectado discordancias normativas o presupuestarias que impiden la emisión definitiva de la orden de pago oficial.
+                    <p style={{ fontSize: '12.5px', color: '#475569', margin: '4px 0 0 0', lineHeight: 1.45 }}>
+                      Revise cada incidencia detectada y aplique una de las opciones de subsanación para habilitar la emisión definitiva.
                     </p>
                   </div>
                 </div>
@@ -2722,185 +3165,163 @@ export function GeneradorHonorariosInteligente() {
                   type="button"
                   onClick={() => setModalBloqueoOpen(false)}
                   style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    border: '1px solid #e2e8f0',
-                    backgroundColor: '#ffffff',
-                    color: '#64748b',
+                    border: '1px solid #FECDD3',
+                    backgroundColor: '#FFFFFF',
+                    color: '#64748B',
                     cursor: 'pointer',
                     flexShrink: 0
                   }}
                   title="Cerrar ventana (Esc)"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
 
-              {/* Contenido / Detalle de Incidencias con Comparación Cuantitativa */}
-              <div className="p-5 sm:p-6 space-y-5 overflow-y-auto max-h-[74vh]">
-                {/* Cuadro de Conciliación de Importes */}
+              {/* Cuerpo con Scroll Independiente */}
+              <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '18px', backgroundColor: '#F8FAFC' }}>
+                {/* Resumen Cuantitativo si hay descuadre */}
                 {hayContr && (
-                    <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/90 dark:border-zinc-700/80">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                          <Scale size={15} className="text-[#176B52]" />
-                          <span>Conciliación Cuantitativa de Importes Documentados</span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                          Descuadre no convalidado
+                  <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#334155', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <Scale size={14} style={{ color: '#176B52' }} />
+                        <span>Conciliación de Importes del Expediente</span>
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '5px', backgroundColor: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA', fontFamily: 'var(--font-mono)' }}>
+                        Descuadre detectado
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                      <div style={{ padding: '12px 14px', borderRadius: '8px', backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: '#166534', display: 'block' }}>
+                          Aprobado en Resolución
                         </span>
+                        <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#176B52', marginTop: '3px' }}>
+                          {fmtEur(autFinal)}
+                        </div>
                       </div>
-
-                      <div
-                        className="gap-3 pt-1"
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                          gap: '12px'
-                        }}
-                      >
-                        {/* Tarjeta 1: Aprobado / Resolución */}
-                        <div className="p-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
-                            Importe Aprobado (Resolución)
-                          </span>
-                          <div className="text-xl font-bold font-mono text-[#176B52] dark:text-emerald-400 mt-1">
-                            {fmtEur(autFinal)}
-                          </div>
-                          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 block mt-0.5">
-                            Límite formal autorizado en expediente
-                          </span>
+                      <div style={{ padding: '12px 14px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: '#991B1B', display: 'block' }}>
+                          Importe Solicitado
+                        </span>
+                        <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#DC2626', marginTop: '3px' }}>
+                          {fmtEur(solFinal)}
                         </div>
-
-                        {/* Tarjeta 2: Reclamado / Solicitado */}
-                        <div className="p-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900/60 shadow-2xs">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300 block">
-                            Importe Reclamado (Solicitud)
-                          </span>
-                          <div className="text-xl font-bold font-mono text-rose-700 dark:text-rose-300 mt-1">
-                            {fmtEur(solFinal)}
-                          </div>
-                          <span className="text-[11px] text-rose-600/80 dark:text-rose-400 block mt-0.5">
-                            Pretensión de cobro sin adenda
-                          </span>
-                        </div>
-
-                        {/* Tarjeta 3: Descuadre no autorizado */}
-                        <div className="p-3.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 shadow-2xs">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 block">
-                            Descuadre Bloqueante
-                          </span>
-                          <div className="text-xl font-bold font-mono text-rose-700 dark:text-rose-300 mt-1">
-                            +{fmtEur(diffFinal)}
-                          </div>
-                          <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 block mt-0.5">
-                            Exceso sin cobertura presupuestaria
-                          </span>
+                      </div>
+                      <div style={{ padding: '12px 14px', borderRadius: '8px', backgroundColor: '#FFF1F2', border: '1px solid #FECDD3' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: '#9F1239', display: 'block' }}>
+                          Diferencia Bloqueante
+                        </span>
+                        <div style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#BE123C', marginTop: '3px' }}>
+                          +{fmtEur(diffFinal)}
                         </div>
                       </div>
                     </div>
+                  </div>
                 )}
 
-                {/* Lista de Incidencias con Fundamento y Subsanación */}
-                <div className="space-y-4">
-                  <div className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
-                    <ShieldAlert size={14} className="text-rose-600" />
-                    <span>Incidencias que impiden la tramitación</span>
-                  </div>
-
+                {/* Tarjetas Limpias por Incidencia */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {bloqueoData.incidencias.map((inc: any, idx: number) => {
                     const esContradiccion = inc.codigo === 'EXPEDIENTE_CONTRADICCION_ECONOMICA';
                     return (
                       <div
                         key={idx}
-                        className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/80 space-y-4 shadow-sm"
+                        style={{
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderLeft: '4px solid #DC2626',
+                          borderRadius: '10px',
+                          padding: '16px 18px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)'
+                        }}
                       >
-                        <div className="flex items-center justify-between gap-3 flex-wrap border-b border-zinc-100 dark:border-zinc-700/60 pb-3">
-                          <div className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0" />
-                            <span>{inc.titulo}</span>
+                        {/* Título de la Incidencia */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', paddingBottom: '10px', borderBottom: '1px solid #F1F5F9' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span
+                              style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '999px',
+                                backgroundColor: '#FEE2E2',
+                                color: '#B91C1C',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              {idx + 1}
+                            </span>
+                            <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#14213D', margin: 0 }}>
+                              {inc.titulo}
+                            </h4>
                           </div>
                           {inc.codigo && (
-                            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900">
+                            <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700, padding: '2px 8px', borderRadius: '5px', backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}>
                               {inc.codigo}
                             </span>
                           )}
                         </div>
 
-                        {/* Motivo exacto de la discordancia */}
-                        <div className="space-y-1.5">
-                          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide block">
-                            Detalle de la discordancia detectada:
-                          </span>
-                          <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed font-medium bg-zinc-50 dark:bg-zinc-900/60 p-3.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
+                        {/* Bloque 1: Qué ocurre */}
+                        <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                          <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B', marginBottom: '4px' }}>
+                            Motivo detectado
+                          </div>
+                          <p style={{ fontSize: '12.5px', color: '#1E293B', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
                             {inc.mensaje}
                           </p>
+                          {esContradiccion && (
+                            <p style={{ fontSize: '11.5px', color: '#92400E', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', padding: '7px 10px', margin: '8px 0 0 0', lineHeight: 1.45 }}>
+                              <strong>Criterio UEx / Intervención:</strong> No se puede autorizar un pago superior al límite aprobado sin una <strong>Adenda modificativa</strong> o <strong>Resolución rectificativa</strong> previa.
+                            </p>
+                          )}
                         </div>
 
-                        {/* Fundamento del bloqueo si es contradicción */}
-                        {esContradiccion && (
-                          <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 flex items-start gap-2.5 text-xs">
-                            <Info size={16} className="text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-                            <div className="text-amber-900 dark:text-amber-200 leading-relaxed">
-                              <strong>¿Por qué se bloquea el expediente?</strong> Conforme a las Normas de Ejecución Presupuestaria de la Universidad de Extremadura y la Ley General de Subvenciones, la Intervención General no puede autorizar la orden de pago por un importe superior al formalmente aprobado en la resolución o convocatoria sin que conste una <strong>Adenda modificativa</strong> suscrita por las partes o una <strong>Resolución Rectificativa</strong> del órgano convocante.
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Instrucciones de Subsanación */}
+                        {/* Bloque 2: Cómo resolverlo + Acciones Directas */}
                         {inc.actuacion_requerida && (
-                          <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
-                            <div className="flex items-center gap-2">
-                              <div
-                                style={{
-                                  width: '24px',
-                                  height: '24px',
-                                  borderRadius: '6px',
-                                  backgroundColor: '#176B52',
-                                  color: '#ffffff',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0
-                                }}
-                              >
-                                <Wrench size={13} />
+                          <div style={{ padding: '12px 14px', borderRadius: '8px', backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '22px', height: '22px', borderRadius: '6px', backgroundColor: '#176B52', color: '#FFFFFF', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Wrench size={12} />
                               </div>
-                              <span className="text-xs font-bold text-[#176B52] dark:text-emerald-300 uppercase tracking-wide">
-                                Instrucciones para subsanar y continuar:
+                              <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#166534' }}>
+                                Solución y acciones disponibles
                               </span>
                             </div>
 
-                            <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed pl-6">
+                            <p style={{ fontSize: '12px', color: '#1E293B', margin: 0, lineHeight: 1.5 }}>
                               {String(inc.actuacion_requerida).replace(/👉\s*/g, '').replace(/•\s*/g, '')}
                             </p>
 
-                            {/* Acciones interactivas de resolución según tipo de discrepancia */}
+                            {/* Contradicción económica: Opción 1 / Opción 2 */}
                             {esContradiccion && (
-                              <div
-                                className="pt-2 pl-6"
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                                  gap: '14px'
-                                }}
-                              >
-                                {/* Opción 1: Ajustar cuantía o cuadrar suma al importe aprobado */}
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-xl border border-emerald-200/80 dark:border-emerald-800/40 text-xs flex flex-col justify-between shadow-2xs">
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', paddingTop: '4px' }}>
+                                <div style={{ padding: '12px 14px', backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
                                   <div>
-                                    <div className="flex items-center gap-1.5 font-bold text-zinc-900 dark:text-zinc-100 mb-1.5">
-                                      <CheckCircle2 size={15} className="text-[#176B52]" />
-                                      <span>{getListaPerceptores().length > 1 ? `Opción 1: Cuadrar Suma de Perceptores (${fmtEur(autFinal)})` : `Opción 1: Ajustar Cuantía a Resolución (${fmtEur(autFinal)})`}</span>
+                                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#14213D', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <CheckCircle2 size={14} style={{ color: '#176B52' }} />
+                                      <span>{getListaPerceptores().length > 1 ? `Opción 1: Cuadrar a ${fmtEur(autFinal)}` : `Opción 1: Ajustar a ${fmtEur(autFinal)}`}</span>
                                     </div>
-                                    <span className="text-zinc-600 dark:text-zinc-400 leading-relaxed block">
+                                    <p style={{ fontSize: '11.5px', color: '#475569', margin: 0, lineHeight: 1.45 }}>
                                       {getListaPerceptores().length > 1
-                                        ? `Reajustar automáticamente las cuantías individuales de los beneficiarios para cuadrar con el presupuesto autorizado de ${fmtEur(autFinal)}.`
-                                        : `Alinear la cuantía formal en el expediente al importe formalmente autorizado en la resolución (${fmtEur(autFinal)}), eliminando el descuadre.`}
-                                    </span>
+                                        ? `Reajustar automáticamente las cuantías individuales para cuadrar con el presupuesto de ${fmtEur(autFinal)}.`
+                                        : `Alinear el importe solicitado con la resolución autorizada (${fmtEur(autFinal)}).`}
+                                    </p>
                                   </div>
                                   <button
                                     type="button"
@@ -2911,227 +3332,160 @@ export function GeneradorHonorariosInteligente() {
                                         handleSubsanarAjusteImporte(autFinal);
                                       }
                                     }}
-                                    style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                                    className="mt-3.5 w-full py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs hover:opacity-95 transition-all text-white border-0 cursor-pointer"
+                                    className="btn btn-sm btn-uex"
+                                    style={{ width: '100%', borderRadius: '7px', padding: '8px 12px', fontWeight: 700 }}
                                   >
                                     <CheckCircle2 size={14} />
-                                    <span>{getListaPerceptores().length > 1 ? `Cuadrar Suma de Perceptores a ${fmtEur(autFinal)}` : `Ajustar a ${fmtEur(autFinal)} y Subsanar`}</span>
+                                    <span>{getListaPerceptores().length > 1 ? `Cuadrar a ${fmtEur(autFinal)}` : `Ajustar a ${fmtEur(autFinal)}`}</span>
                                   </button>
                                 </div>
 
-                                {/* Opción 2: Convalidar Adenda Modificativa con Incorporación Documental */}
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-xl border border-emerald-200/80 dark:border-emerald-800/40 text-xs flex flex-col justify-between shadow-2xs space-y-3">
-                                  <div className="space-y-2.5">
-                                    <div className="flex items-center gap-1.5 font-bold text-zinc-900 dark:text-zinc-100">
-                                      <FilePlus size={16} className="text-emerald-700 dark:text-emerald-400" />
-                                      <span>Opción 2: Adjuntar Adenda / Res. Rectificativa ({fmtEur(solFinal)})</span>
+                                <div style={{ padding: '12px 14px', backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#14213D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <FilePlus size={14} style={{ color: '#176B52' }} />
+                                      <span>Opción 2: Aportar Adenda ({fmtEur(solFinal)})</span>
                                     </div>
-                                    <p className="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
-                                      Una <strong>Adenda</strong> es el documento formal firmado que aprueba legalmente la modificación o incremento del presupuesto original a <strong>{fmtEur(solFinal)}</strong>. Puede adjuntar su propio archivo o incorporar la Adenda oficial de muestra:
-                                    </p>
-
-                                    {/* Selector y Carga del Documento de Adenda */}
-                                    <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-700 space-y-2">
-                                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                                          Documento justificativo de entrada:
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setNombreArchivoAdenda('05_Adenda_Modificativa_Presupuesto.docx');
-                                            setArchivoAdendaTamano(37680);
-                                            setRefAdenda('RES-RECT-UEX-2026-004');
-                                            setArchivoAdendaSubido(true);
-                                          }}
-                                          className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                                          title="Cargar documento oficial .docx emitido por el Vicerrectorado"
-                                        >
-                                          <Sparkles size={11} />
-                                          <span>Usar Adenda oficial de muestra</span>
-                                        </button>
-                                      </div>
-
-                                      <div className="flex items-center gap-2">
-                                        <input
-                                          type="file"
-                                          ref={inputAdendaRef}
-                                          accept=".pdf,.doc,.docx"
-                                          onChange={(e) => {
-                                            const f = e.target.files?.[0];
-                                            if (f) {
-                                              setNombreArchivoAdenda(f.name);
-                                              setArchivoAdendaTamano(f.size);
-                                              setArchivoAdendaSubido(true);
-                                            }
-                                          }}
-                                          className="hidden"
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => inputAdendaRef.current?.click()}
-                                          className="px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-100 text-zinc-700 dark:text-zinc-200 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
-                                        >
-                                          <Upload size={12} />
-                                          <span>Examinar archivo...</span>
-                                        </button>
-
-                                        <div className="flex items-center gap-1.5 min-w-0 bg-white dark:bg-zinc-900 px-2 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 flex-1">
-                                          <FileText size={13} className="text-emerald-600 shrink-0" />
-                                          <span className="text-[11px] font-mono text-zinc-800 dark:text-zinc-200 truncate" title={nombreArchivoAdenda}>
-                                            {nombreArchivoAdenda}
-                                          </span>
-                                          <span className="text-[10px] text-zinc-400 font-mono shrink-0 ml-auto">
-                                            ({(archivoAdendaTamano / 1024).toFixed(0)} KB)
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Referencia Administrativa de la Adenda */}
-                                    <div>
-                                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1">
-                                        Referencia oficial de aprobación:
-                                      </label>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
                                       <input
-                                        type="text"
-                                        value={refAdenda}
-                                        onChange={e => setRefAdenda(e.target.value)}
-                                        placeholder="Ej: RES-RECT-UEX-2026-004"
-                                        className="w-full px-2.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800 text-xs font-mono"
+                                        type="file"
+                                        ref={inputAdendaRef}
+                                        accept=".pdf,.doc,.docx"
+                                        onChange={(e) => {
+                                          const f = e.target.files?.[0];
+                                          if (f) {
+                                            setNombreArchivoAdenda(f.name);
+                                            setArchivoAdendaTamano(f.size);
+                                            setArchivoAdendaSubido(true);
+                                          }
+                                        }}
+                                        className="hidden"
                                       />
+                                      <button
+                                        type="button"
+                                        onClick={() => inputAdendaRef.current?.click()}
+                                        className="btn btn-sm btn-outline"
+                                        style={{ fontSize: '11px', padding: '4px 8px' }}
+                                      >
+                                        <Upload size={11} />
+                                        <span>Adjuntar archivo</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNombreArchivoAdenda('05_Adenda_Modificativa_Presupuesto.docx');
+                                          setArchivoAdendaTamano(37680);
+                                          setRefAdenda('RES-RECT-UEX-2026-004');
+                                          setArchivoAdendaSubido(true);
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: '#176B52', fontSize: '11px', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                                      >
+                                        Usar Adenda de muestra
+                                      </button>
                                     </div>
+                                    <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#334155', backgroundColor: '#F8FAFC', padding: '5px 8px', borderRadius: '5px', border: '1px solid #E2E8F0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {nombreArchivoAdenda} ({(archivoAdendaTamano / 1024).toFixed(0)} KB)
+                                    </div>
+                                    <input
+                                      type="text"
+                                      value={refAdenda}
+                                      onChange={e => setRefAdenda(e.target.value)}
+                                      placeholder="Ref: RES-RECT-UEX-2026-004"
+                                      style={{ width: '100%', padding: '5px 8px', fontSize: '11.5px', fontFamily: 'var(--font-mono)', borderRadius: '6px', border: '1px solid #CBD5E1' }}
+                                    />
                                   </div>
-
                                   <button
                                     type="button"
                                     onClick={() => handleSubsanarConAdenda(refAdenda, solFinal, nombreArchivoAdenda, archivoAdendaTamano)}
-                                    className="w-full py-2.5 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 border border-emerald-600 text-[#176B52] dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/40 hover:bg-emerald-100 transition-all cursor-pointer shadow-xs"
+                                    style={{ width: '100%', borderRadius: '7px', padding: '8px 12px', fontWeight: 700, fontSize: '12px', backgroundColor: '#ECFDF5', color: '#176B52', border: '1px solid #176B52', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                   >
                                     <FilePlus size={14} />
-                                    <span>Incorporar Adenda ({fmtEur(solFinal)}) y Subsanar</span>
+                                    <span>Incorporar Adenda ({fmtEur(solFinal)})</span>
                                   </button>
                                 </div>
                               </div>
                             )}
 
-                            {/* Subsanación para Descuadre en Suma de Perceptores (Caso D2) */}
+                            {/* Subsanación para Descuadre en Suma de Perceptores */}
                             {inc.codigo === 'EXPEDIENTE_DESCUADRE_SUMA_PERCEPTORES' && (
-                              <div className="pt-2 pl-6">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSubsanarCuadrarSumaPerceptores(autFinal)}
-                                  style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                                  className="px-4 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 shadow-xs text-white border-0 cursor-pointer hover:opacity-95"
-                                >
+                              <div>
+                                <button type="button" onClick={() => handleSubsanarCuadrarSumaPerceptores(autFinal)} className="btn btn-sm btn-uex" style={{ borderRadius: '7px', padding: '7px 14px', fontWeight: 700 }}>
                                   <Scale size={14} />
-                                  <span>Cuadrar Suma de Perceptores con Presupuesto ({fmtEur(autFinal)})</span>
+                                  <span>Cuadrar Suma de Perceptores ({fmtEur(autFinal)})</span>
                                 </button>
                               </div>
                             )}
 
-                            {/* Subsanación para Tarifa Horaria Excedida en Conferencias (Caso D6) */}
+                            {/* Subsanación Tarifa Horaria Excedida */}
                             {(inc.codigo?.includes('CONFERENCIA_TARIFA_HORA_EXCEDIDA') || inc.codigo?.includes('TARIFA_HORA')) && (
-                              <div className="pt-2 pl-6">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSubsanarTarifaConferencia(inc.perceptorIndex, 320.0)}
-                                  style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                                  className="px-4 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 shadow-xs text-white border-0 cursor-pointer hover:opacity-95"
-                                >
+                              <div>
+                                <button type="button" onClick={() => handleSubsanarTarifaConferencia(inc.perceptorIndex, 320.0)} className="btn btn-sm btn-uex" style={{ borderRadius: '7px', padding: '7px 14px', fontWeight: 700 }}>
                                   <Scale size={14} />
-                                  <span>Ajustar Tarifa al Límite Legal Máximo (320,00 €/h)</span>
+                                  <span>Ajustar Tarifa al Máximo Legal (320,00 €/h)</span>
                                 </button>
                               </div>
                             )}
 
-                            {/* Subsanación para anualidad Art 83 */}
+                            {/* Subsanación Anualidad Art. 83 */}
                             {inc.codigo === 'ART83_FALTA_JUSTIFICANTE_ANUALIDAD' && (
-                              <div className="pt-2 pl-6">
-                                <button
-                                  type="button"
-                                  onClick={handleSubsanarAnualidadArt83}
-                                  style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                                  className="px-4 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 shadow-xs text-white border-0 cursor-pointer hover:opacity-95"
-                                >
+                              <div>
+                                <button type="button" onClick={handleSubsanarAnualidadArt83} className="btn btn-sm btn-uex" style={{ borderRadius: '7px', padding: '7px 14px', fontWeight: 700 }}>
                                   <FileCheck size={14} />
-                                  <span>Convalidar Justificante Bancario de Ingreso de Anualidad</span>
+                                  <span>Convalidar Justificante de Anualidad</span>
                                 </button>
                               </div>
                             )}
 
-                            {/* Subsanación para titularidad bancaria */}
+                            {/* Subsanación Titularidad Bancaria */}
                             {(inc.codigo === 'PERCEPTOR_FALTA_TITULARIDAD_BANCARIA' || inc.codigo === 'PERCEPTOR_TITULARIDAD_NO_ACREDITADA') && (
-                              <div className="pt-2 pl-6 flex flex-wrap items-center gap-2.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSubsanarTitularidadBancaria(inc.perceptorIndex)}
-                                  style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                                  className="px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-xs text-white border-0 cursor-pointer hover:opacity-95"
-                                >
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                <button type="button" onClick={() => handleSubsanarTitularidadBancaria(inc.perceptorIndex)} className="btn btn-sm btn-uex" style={{ borderRadius: '7px', padding: '7px 12px', fontWeight: 700 }}>
                                   <CreditCard size={14} />
-                                  <span>Acreditar Titularidad de {inc.perceptorNombre || 'este perceptor'}</span>
+                                  <span>Acreditar Titularidad ({inc.perceptorNombre || 'perceptor'})</span>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSubsanarTitularidadBancaria()}
-                                  className="px-3.5 py-2 rounded-lg font-semibold text-xs border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
-                                >
-                                  Acreditar en todos
+                                <button type="button" onClick={() => handleSubsanarTitularidadBancaria()} className="btn btn-sm btn-outline" style={{ borderRadius: '7px', padding: '7px 12px', fontWeight: 600 }}>
+                                  <span>Acreditar en todos</span>
                                 </button>
                               </div>
                             )}
 
-                            {/* Subsanación para Alta de Terceros en SICAP */}
+                            {/* Subsanación Alta de Terceros en SICAP */}
                             {inc.codigo === 'PERCEPTOR_ALTA_TERCEROS_PENDIENTE' && (
-                              <div className="pt-2 pl-6 flex flex-wrap items-center gap-2.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSubsanarAltaTerceros(inc.perceptorIndex)}
-                                  style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                                  className="px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-xs text-white border-0 cursor-pointer hover:opacity-95"
-                                >
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                <button type="button" onClick={() => handleSubsanarAltaTerceros(inc.perceptorIndex)} className="btn btn-sm btn-uex" style={{ borderRadius: '7px', padding: '7px 12px', fontWeight: 700 }}>
                                   <CheckCircle2 size={14} />
-                                  <span>Convalidar Alta en SICAP de {inc.perceptorNombre || 'este perceptor'}</span>
+                                  <span>Convalidar Alta SICAP ({inc.perceptorNombre || 'perceptor'})</span>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSubsanarAltaTerceros()}
-                                  className="px-3.5 py-2 rounded-lg font-semibold text-xs border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
-                                >
-                                  Convalidar en todos
+                                <button type="button" onClick={() => handleSubsanarAltaTerceros()} className="btn btn-sm btn-outline" style={{ borderRadius: '7px', padding: '7px 12px', fontWeight: 600 }}>
+                                  <span>Convalidar en todos</span>
                                 </button>
                               </div>
                             )}
 
-                            {/* Subsanación para Declaraciones Responsables */}
+                            {/* Subsanación Declaraciones Responsables */}
                             {(inc.codigo?.includes('DECLARACION') || inc.campoFormulario === 'declaraciones_responsables') && (
-                              <div className="pt-2 pl-6">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSubsanarDeclaraciones(inc.perceptorIndex)}
-                                  style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                                  className="px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-xs text-white border-0 cursor-pointer hover:opacity-95"
-                                >
+                              <div>
+                                <button type="button" onClick={() => handleSubsanarDeclaraciones(inc.perceptorIndex)} className="btn btn-sm btn-uex" style={{ borderRadius: '7px', padding: '7px 14px', fontWeight: 700 }}>
                                   <FileCheck size={14} />
-                                  <span>Convalidar Declaraciones Responsables Estatutarias</span>
+                                  <span>Convalidar Declaraciones Responsables</span>
                                 </button>
                               </div>
                             )}
 
-                            {/* Botón de edición si falta dato individual de perceptor */}
+                            {/* Editor de Perceptor si falta NIF / IBAN / Nombre */}
                             {(inc.codigo === 'PERCEPTOR_NIF_INVALIDO' || inc.codigo === 'PERCEPTOR_IBAN_INVALIDO' || inc.codigo === 'PERCEPTOR_NOMBRE_FALTANTE') && (
-                              <div className="pt-2 pl-6">
+                              <div>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setModalBloqueoOpen(false);
                                     handleAbrirEdicionPerceptor(inc.perceptorIndex ?? 0, inc.campoFormulario);
                                   }}
-                                  className="btn btn-sm btn-outline border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5 font-bold cursor-pointer"
+                                  className="btn btn-sm btn-outline"
+                                  style={{ borderRadius: '7px', padding: '6px 12px', fontWeight: 700, backgroundColor: '#FFFFFF' }}
                                 >
-                                  <Edit3 size={14} />
-                                  <span>Abrir Editor para Corregir {inc.campoFormulario ? inc.campoFormulario.toUpperCase() : 'Dato'}</span>
+                                  <Edit3 size={13} />
+                                  <span>Editar {inc.campoFormulario ? inc.campoFormulario.toUpperCase() : 'Dato'} del Perceptor</span>
                                 </button>
                               </div>
                             )}
@@ -3143,37 +3497,51 @@ export function GeneradorHonorariosInteligente() {
                 </div>
               </div>
 
-              {/* Pie de Acciones del Flotante (Espacioso, limpio y claro) */}
-              <div className="bg-zinc-50/70 dark:bg-zinc-850/60 border-t border-zinc-100 dark:border-zinc-800 px-6 sm:px-7 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+              {/* Pie Fijo con Acciones Globales */}
+              <div
+                style={{
+                  padding: '14px 24px',
+                  backgroundColor: '#FFFFFF',
+                  borderTop: '1px solid #E2E8F0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                  flexShrink: 0
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => {
                     setModalBloqueoOpen(false);
                     handleDescargarInformeIncidencias();
                   }}
-                  className="btn btn-outline btn-sm border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center gap-2 font-semibold px-4 py-2.5 text-xs rounded-xl"
+                  className="btn btn-sm btn-outline"
+                  style={{ borderRadius: '8px', padding: '7px 12px', fontWeight: 600 }}
                 >
                   <Download size={14} />
                   <span>Descargar Informe de Incidencias</span>
                 </button>
 
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={handleSubsanarTodoAutomatico}
-                    style={{ backgroundColor: '#176B52', color: '#ffffff' }}
-                    className="px-5 py-2.5 rounded-xl font-bold text-xs hover:opacity-95 transition-all shadow-sm flex items-center justify-center gap-2 text-white border-0 cursor-pointer"
-                    title="Ajusta automáticamente importes a la dotación oficial y convalida todos los requisitos pendientes"
-                  >
-                    <Sparkles size={14} />
-                    <span>Subsanar Todo Conforme a Normativa</span>
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => setModalBloqueoOpen(false)}
-                    className="btn btn-ghost btn-sm text-zinc-600 dark:text-zinc-400 font-semibold px-4 py-2.5 text-xs rounded-xl cursor-pointer"
+                    className="btn btn-sm btn-outline"
+                    style={{ borderRadius: '8px', padding: '7px 14px', fontWeight: 600 }}
                   >
-                    <span>Cerrar</span>
+                    Cerrar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubsanarTodoAutomatico}
+                    className="btn btn-md btn-uex"
+                    style={{ borderRadius: '8px', padding: '8px 16px', fontWeight: 700 }}
+                    title="Ajusta automáticamente importes a la dotación oficial y convalida todos los requisitos pendientes"
+                  >
+                    <ShieldCheck size={14} />
+                    <span>Subsanar Todo Conforme a Normativa</span>
                   </button>
                 </div>
               </div>
@@ -3697,33 +4065,91 @@ export function GeneradorHonorariosInteligente() {
   if (paso === 3 && resultado) {
     const docs = resultado.documentos_info || [];
     const zipUrl = resultado.zip_url;
+    const perceptoresStep3 = expediente ? getListaPerceptores() : [];
+    const totalBrutoStep3 = perceptoresStep3.reduce((acc, p) => acc + (Number(p.importe_bruto) || 0), 0);
+
+    const getDocCatMeta = (cat: string, nombreArchivo: string): { label: string; bg: string; color: string; border: string } => {
+      const c = (cat || nombreArchivo || '').toLowerCase();
+      if (c.includes('anexo_i') || c.includes('propuesta')) {
+        return { label: 'Anexo I', bg: '#EFF4FB', color: '#174F91', border: '#CEDDF0' };
+      }
+      if (c.includes('liquidacion')) {
+        return { label: 'Liquidación', bg: '#EEF7F3', color: '#176B52', border: '#C6E3D7' };
+      }
+      if (c.includes('declaracion')) {
+        return { label: 'Declaración', bg: '#FDF6EC', color: '#9A5B13', border: '#F2DCBA' };
+      }
+      if (c.includes('modelo_7') || c.includes('certificacion')) {
+        return { label: 'Modelo 7', bg: '#F4F1FA', color: '#4E3787', border: '#DCD5EE' };
+      }
+      if (c.includes('memoria')) {
+        return { label: 'Memoria', bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' };
+      }
+      return { label: 'Dossier', bg: '#F1F5F9', color: '#334155', border: '#CBD5E1' };
+    };
 
     return (
-      <div className="space-y-6 max-w-5xl mx-auto p-4 animate-fade-in">
-        <div className="bg-white dark:bg-zinc-900 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-6 shadow-md space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center text-emerald-700 dark:text-emerald-300 shrink-0">
-                <CheckCircle2 size={24} />
+      <div className="space-y-6 max-w-6xl mx-auto p-4 animate-fade-in">
+        {/* Cabecera Principal de Confirmación */}
+        <div
+          className="panel"
+          style={{
+            borderLeft: '3px solid #166534',
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  backgroundColor: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  color: '#166534',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <CheckCircle2 size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                  <span>Expediente Generado con Éxito</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--color-navy)', margin: 0, letterSpacing: '-0.01em' }}>
+                    Expediente Generado con Éxito
+                  </h3>
+                  <span className="badge">
+                    <span className="badge-dot badge-dot-success" />
                     OFICIAL SGTRI UEx
                   </span>
-                </h3>
-                <p className="text-zinc-500 text-xs">
-                  Se han generado {docs.length} documentos sobre las plantillas oficiales vigentes de la Universidad de Extremadura.
+                </div>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                  Se han generado <strong>{docs.length} documentos oficiales</strong> sobre las plantillas vigentes de la Universidad de Extremadura.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-auto">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setPaso(1)}
+                className="btn btn-sm btn-outline"
+                style={{ borderRadius: '8px', padding: '7px 12px', fontWeight: 600 }}
+              >
+                <FolderOpen size={13} />
+                <span>Nuevo Expediente</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setPaso(2)}
-                className="btn btn-outline btn-sm text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5"
+                className="btn btn-sm btn-outline"
+                style={{ borderRadius: '8px', padding: '7px 12px', fontWeight: 600 }}
               >
                 <ArrowLeft size={13} />
                 <span>Revisar Expediente</span>
@@ -3732,7 +4158,8 @@ export function GeneradorHonorariosInteligente() {
                 <a
                   href={zipUrl}
                   download
-                  className="btn btn-primary btn-sm bg-[#176B52] hover:bg-[#125440] text-white flex items-center gap-1.5 font-bold shadow-xs px-4"
+                  className="btn btn-md btn-uex"
+                  style={{ borderRadius: '8px', padding: '8px 16px', fontWeight: 700, boxShadow: '0 2px 8px rgba(23, 107, 82, 0.25)' }}
                 >
                   <Download size={14} />
                   <span>Descargar Lote Completo (ZIP)</span>
@@ -3741,53 +4168,121 @@ export function GeneradorHonorariosInteligente() {
             </div>
           </div>
 
-          {/* Listado de Documentos Oficiales Generados */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-            {docs.map((doc, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-zinc-50/50 dark:bg-zinc-800/40 flex items-center justify-between gap-3 hover:border-[#176B52] transition-colors overflow-hidden"
-                style={{ minWidth: 0 }}
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1" style={{ minWidth: 0, overflow: 'hidden' }}>
-                  <div className="p-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-[#176B52] shrink-0">
-                    <FileText size={18} />
-                  </div>
-                  <div className="min-w-0 flex-1" style={{ minWidth: 0, overflow: 'hidden' }}>
-                    <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate" title={doc.titulo}>
-                      {doc.titulo}
-                    </div>
-                    <div className="text-[10.5px] text-zinc-400 font-mono truncate" title={doc.nombre_archivo}>
-                      {doc.nombre_archivo} • {(doc.tamano_bytes / 1024).toFixed(1)} KB
-                    </div>
-                  </div>
-                </div>
+          {/* Resumen Rápido en 3 Bloques */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', paddingTop: '14px', borderTop: '1px solid var(--border-subtle)' }}>
+            <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block' }}>
+                Expediente
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', fontFamily: 'var(--font-mono)', display: 'block', marginTop: '2px' }}>
+                {casoId || resultado.caso_id}
+              </span>
+            </div>
+            <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'block' }}>
+                Perceptores / Documentos
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', display: 'block', marginTop: '2px' }}>
+                {perceptoresStep3.length || 1} perceptor(es) · {docs.length} PDFs
+              </span>
+            </div>
+            <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#166534', display: 'block' }}>
+                Importe Total Bruto
+              </span>
+              <span style={{ fontSize: '15px', fontWeight: 800, color: '#176B52', fontFamily: 'var(--font-mono)', display: 'block', marginTop: '1px' }}>
+                {fmtEur(totalBrutoStep3)}
+              </span>
+            </div>
+          </div>
+        </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreviewPdfUrl(doc.preview_url);
-                      setPreviewPdfTitulo(doc.titulo);
-                    }}
-                    className="btn btn-xs btn-ghost text-[#176B52] flex items-center gap-1 font-semibold"
-                    title="Previsualizar documento oficial"
-                  >
-                    <Eye size={12} />
-                    <span>Ver</span>
-                  </button>
-                  <a
-                    href={doc.download_url}
-                    download
-                    className="btn btn-xs btn-outline border-zinc-300 text-zinc-700 dark:text-zinc-300 flex items-center gap-1"
-                    title="Descargar PDF"
-                  >
-                    <Download size={12} />
-                    <span>Descargar</span>
-                  </a>
-                </div>
-              </div>
-            ))}
+        {/* Lista Completa y Limpia de Documentos Generados (Sin truncados) */}
+        <div className="space-y-2.5">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+              Documentación Oficial Generada ({docs.length})
+            </span>
+          </div>
+
+          <div className="admin-table-container" style={{ borderRadius: '10px', overflow: 'hidden' }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '48px', textAlign: 'center' }}>#</th>
+                  <th style={{ width: '130px' }}>Tipo</th>
+                  <th>Documento Oficial</th>
+                  <th style={{ width: '95px', textAlign: 'right' }}>Tamaño</th>
+                  <th style={{ width: '215px', textAlign: 'right' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {docs.map((doc, idx) => {
+                  const meta = getDocCatMeta(doc.categoria, doc.nombre_archivo);
+                  return (
+                    <tr key={idx}>
+                      <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {idx + 1}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            backgroundColor: meta.bg,
+                            color: meta.color,
+                            border: `1px solid ${meta.border}`,
+                            padding: '3px 9px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            display: 'inline-block',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '13px' }}>
+                          {doc.titulo}
+                        </div>
+                        <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {doc.nombre_archivo}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {(doc.tamano_bytes / 1024).toFixed(1)} KB
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewPdfUrl(doc.preview_url);
+                              setPreviewPdfTitulo(doc.titulo);
+                            }}
+                            className="btn btn-sm btn-outline"
+                            title="Previsualizar documento oficial"
+                          >
+                            <Eye size={13} />
+                            <span>Ver</span>
+                          </button>
+                          <a
+                            href={doc.download_url}
+                            download
+                            className="btn btn-sm btn-uex"
+                            style={{ textDecoration: 'none' }}
+                            title="Descargar PDF"
+                          >
+                            <Download size={13} />
+                            <span>Descargar</span>
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 

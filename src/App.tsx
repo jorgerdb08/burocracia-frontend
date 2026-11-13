@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon, ChevronDown } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 import { cn } from './lib/utils'
 import { ChatWidget } from './ChatWidget'
 import { ViewHeroLayout } from './components/views/ViewHeroLayout'
@@ -35,11 +35,19 @@ export default function App() {
   const [templateParam, setTemplate] = useState<string | undefined>()
   const [inspectCasoId, setInspectCasoId] = useState<string | null>(null)
 
-  const irProcesar = (casoId?: string, templateId?: string) => {
-    setCaso(casoId)
-    setTemplate(templateId)
-    setView('procesar')
-  }
+  const irProcesar = (casoId?: string, tipoOrTemplate?: string) => {
+    setCaso(casoId);
+    setTemplate(tipoOrTemplate);
+    const tNorm = (tipoOrTemplate || '').toLowerCase();
+    const cNorm = (casoId || '').toLowerCase();
+    if (tNorm === 'honorarios' || tNorm === 'honorario' || cNorm.includes('premio') || cNorm.includes('conferencia') || cNorm.includes('contrato') || cNorm.includes('convenio') || cNorm.includes('honorarios')) {
+      setView('honorarios');
+    } else if (tNorm === 'proveedores' || tNorm === 'pago_proveedor' || tNorm === 'proveedor' || cNorm.includes('tarjeta') || cNorm.includes('transferencia') || cNorm.startsWith('exp_prov')) {
+      setView('proveedores');
+    } else {
+      setView('procesar');
+    }
+  };
 
   return (
     <div className="uex-shell">
@@ -111,22 +119,6 @@ export default function App() {
 
           <div className="uex-header-right">
             <button 
-              type="button"
-              className="uex-fiscal-year" 
-              style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                gap: '5px', 
-                padding: '4px 10px', 
-                fontSize: '11.5px', 
-                cursor: 'pointer' 
-              }}
-            >
-              <span>Bases 2026</span>
-              <ChevronDown size={12} style={{ color: 'var(--text-muted)' }} />
-            </button>
-
-            <button 
               onClick={() => setIsDark(!isDark)} 
               className="uex-theme-btn"
               title="Alternar tema claro / oscuro"
@@ -134,27 +126,6 @@ export default function App() {
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
-
-            <div 
-              style={{ 
-                width: '30px', 
-                height: '30px', 
-                borderRadius: '50%', 
-                backgroundColor: 'var(--bg-blue-soft)', 
-                color: 'var(--color-blue-inst)', 
-                border: '1px solid #D0DFEF',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '11px', 
-                fontWeight: 600,
-                letterSpacing: '0.02em',
-                flexShrink: 0
-              }}
-              title="Usuario: Jorge"
-            >
-              JR
-            </div>
           </div>
         </div>
       </header>
@@ -192,10 +163,10 @@ export default function App() {
           <ViewLotesBatch />
         )}
         {view === 'honorarios' && (
-          <GeneradorHonorariosInteligente />
+          <GeneradorHonorariosInteligente initialCasoId={casoParam} />
         )}
         {view === 'proveedores' && (
-          <GeneradorProveedoresInteligente />
+          <GeneradorProveedoresInteligente initialCasoId={casoParam} />
         )}
       </main>
 

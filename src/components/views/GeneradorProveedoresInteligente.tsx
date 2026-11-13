@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  FolderOpen, ChevronUp, ChevronDown, UploadCloud, Download, Sparkles,
-  AlertOctagon, CheckCircle2, AlertTriangle, FileCheck, Building2,
+  FolderOpen, ChevronUp, ChevronDown, UploadCloud, Download,
+  AlertOctagon, CheckCircle2, FileCheck, Building2,
   Scale, ShieldAlert, ArrowRight, Loader2, Eye, Edit3, Check, X,
   ArrowLeft, ShieldCheck, RefreshCw, FileText, CreditCard, Send,
-  Archive, CheckCircle, RotateCcw, Play, ExternalLink
+  Archive, CheckCircle, RotateCcw, ExternalLink, Trash2, Info
 } from 'lucide-react';
-import { fmtEur, cn } from '../../lib/utils';
+import { fmtEur } from '../../lib/utils';
 
 export interface ArchivoEntrada {
   nombre: string;
@@ -134,6 +134,7 @@ export interface CasoDemo {
   semaforo_esperado: 'VERDE' | 'ROJO';
   num_archivos: number;
   archivos: string[];
+  es_personalizado?: boolean;
 }
 
 const TIPOS_GASTO_OFICIALES = [
@@ -145,17 +146,50 @@ const TIPOS_GASTO_OFICIALES = [
   'Gastos de personal'
 ];
 
-export function GeneradorProveedoresInteligente() {
+function cleanTituloCaso(rawName?: string): string {
+  if (!rawName) return '';
+  return rawName.replace(/^Caso\s+[A-Z0-9]+\s*[·\-:]\s*/i, '').trim();
+}
+
+function getModalidadBadgeStyle(modalidad: string): { bg: string; color: string; border: string; label: string } {
+  if (modalidad === 'tarjeta') {
+    return {
+      bg: '#FDF6EC',
+      color: '#9A5B13',
+      border: '#F2DCBA',
+      label: 'Tarjeta Investigador'
+    };
+  }
+  return {
+    bg: '#EFF4FB',
+    color: '#174F91',
+    border: '#CEDDF0',
+    label: 'Transferencia Bancaria'
+  };
+}
+
+function getDocSalidaBadge(nombreDoc?: string): { bg: string; color: string; border: string; label: string } {
+  const low = (nombreDoc || '').toLowerCase();
+  if (low.includes('anexo_ii') || low.includes('anexo ii') || low.includes('aprobacion')) {
+    return { bg: '#EFF4FB', color: '#174F91', border: '#CEDDF0', label: 'Anexo II' };
+  }
+  if (low.includes('anexo_a') || low.includes('anexo a') || low.includes('justificaci') || low.includes('propuesta')) {
+    return { bg: '#EEF7F3', color: '#176B52', border: '#C6E3D7', label: 'Anexo A' };
+  }
+  return { bg: '#F1F5F9', color: '#334155', border: '#CBD5E1', label: 'Documento PDF' };
+}
+
+export function GeneradorProveedoresInteligente({ initialCasoId }: { initialCasoId?: string | null } = {}) {
   const [paso, setPaso] = useState<1 | 2 | 3>(1);
   const [casosDemo, setCasosDemo] = useState<CasoDemo[]>([]);
   const [casoActivoId, setCasoActivoId] = useState<string | null>(null);
   const [cargando, setCargando] = useState<boolean>(false);
   const [mensajeCarga, setMensajeCarga] = useState<string>('');
-  
+
   const [expediente, setExpediente] = useState<ExpedienteProveedor | null>(null);
   const [diagnostico, setDiagnostico] = useState<DiagnosticoProveedor | null>(null);
   const [resultadoDocumentos, setResultadoDocumentos] = useState<ResultadoDocumentos | null>(null);
-  
+
   const [mostrarDocumentosEntrada, setMostrarDocumentosEntrada] = useState<boolean>(true);
   const [docEnVisor, setDocEnVisor] = useState<any | null>(null);
   const [cargandoVisor, setCargandoVisor] = useState<boolean>(false);
@@ -163,8 +197,19 @@ export function GeneradorProveedoresInteligente() {
   const [notificacion, setNotificacion] = useState<string | null>(null);
   const [refRectificativa, setRefRectificativa] = useState<string>('RES-RECT-UEx-2026-004');
 
-  // Cargar lista de casos de prueba precargados
-  useEffect(() => {
+  // Gestión de nombre personalizado, renombrado y eliminación
+  const [nombreNuevoCaso, setNombreNuevoCaso] = useState<string>('');
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[] | null>(null);
+  const [modalNombrarOpen, setModalNombrarOpen] = useState<boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  const [casoObjetivoAccion, setCasoObjetivoAccion] = useState<{ id: string; nombre: string } | null>(null);
+  const [modalRenombrarOpen, setModalRenombrarOpen] = useState<boolean>(false);
+  const [nuevoNombreRenombrar, setNuevoNombreRenombrar] = useState<string>('');
+  const [modalEliminarOpen, setModalEliminarOpen] = useState<boolean>(false);
+  const [cargandoAccion, setCargandoAccion] = useState<boolean>(false);
+
+  const recargarCasos = () => {
     fetch('/api/proveedores/casos_precargados')
       .then((res) => res.json())
       .then((data) => {
@@ -172,7 +217,11 @@ export function GeneradorProveedoresInteligente() {
           setCasosDemo(data.casos);
         }
       })
-      .catch((err) => console.error('Error cargando casos demo proveedores:', err));
+      .catch((err) => console.error('Error cargando casos proveedores:', err));
+  };
+
+  useEffect(() => {
+    recargarCasos();
   }, []);
 
   const avisar = (msg: string) => {
@@ -180,11 +229,40 @@ export function GeneradorProveedoresInteligente() {
     setTimeout(() => setNotificacion(null), 4000);
   };
 
-  // Cargar caso de demostración
+  const handleEliminarArchivo = async (nombreArchivo: string) => {
+    const cid = casoActivoId || expediente?.caso_id;
+    if (!cid) return;
+    if (!window.confirm(`¿Desea eliminar el documento "${nombreArchivo}" de este expediente?`)) return;
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(cid)}/archivo/${encodeURIComponent(nombreArchivo)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok && res.status !== 404) {
+        throw new Error(data?.error || 'Error al eliminar el documento.');
+      }
+      setExpediente((prev) =>
+        prev
+          ? {
+              ...prev,
+              archivos_entrada: (prev.archivos_entrada || []).filter((a) => a.nombre !== nombreArchivo)
+            }
+          : prev
+      );
+      if (docEnVisor?.nombre === nombreArchivo) {
+        setDocEnVisor(null);
+      }
+      recargarCasos();
+      avisar(`Documento "${nombreArchivo}" eliminado del expediente.`);
+    } catch (err: any) {
+      alert(err?.message || 'Error al eliminar el documento.');
+    }
+  };
+
   const handleCargarCasoDemo = async (casoId: string) => {
     setCasoActivoId(casoId);
     setCargando(true);
-    setMensajeCarga(`Analizando expediente ${casoId}...`);
+    setMensajeCarga(`Analizando expediente ${cleanTituloCaso(casoId)}...`);
     try {
       const res = await fetch(`/api/proveedores/cargar_demostracion/${encodeURIComponent(casoId)}`, {
         method: 'POST'
@@ -194,6 +272,7 @@ export function GeneradorProveedoresInteligente() {
         setExpediente(data.expediente);
         setDiagnostico(data.diagnostico);
         setResultadoDocumentos(data.resultado_documentos || null);
+        setModoEdicion(false);
         setPaso(2);
       } else {
         alert(`Error al analizar expediente: ${data.error || 'Error desconocido'}`);
@@ -205,20 +284,26 @@ export function GeneradorProveedoresInteligente() {
     }
   };
 
-  // Subida manual de archivos por el usuario
-  const handleSubirArchivos = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setCargando(true);
-    setMensajeCarga('Subiendo y analizando documentación aportada...');
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append(`file_${i}`, files[i]);
+  useEffect(() => {
+    if (initialCasoId) {
+      handleCargarCasoDemo(initialCasoId);
     }
-    const nuevoId = `exp_prov_${Date.now()}`;
-    formData.append('caso_id', nuevoId);
-    setCasoActivoId(nuevoId);
+  }, [initialCasoId]);
+
+  const ejecutarSubidaArchivos = async (filesArr: File[], nombrePersonalizado: string) => {
+    if (!filesArr || filesArr.length === 0) return;
+    setCargando(true);
+    setMensajeCarga(
+      nombrePersonalizado
+        ? `Analizando y guardando expediente "${nombrePersonalizado}"...`
+        : 'Subiendo y analizando documentación aportada...'
+    );
+
+    const formData = new FormData();
+    filesArr.forEach((f, idx) => formData.append(`file_${idx}`, f));
+    if (nombrePersonalizado.trim()) {
+      formData.append('nombre_caso', nombrePersonalizado.trim());
+    }
 
     try {
       const res = await fetch('/api/proveedores/analizar_expediente', {
@@ -227,10 +312,17 @@ export function GeneradorProveedoresInteligente() {
       });
       const data = await res.json();
       if (data.ok) {
+        setCasoActivoId(data.caso_id);
         setExpediente(data.expediente);
         setDiagnostico(data.diagnostico);
         setResultadoDocumentos(data.resultado_documentos || null);
+        setModoEdicion(false);
+        setNombreNuevoCaso('');
+        setPendingUploadFiles(null);
+        setModalNombrarOpen(false);
+        recargarCasos();
         setPaso(2);
+        avisar(`Expediente "${data.caso_id}" analizado y guardado correctamente.`);
       } else {
         alert(`Error: ${data.error}`);
       }
@@ -241,10 +333,81 @@ export function GeneradorProveedoresInteligente() {
     }
   };
 
-  // Previsualizar documento de entrada en modal
+  const handleSeleccionarArchivos = (filesList: FileList | null) => {
+    if (!filesList || filesList.length === 0) return;
+    const filesArr = Array.from(filesList);
+    if (nombreNuevoCaso.trim()) {
+      ejecutarSubidaArchivos(filesArr, nombreNuevoCaso.trim());
+    } else {
+      const baseName = filesArr[0].name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
+      setNombreNuevoCaso(baseName || 'Expediente_Proveedor_2026');
+      setPendingUploadFiles(filesArr);
+      setModalNombrarOpen(true);
+    }
+  };
+
+  const handleSubirArchivos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleSeleccionarArchivos(e.target.files);
+    e.target.value = '';
+  };
+
+  const handleConfirmarRenombrar = async () => {
+    if (!casoObjetivoAccion || !nuevoNombreRenombrar.trim()) return;
+    setCargandoAccion(true);
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(casoObjetivoAccion.id)}/renombrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nuevo_nombre: nuevoNombreRenombrar.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al renombrar el expediente.');
+      const nuevoId = data.caso_id || casoObjetivoAccion.id;
+      if (casoActivoId === casoObjetivoAccion.id) {
+        setCasoActivoId(nuevoId);
+        setExpediente((prev) => (prev ? { ...prev, caso_id: nuevoId } : prev));
+      }
+      setModalRenombrarOpen(false);
+      setCasoObjetivoAccion(null);
+      recargarCasos();
+      avisar(`Expediente renombrado a "${nuevoNombreRenombrar.trim()}".`);
+    } catch (err: any) {
+      alert(err.message || 'No se pudo renombrar el expediente.');
+    } finally {
+      setCargandoAccion(false);
+    }
+  };
+
+  const handleConfirmarEliminar = async () => {
+    if (!casoObjetivoAccion) return;
+    setCargandoAccion(true);
+    try {
+      const res = await fetch(`/api/caso/${encodeURIComponent(casoObjetivoAccion.id)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar el expediente.');
+      if (casoActivoId === casoObjetivoAccion.id) {
+        setPaso(1);
+        setCasoActivoId(null);
+        setExpediente(null);
+        setDiagnostico(null);
+        setResultadoDocumentos(null);
+      }
+      setModalEliminarOpen(false);
+      setCasoObjetivoAccion(null);
+      recargarCasos();
+      avisar('Expediente eliminado correctamente.');
+    } catch (err: any) {
+      alert(err.message || 'No se pudo eliminar el expediente.');
+    } finally {
+      setCargandoAccion(false);
+    }
+  };
+
   const handleVerDocumento = async (archivo: { nombre: string; categoria?: string; tamano_kb?: number }) => {
     setCargandoVisor(true);
-    const cid = casoActivoId || expediente?.caso_id || 'Caso_01_AWS_Tarjeta';
+    const cid = casoActivoId || expediente?.caso_id || 'Caso_A_Tarjeta';
     try {
       const res = await fetch(`/api/proveedores/archivo_preview/${encodeURIComponent(cid)}/${encodeURIComponent(archivo.nombre)}`);
       if (res.ok) {
@@ -276,7 +439,6 @@ export function GeneradorProveedoresInteligente() {
     }
   };
 
-  // Previsualizar documento oficial de salida
   const handleVerDocSalida = (doc: DocumentoOficialSalida) => {
     const docNombre = doc.nombre || doc.titulo || '01_Anexo_II_Aprobacion_del_Gasto.pdf';
     const rawUrl = doc.preview_url || doc.url_descarga || doc.download_url || '';
@@ -291,7 +453,6 @@ export function GeneradorProveedoresInteligente() {
     });
   };
 
-  // Re-validar expediente tras edición
   const ejecutarValidacion = async (expActualizado: ExpedienteProveedor) => {
     try {
       const res = await fetch('/api/proveedores/validar_expediente', {
@@ -311,7 +472,6 @@ export function GeneradorProveedoresInteligente() {
     }
   };
 
-  // Subsanación automática del Caso 06: Alinear importe solicitado a factura
   const handleSubsanarAlineando = async () => {
     if (!expediente) return;
     const nuevoExp: any = {
@@ -330,7 +490,6 @@ export function GeneradorProveedoresInteligente() {
     avisar(`Discordancia subsanada: Importe solicitado alineado a ${fmtEur(expediente.factura.total)}.`);
   };
 
-  // Subsanación convalidando Factura Rectificativa / Adenda
   const handleSubsanarConvalidando = async () => {
     if (!expediente) return;
     const nuevoExp: any = {
@@ -343,7 +502,6 @@ export function GeneradorProveedoresInteligente() {
     avisar(`Convalidada rectificación con ref: ${refRectificativa}.`);
   };
 
-  // Generar documentos oficiales oficiales
   const handleGenerarDocumentos = async () => {
     if (!expediente) return;
     if (diagnostico && diagnostico.semaforo === 'ROJO') {
@@ -377,237 +535,427 @@ export function GeneradorProveedoresInteligente() {
     }
   };
 
+  useEffect(() => {
+    if (initialCasoId) {
+      handleCargarCasoDemo(initialCasoId);
+    }
+  }, [initialCasoId]);
+
   const archivosEntrada = expediente?.archivos_entrada || [];
   const incidenciasRojas = diagnostico?.incidencias_rojas || [];
-  const comprobaciones = diagnostico?.comprobaciones || [];
   const docsGenerados = resultadoDocumentos?.documentos_info || [];
+  const casosPersonalizados = casosDemo.filter((c) => c.es_personalizado);
+  const casosReferencia = casosDemo.filter((c) => !c.es_personalizado);
+
+  const casoActualMeta = casosDemo.find((c) => c.id === (casoActivoId || expediente?.caso_id));
+  const nombreActivoVisible = cleanTituloCaso(casoActualMeta?.nombre) || casoActivoId || expediente?.caso_id || '';
+
+  const getFieldStyle = (enabled: boolean, mono = false): React.CSSProperties => ({
+    width: '100%',
+    padding: '0.45rem 0.65rem',
+    fontSize: '0.82rem',
+    fontFamily: mono ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
+    border: '1px solid #CBD5E1',
+    borderRadius: '6px',
+    backgroundColor: enabled ? '#FFFFFF' : '#F8FAFC',
+    color: '#0F172A',
+    outline: 'none'
+  });
+
+  const fieldLabelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: '#526783',
+    marginBottom: '0.25rem'
+  };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div style={{ width: '100%', maxWidth: '1240px', margin: '0 auto', padding: '1.25rem 1.5rem 2.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Toast Notificación */}
       {notificacion && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0F172A] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-slide-up text-sm">
-          <CheckCircle2 size={16} className="text-emerald-400" />
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '1.5rem',
+            right: '1.5rem',
+            zIndex: 9999,
+            backgroundColor: '#0F172A',
+            color: '#FFFFFF',
+            padding: '0.75rem 1.1rem',
+            borderRadius: '10px',
+            boxShadow: '0 12px 30px rgba(15, 23, 42, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.55rem',
+            fontSize: '0.84rem',
+            fontWeight: 600,
+            border: '1px solid #334155'
+          }}
+        >
+          <CheckCircle2 size={16} color="#34D399" />
           <span>{notificacion}</span>
         </div>
       )}
 
-      {/* Cabecera del Módulo */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#176B52]/10 border border-[#176B52]/20 text-[#176B52] dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <Building2 size={30} strokeWidth={2} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                  Pago a Proveedores
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-[#176B52] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                  SGTRI UEx · Bases 2026
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
-                  Anexo II + Anexo A
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-3xl leading-relaxed">
-                Gestión automatizada de facturas y gastos con proveedores de la Universidad de Extremadura.
-                Identifica si el gasto fue <strong>abonado con tarjeta del investigador</strong> o está <strong>pendiente de transferencia</strong>, realiza la conciliación económica y genera la documentación oficial cumplimentada.
-              </p>
-            </div>
+      {/* Encabezado Editorial SGTRI */}
+      <div className="view-header" style={{ marginBottom: 0 }}>
+        <div>
+          <div className="view-breadcrumb">
+            <span>Sede Electrónica UEx</span>
+            <span>/</span>
+            <span>Gestión Económica</span>
+            <span>/</span>
+            <span>Pago a Proveedores</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+            <h1 className="view-title">Pago a Proveedores</h1>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 400 }}>
+              SGTRI UEx
+            </span>
+          </div>
+          <p className="view-desc">
+            Conciliación económica de facturas de compras y servicios (Tarjeta del Investigador o Transferencia Bancaria) y expedición de modelos oficiales Anexo II y Anexo A.
+          </p>
+        </div>
 
-          {/* Navegación y retorno de fase */}
-          {paso > 1 ? (
-            <div className="flex items-center gap-2 self-start md:self-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  if (paso === 3) setPaso(2);
-                  else if (paso === 2) setPaso(1);
-                }}
-                className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-              >
-                <ArrowLeft size={15} />
-                <span>{paso === 2 ? 'Volver a Selección' : 'Volver a Conciliación'}</span>
-              </button>
-              {paso === 3 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaso(1);
-                    setCasoActivoId(null);
-                    setExpediente(null);
-                    setResultadoDocumentos(null);
-                  }}
-                  className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                >
-                  <RotateCcw size={14} />
-                  <span>Nuevo Expediente</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 self-start md:self-auto">
-              <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#176B52] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Fase 1: Entrada y Análisis</span>
-              </span>
-            </div>
-          )}
+        <div className="view-actions">
+          <span className="badge">
+            <span className="badge-dot badge-dot-accent" />
+            Plantillas Oficiales 2026
+          </span>
         </div>
       </div>
 
-      {/* Indicador de Carga Global */}
+      {/* Indicador de Carga */}
       {cargando && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-2xl p-6 text-center animate-fade-in shadow-xs">
-          <div className="inline-flex items-center gap-3 text-[#176B52] dark:text-emerald-300 font-bold text-sm sm:text-base">
-            <Loader2 className="animate-spin" size={20} />
-            <span>{mensajeCarga || 'Procesando expediente con motor SGTRI...'}</span>
-          </div>
+        <div
+          style={{
+            backgroundColor: '#F8FAFC',
+            border: '1px solid #CBD5E1',
+            borderRadius: '6px',
+            padding: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.65rem',
+            color: 'var(--color-navy, #14213D)',
+            fontWeight: 600,
+            fontSize: '0.86rem'
+          }}
+        >
+          <Loader2 className="animate-spin" size={16} />
+          <span>{mensajeCarga || 'Procesando expediente con motor SGTRI...'}</span>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* PASO 1: SELECCIÓN Y CARGA DEL EXPEDIENTE                                 */}
+      {/* PASO 1: SELECCIÓN Y CARGA EN MODO LISTA                                  */}
       {/* ========================================================================= */}
       {paso === 1 && (
-        <div className="space-y-6">
-          {/* Regla Universal de Factura Obligatoria */}
-          <div className="bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-2xl p-5 flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shrink-0">
-              <FileCheck size={22} />
-            </div>
-            <div>
-              <h3 className="font-bold text-sm sm:text-base text-blue-900 dark:text-blue-100">
-                Regla Administrativa: La factura es el único documento universalmente obligatorio
-              </h3>
-              <p className="text-xs text-blue-700 dark:text-blue-300 mt-1 leading-relaxed">
-                Para iniciar el trámite sólo se exige la factura del proveedor. La justificación de tarjeta (justificante/extracto) o los datos bancarios (IBAN) se solicitan y validan dinámicamente según la modalidad identificada.
-              </p>
-            </div>
-          </div>
-
-          {/* Subida Manual */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
-            <div className="flex items-center gap-2 mb-3">
-              <UploadCloud size={20} className="text-[#176B52]" />
-              <h2 className="font-bold text-base text-slate-900 dark:text-slate-100">
-                Aportar Documentación del Expediente
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Arrastra o selecciona la factura (PDF, DOCX, XLSX, imagen o texto) y, opcionalmente, el documento explicativo de imputación o justificantes de pago.
-            </p>
-
-            <label className="border-2 border-dashed border-slate-300 dark:border-zinc-700 hover:border-[#176B52] dark:hover:border-emerald-500 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 dark:bg-zinc-800/30 transition-all group">
-              <input
-                type="file"
-                multiple
-                onChange={handleSubirArchivos}
-                className="hidden"
-                accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg,.txt,.md"
-              />
-              <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#176B52] dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <UploadCloud size={24} />
-              </div>
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                Seleccionar archivos o arrastrar aquí
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Formatos: PDF, DOCX, XLSX, imágenes (JPG/PNG), TXT
-              </span>
-            </label>
-          </div>
-
-          {/* Casos Oficiales de Demostración */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Panel de Subida de Nuevo Expediente */}
+          <div
+            className="panel"
+            style={{
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              backgroundColor: isDragging ? '#F0FDF4' : 'var(--bg-surface, #FFFFFF)',
+              borderColor: isDragging ? 'var(--brand-accent, #176B52)' : 'var(--border-color, #DFE4EB)'
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              handleSeleccionarArchivos(e.dataTransfer.files);
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
               <div>
-                <h2 className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Sparkles size={18} className="text-[#176B52]" />
-                  <span>Casos Oficiales de Demostración · Factura Real OpenAI</span>
+                <h2 style={{ margin: 0, fontSize: '0.94rem', fontWeight: 600, color: 'var(--color-navy, #14213D)' }}>
+                  Aportar documentación del expediente
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Modalidad A (Abonado con tarjeta del investigador) y Modalidad B (Pendiente de pago por transferencia), con caso de control de discordancia económica.
+                <p style={{ margin: '3px 0 0', fontSize: '0.79rem', color: 'var(--text-secondary, #526783)' }}>
+                  Arrastra o selecciona la factura (PDF, imágenes, Word) y, opcionalmente, justificantes de cargo o documento explicativo.
                 </p>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300">
-                {casosDemo.length} expedientes preparados
+
+              <label
+                className="btn btn-sm btn-outline"
+                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <UploadCloud size={14} />
+                <span>Examinar archivos...</span>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleSubirArchivos}
+                  style={{ display: 'none' }}
+                  accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg,.txt,.md"
+                />
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--border-subtle, #F1F5F9)' }}>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary, #526783)', whiteSpace: 'nowrap' }}>
+                Nombre del expediente <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opcional)</span>:
+              </label>
+              <input
+                type="text"
+                value={nombreNuevoCaso}
+                onChange={(e) => setNombreNuevoCaso(e.target.value)}
+                placeholder="Ej: Factura_OpenAI_Mayo_2026 o Licencia_Software_UEx"
+                style={{
+                  flex: 1,
+                  minWidth: '240px',
+                  padding: '6px 10px',
+                  fontSize: '0.82rem',
+                  fontFamily: 'var(--font-mono)',
+                  border: '1px solid var(--border-color, #CBD5E1)',
+                  borderRadius: '6px',
+                  backgroundColor: '#FFFFFF',
+                  color: '#0F172A'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Lista de Expedientes Guardados por el Usuario */}
+          {casosPersonalizados.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                  Expedientes Guardados ({casosPersonalizados.length})
+                </span>
+                <span style={{ fontSize: '0.77rem', color: '#526783' }}>
+                  Expedientes propios subidos y conservados en el sistema
+                </span>
+              </div>
+
+              <div className="admin-table-container">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '190px' }}>Modalidad</th>
+                      <th>Expediente</th>
+                      <th style={{ width: '130px' }}>Documentación</th>
+                      <th style={{ width: '160px' }}>Estado</th>
+                      <th style={{ width: '210px', textAlign: 'right' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {casosPersonalizados.map((c) => {
+                      const modStyle = getModalidadBadgeStyle(c.modalidad);
+                      const esVerde = c.semaforo_esperado !== 'ROJO';
+                      return (
+                        <tr key={c.id}>
+                          <td>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                whiteSpace: 'nowrap',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                backgroundColor: modStyle.bg,
+                                color: modStyle.color,
+                                border: `1px solid ${modStyle.border}`
+                              }}
+                            >
+                              {c.modalidad === 'tarjeta' ? <CreditCard size={12} color={modStyle.color} /> : <Send size={12} color={modStyle.color} />}
+                              {modStyle.label}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600, color: 'var(--color-navy, #14213D)', fontSize: '0.86rem' }}>
+                              {cleanTituloCaso(c.nombre)}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#526783', marginTop: '0.15rem' }}>
+                              {c.descripcion}
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                fontFamily: 'var(--font-mono, monospace)',
+                                fontSize: '0.75rem',
+                                color: '#475569',
+                                fontWeight: 600
+                              }}
+                            >
+                              {c.num_archivos} archivo(s)
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                                color: esVerde ? '#15803D' : '#B91C1C'
+                              }}
+                            >
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: esVerde ? '#16A34A' : '#DC2626', display: 'inline-block' }} />
+                              <span>{esVerde ? 'Listo para tramitar' : 'Requiere revisión'}</span>
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <button
+                                type="button"
+                                className="action-btn-edit"
+                                title="Renombrar expediente"
+                                onClick={() => {
+                                  setCasoObjetivoAccion({ id: c.id, nombre: cleanTituloCaso(c.nombre) });
+                                  setNuevoNombreRenombrar(cleanTituloCaso(c.nombre));
+                                  setModalRenombrarOpen(true);
+                                }}
+                              >
+                                <Edit3 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="action-btn-delete"
+                                title="Eliminar expediente"
+                                onClick={() => {
+                                  setCasoObjetivoAccion({ id: c.id, nombre: cleanTituloCaso(c.nombre) });
+                                  setModalEliminarOpen(true);
+                                }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline"
+                                onClick={() => handleCargarCasoDemo(c.id)}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.25rem' }}
+                              >
+                                <span>Abrir</span>
+                                <ArrowRight size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de Casos de Referencia */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                Casos de Referencia ({casosReferencia.length})
+              </span>
+              <span style={{ fontSize: '0.77rem', color: '#526783' }}>
+                Expedientes de prueba SGTRI con factura real para ambas modalidades de pago
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {casosDemo.map((c) => {
-                const esVerde = c.semaforo_esperado === 'VERDE';
-                const esTarjeta = c.modalidad === 'tarjeta';
-                return (
-                  <div
-                    key={c.id}
-                    className={cn(
-                      'border rounded-xl p-4 flex flex-col justify-between transition-all hover:shadow-md text-left relative overflow-hidden',
-                      esVerde
-                        ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/10'
-                        : 'border-rose-300 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20'
-                    )}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={cn(
-                            'text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1',
-                            esVerde
-                              ? 'bg-emerald-100 text-[#176B52] dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                          )}
-                        >
-                          {esVerde ? <CheckCircle2 size={10} /> : <AlertOctagon size={10} />}
-                          {c.semaforo_esperado}
-                        </span>
-
-                        <span
-                          className={cn(
-                            'text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1',
-                            esTarjeta
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                          )}
-                        >
-                          {esTarjeta ? <CreditCard size={11} /> : <Send size={11} />}
-                          {esTarjeta ? 'Tarjeta Investigador' : 'Transferencia'}
-                        </span>
-                      </div>
-
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                        {c.nombre}
-                      </h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
-                        {c.descripcion}
-                      </p>
-                    </div>
-
-                    <div className="pt-4 mt-3 border-t border-slate-200/60 dark:border-zinc-800 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        {c.num_archivos} archivo(s)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCargarCasoDemo(c.id)}
-                        style={{
-                          backgroundColor: esVerde ? '#176B52' : '#BE123C',
-                          color: '#FFFFFF'
-                        }}
-                        className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm hover:opacity-95 active:scale-95 transition-all cursor-pointer border-0"
-                      >
-                        <Play size={12} fill="#FFFFFF" />
-                        <span>Cargar y Analizar</span>
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="admin-table-container">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '190px' }}>Modalidad</th>
+                    <th>Expediente</th>
+                    <th style={{ width: '130px' }}>Documentación</th>
+                    <th style={{ width: '160px' }}>Estado</th>
+                    <th style={{ width: '130px', textAlign: 'right' }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {casosReferencia.map((c) => {
+                    const modStyle = getModalidadBadgeStyle(c.modalidad);
+                    const esVerde = c.semaforo_esperado !== 'ROJO';
+                    return (
+                      <tr key={c.id}>
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              whiteSpace: 'nowrap',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              backgroundColor: modStyle.bg,
+                              color: modStyle.color,
+                              border: `1px solid ${modStyle.border}`
+                            }}
+                          >
+                            {c.modalidad === 'tarjeta' ? <CreditCard size={12} color={modStyle.color} /> : <Send size={12} color={modStyle.color} />}
+                            {modStyle.label}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--color-navy, #14213D)', fontSize: '0.86rem' }}>
+                            {cleanTituloCaso(c.nombre)}
+                          </div>
+                          <div style={{ fontSize: '0.76rem', color: '#526783', marginTop: '0.15rem', lineHeight: 1.4 }}>
+                            {c.descripcion}
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              fontFamily: 'var(--font-mono, monospace)',
+                              fontSize: '0.75rem',
+                              color: '#475569',
+                              fontWeight: 600
+                            }}
+                          >
+                            {c.num_archivos} archivo(s)
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              color: esVerde ? '#15803D' : '#B91C1C'
+                            }}
+                          >
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: esVerde ? '#16A34A' : '#DC2626', display: 'inline-block' }} />
+                            <span>{esVerde ? 'Listo para tramitar' : 'Control de bloqueo'}</span>
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => handleCargarCasoDemo(c.id)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                          >
+                            <span>Cargar</span>
+                            <ArrowRight size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -617,575 +965,742 @@ export function GeneradorProveedoresInteligente() {
       {/* PASO 2: REVISIÓN DE DATOS EXTRAÍDOS Y CONCILIACIÓN                       */}
       {/* ========================================================================= */}
       {paso === 2 && expediente && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Barra superior de retorno */}
-          <div className="flex items-center justify-between pb-1">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+          {/* Barra superior de retorno y acciones sobre el expediente */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
             <button
               type="button"
               onClick={() => setPaso(1)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+              className="btn btn-sm btn-outline"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              <ArrowLeft size={15} />
+              <ArrowLeft size={14} />
               <span>Volver a selección de expedientes</span>
             </button>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Expediente activo: <strong className="text-slate-800 dark:text-slate-200">{expediente.caso_id}</strong>
-            </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.78rem', color: '#526783' }}>
+                Expediente activo:{' '}
+                <strong
+                  style={{
+                    fontFamily: 'ui-monospace, monospace',
+                    color: '#14213D',
+                    backgroundColor: '#F1F5FA',
+                    padding: '0.18rem 0.5rem',
+                    borderRadius: '5px',
+                    border: '1px solid #DFE4EB'
+                  }}
+                >
+                  {nombreActivoVisible}
+                </strong>
+              </span>
+              <button
+                type="button"
+                className="action-btn-edit"
+                title="Renombrar expediente"
+                onClick={() => {
+                  const currentId = casoActivoId || expediente.caso_id;
+                  setCasoObjetivoAccion({ id: currentId, nombre: nombreActivoVisible });
+                  setNuevoNombreRenombrar(nombreActivoVisible);
+                  setModalRenombrarOpen(true);
+                }}
+              >
+                <Edit3 size={14} />
+              </button>
+              <button
+                type="button"
+                className="action-btn-delete"
+                title="Eliminar expediente"
+                onClick={() => {
+                  const currentId = casoActivoId || expediente.caso_id;
+                  setCasoObjetivoAccion({ id: currentId, nombre: nombreActivoVisible });
+                  setModalEliminarOpen(true);
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
 
           {/* Banner de Semáforo y Conciliación */}
           {diagnostico && (
             <div
-              className={cn(
-                'rounded-2xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs',
-                diagnostico.semaforo === 'VERDE'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100'
-                  : 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-900 text-rose-950 dark:text-rose-100'
-              )}
+              className="panel"
+              style={{
+                padding: '14px 18px',
+                borderLeft: `3px solid ${diagnostico.semaforo === 'VERDE' ? '#166534' : '#DC2626'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px',
+                flexWrap: 'wrap'
+              }}
             >
-              <div className="flex items-start gap-3.5">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div
-                  className={cn(
-                    'p-2.5 rounded-xl shrink-0 text-white shadow-xs',
-                    diagnostico.semaforo === 'VERDE' ? 'bg-[#176B52]' : 'bg-rose-600'
-                  )}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    backgroundColor: diagnostico.semaforo === 'VERDE' ? '#F0FDF4' : '#FEF2F2',
+                    color: diagnostico.semaforo === 'VERDE' ? '#166534' : '#DC2626',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    border: `1px solid ${diagnostico.semaforo === 'VERDE' ? '#BBF7D0' : '#FECACA'}`
+                  }}
                 >
-                  {diagnostico.semaforo === 'VERDE' ? (
-                    <ShieldCheck size={26} />
-                  ) : (
-                    <ShieldAlert size={26} />
-                  )}
+                  {diagnostico.semaforo === 'VERDE' ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className={cn(
-                        'text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full text-white',
-                        diagnostico.semaforo === 'VERDE' ? 'bg-[#176B52]' : 'bg-rose-600'
-                      )}
-                    >
-                      SEMÁFORO {diagnostico.semaforo}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: diagnostico.semaforo === 'VERDE' ? '#166534' : '#DC2626' }}>
+                      DICTAMEN {diagnostico.semaforo}
                     </span>
-                    <h3 className="font-bold text-base">
-                      {diagnostico.semaforo === 'VERDE'
-                        ? 'Expediente Conforme y Tramitable · Conciliación Correcta'
-                        : 'Expediente Bloqueado por Intervención / SGTRI'}
-                    </h3>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-navy, #14213D)' }}>
+                      {diagnostico.semaforo === 'VERDE' ? 'Expediente conforme y tramitable' : 'Expediente con observaciones de intervención'}
+                    </span>
                   </div>
-                  <p className="text-xs sm:text-sm mt-1 opacity-90 leading-relaxed max-w-3xl">
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary, #526783)' }}>
                     {diagnostico.semaforo === 'VERDE'
-                      ? 'Todos los requisitos normativos han sido verificados. La factura, el proveedor y la imputación presupuestaria están conciliados.'
-                      : 'Se han detectado discordancias económicas que impiden la emisión de la orden de pago oficial.'}
+                      ? 'Requisitos normativos verificados. Factura, proveedor e imputación presupuestaria conciliados.'
+                      : 'Se han detectado discordancias económicas que impiden la emisión automática de la orden de pago.'}
                   </p>
                 </div>
               </div>
 
-              {/* Botón de Generación si está en Verde */}
               {diagnostico.semaforo === 'VERDE' ? (
                 <button
                   type="button"
                   onClick={handleGenerarDocumentos}
-                  style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white flex items-center gap-2 shrink-0 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
+                  className="btn btn-sm btn-uex"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <FileCheck size={16} />
-                  <span>Generar Documentos Oficiales SGTRI</span>
-                  <ArrowRight size={14} />
+                  <FileCheck size={14} />
+                  <span>Generar Documentos Oficiales</span>
+                  <ArrowRight size={13} />
                 </button>
               ) : (
-                <span className="text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 shrink-0">
-                  Generación bloqueada hasta subsanar
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#991B1B' }}>
+                  Subsanación requerida
                 </span>
               )}
             </div>
           )}
 
-          {/* Tarjeta de Incidencias Bloqueantes (Caso 06) con Subsanación en 1 Clic */}
+          {/* Bloque de Incidencias Bloqueantes (Diseño claro SGTRI) */}
           {incidenciasRojas.length > 0 && (
-            <div className="bg-white dark:bg-zinc-900 border-2 border-rose-300 dark:border-rose-800 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400">
-                <AlertOctagon size={20} />
-                <h4 className="font-bold text-base">
-                  Incidencia Bloqueante Detectada ({incidenciasRojas.length})
-                </h4>
+            <div
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #FECDD3',
+                borderLeft: '4px solid #DC2626',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                boxShadow: '0 2px 6px rgba(153, 27, 27, 0.05)'
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: '#FEF2F2',
+                  borderBottom: '1px solid #FECACA',
+                  padding: '0.8rem 1.2rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', color: '#991B1B' }}>
+                  <AlertOctagon size={18} />
+                  <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800 }}>
+                    Incidencia Bloqueante Detectada ({incidenciasRojas.length})
+                  </h4>
+                </div>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#991B1B', backgroundColor: '#FEE2E2', padding: '0.18rem 0.55rem', borderRadius: '6px' }}>
+                  Subsanación requerida
+                </span>
               </div>
 
-              {incidenciasRojas.map((err, idx) => (
-                <div key={idx} className="bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-xl p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200">
-                        {err.codigo}
-                      </span>
-                      <p className="text-sm font-semibold text-rose-950 dark:text-rose-100 mt-1">
-                        {err.mensaje}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Comparativa económica visual */}
-                  {err.importes && (
-                    <div className="grid grid-cols-3 gap-2 bg-white dark:bg-zinc-900 p-3 rounded-lg border border-rose-200 dark:border-zinc-800 text-center text-xs">
-                      <div>
-                        <span className="text-slate-500 block">Factura Proveedor</span>
-                        <strong className="text-slate-800 dark:text-slate-200 text-sm">
-                          {fmtEur(err.importes.importe_factura)}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Memoria / Solicitud</span>
-                        <strong className="text-rose-600 text-sm">
-                          {fmtEur(err.importes.importe_solicitado)}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Discordancia</span>
-                        <strong className="text-rose-700 text-sm">
-                          {fmtEur(Math.abs(err.importes.diferencia))}
-                        </strong>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Opciones de Subsanación */}
-                  <div className="pt-2 border-t border-rose-200 dark:border-rose-900/60 flex flex-col sm:flex-row items-center gap-3">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Instrucción para subsanar:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleSubsanarAlineando}
-                      style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 shadow-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
-                      title="Ajusta el importe en la memoria para eliminar el descuadre con la factura oficial"
+              <div style={{ padding: '1.1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: '0.95rem' }}>
+                {incidenciasRojas.map((err, idx) => (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    <div
+                      style={{
+                        backgroundColor: '#FFF5F5',
+                        border: '1px solid #FECACA',
+                        borderRadius: '8px',
+                        padding: '0.85rem 1rem'
+                      }}
                     >
-                      <Check size={14} />
-                      <span>Ajustar Solicitud a {fmtEur(expediente.factura.total)} y Subsanar</span>
-                    </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: '#991B1B' }}>
+                          Motivo detectado
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontFamily: 'ui-monospace, monospace',
+                            fontWeight: 700,
+                            padding: '0.1rem 0.45rem',
+                            borderRadius: '4px',
+                            backgroundColor: '#FEE2E2',
+                            color: '#991B1B'
+                          }}
+                        >
+                          {err.codigo}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#7F1D1D', lineHeight: 1.45 }}>
+                        {err.mensaje}
+                      </div>
+                    </div>
 
-                    <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                      <input
-                        type="text"
-                        value={refRectificativa}
-                        onChange={(e) => setRefRectificativa(e.target.value)}
-                        className="input input-xs text-xs font-mono border border-slate-300 dark:border-zinc-700 rounded px-2 py-1 max-w-[200px]"
-                        placeholder="Ref. Factura Rectificativa"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSubsanarConvalidando}
-                        className="btn btn-sm btn-outline border-slate-300 text-slate-700 dark:text-slate-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800"
-                        title="Convalida que existe factura rectificativa o adenda formal"
-                      >
-                        Convalidar
-                      </button>
+                    {err.importes && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.65rem' }}>
+                        <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #DFE4EB', borderRadius: '8px', padding: '0.65rem 0.8rem', textAlign: 'center' }}>
+                          <span style={{ fontSize: '0.72rem', color: '#526783', display: 'block' }}>Factura Proveedor</span>
+                          <strong style={{ fontSize: '0.95rem', color: '#14213D', fontFamily: 'ui-monospace, monospace' }}>
+                            {fmtEur(err.importes.importe_factura)}
+                          </strong>
+                        </div>
+                        <div style={{ backgroundColor: '#FFF1F2', border: '1px solid #FECDD3', borderRadius: '8px', padding: '0.65rem 0.8rem', textAlign: 'center' }}>
+                          <span style={{ fontSize: '0.72rem', color: '#9F1239', display: 'block' }}>Memoria / Solicitud</span>
+                          <strong style={{ fontSize: '0.95rem', color: '#BE123C', fontFamily: 'ui-monospace, monospace' }}>
+                            {fmtEur(err.importes.importe_solicitado)}
+                          </strong>
+                        </div>
+                        <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '0.65rem 0.8rem', textAlign: 'center' }}>
+                          <span style={{ fontSize: '0.72rem', color: '#991B1B', display: 'block' }}>Discordancia</span>
+                          <strong style={{ fontSize: '0.95rem', color: '#991B1B', fontFamily: 'ui-monospace, monospace' }}>
+                            {fmtEur(Math.abs(err.importes.diferencia))}
+                          </strong>
+                        </div>
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #DFE4EB',
+                        borderRadius: '8px',
+                        padding: '0.85rem 1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.65rem'
+                      }}
+                    >
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#334155' }}>
+                        Solución y acciones disponibles
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={handleSubsanarAlineando}
+                          className="btn btn-sm btn-uex"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                          title="Ajusta el importe en la memoria para eliminar el descuadre con la factura oficial"
+                        >
+                          <Check size={14} />
+                          <span>Ajustar Solicitud a {fmtEur(expediente.factura.total)} y Subsanar</span>
+                        </button>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <input
+                            type="text"
+                            value={refRectificativa}
+                            onChange={(e) => setRefRectificativa(e.target.value)}
+                            placeholder="Ref. Factura Rectificativa"
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              fontSize: '0.78rem',
+                              fontFamily: 'ui-monospace, monospace',
+                              border: '1px solid #CBD5E1',
+                              borderRadius: '6px',
+                              backgroundColor: '#FFFFFF',
+                              color: '#0F172A'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSubsanarConvalidando}
+                            className="btn btn-sm btn-outline"
+                            title="Convalida que existe factura rectificativa o adenda formal"
+                          >
+                            Convalidar
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Sección de Documentos de Entrada (2 Columnas Colapsables) */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-            <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/20">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                  <FolderOpen size={20} />
+          {/* Documentación y Justificantes de Entrada */}
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface, #FFFFFF)',
+              border: '1px solid var(--border-color, #DFE4EB)',
+              borderRadius: '10px',
+              overflow: 'hidden',
+              boxShadow: '0 1px 2px rgba(20, 33, 61, 0.04)'
+            }}
+          >
+            <div
+              style={{
+                padding: '0.9rem 1.2rem',
+                borderBottom: mostrarDocumentosEntrada ? '1px solid #DFE4EB' : 'none',
+                backgroundColor: '#F7F9FC',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                flexWrap: 'wrap'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#EFF6FF',
+                    border: '1px solid #BFDBFE',
+                    color: '#1E40AF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <FolderOpen size={18} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#14213D' }}>
                       Documentación y Justificantes de Entrada
                     </h4>
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200">
+                    <span
+                      style={{
+                        padding: '0.12rem 0.55rem',
+                        borderRadius: '999px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        backgroundColor: '#EFF6FF',
+                        color: '#1E40AF',
+                        border: '1px solid #BFDBFE'
+                      }}
+                    >
                       {archivosEntrada.length} archivo(s)
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  <p style={{ margin: '0.1rem 0 0', fontSize: '0.76rem', color: '#526783' }}>
                     Archivos originales analizados para este expediente de pago a proveedor.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setMostrarDocumentosEntrada(!mostrarDocumentosEntrada)}
-                  className="btn btn-ghost btn-xs text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shadow-2xs"
-                >
-                  {mostrarDocumentosEntrada ? (
-                    <>
-                      <span>Ocultar lista</span>
-                      <ChevronUp size={14} />
-                    </>
-                  ) : (
-                    <>
-                      <span>Ver lista ({archivosEntrada.length})</span>
-                      <ChevronDown size={14} />
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarDocumentosEntrada(!mostrarDocumentosEntrada)}
+                className="btn btn-sm btn-outline"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                {mostrarDocumentosEntrada ? (
+                  <>
+                    <span>Ocultar lista</span>
+                    <ChevronUp size={14} />
+                  </>
+                ) : (
+                  <>
+                    <span>Ver lista ({archivosEntrada.length})</span>
+                    <ChevronDown size={14} />
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* Grid en 2 Columnas de Documentos */}
             {mostrarDocumentosEntrada && (
-              <div className="p-3.5 bg-slate-50 dark:bg-zinc-950/40">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {archivosEntrada.map((archivo, aIdx) => {
-                    const ext = (archivo.extension || archivo.nombre.split('.').pop() || '').toLowerCase();
-                    const esPdf = ext === 'pdf';
-                    const cid = casoActivoId || expediente.caso_id;
-                    const fileDownloadUrl = `/api/proveedores/descargar_documento/${encodeURIComponent(cid)}/${encodeURIComponent(archivo.nombre)}?download=1`;
+              <div
+                style={{
+                  padding: '0.95rem 1.2rem',
+                  backgroundColor: '#FFFFFF',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+                  gap: '0.7rem'
+                }}
+              >
+                {archivosEntrada.map((archivo, aIdx) => {
+                  const ext = (archivo.extension || archivo.nombre.split('.').pop() || '').toLowerCase();
+                  const esPdf = ext === 'pdf';
+                  const cid = casoActivoId || expediente.caso_id;
+                  const fileDownloadUrl = `/api/proveedores/descargar_documento/${encodeURIComponent(cid)}/${encodeURIComponent(archivo.nombre)}?download=1`;
 
-                    let iconElem = <FileText size={16} className="text-slate-600" />;
-                    let iconBg = 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700';
-                    if (esPdf) {
-                      iconElem = <FileText size={16} className="text-rose-600" />;
-                      iconBg = 'bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-900';
-                    }
-
-                    return (
-                      <div
-                        key={aIdx}
-                        className="flex items-center justify-between p-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl gap-2 shadow-2xs"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <div className={cn('w-8 h-8 rounded-lg border flex items-center justify-center shrink-0', iconBg)}>
-                            {iconElem}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span
-                              onClick={() => handleVerDocumento(archivo)}
-                              title={`Ver ${archivo.nombre}`}
-                              className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate block cursor-pointer hover:text-[#176B52]"
-                            >
-                              {archivo.nombre}
-                            </span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300">
-                                {archivo.categoria || 'Documento'}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {archivo.tamano_kb ? `${archivo.tamano_kb} KB` : 'PDF'}
-                              </span>
-                            </div>
-                          </div>
+                  return (
+                    <div
+                      key={aIdx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.6rem 0.75rem',
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #DFE4EB',
+                        borderRadius: '8px',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0, flex: 1 }}>
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '6px',
+                            backgroundColor: esPdf ? '#FEF2F2' : '#F1F5F9',
+                            border: `1px solid ${esPdf ? '#FECACA' : '#CBD5E1'}`,
+                            color: esPdf ? '#DC2626' : '#475569',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <FileText size={15} />
                         </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleVerDocumento(archivo);
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <span
+                            onClick={() => handleVerDocumento(archivo)}
+                            title={`Ver ${archivo.nombre}`}
+                            style={{
+                              display: 'block',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              color: '#14213D',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer'
                             }}
-                            className="btn btn-ghost btn-xs text-xs font-semibold text-[#176B52] dark:text-emerald-400 px-2 py-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950 flex items-center gap-1"
                           >
-                            <Eye size={12} />
-                            <span>Ver</span>
-                          </button>
-                          <a
-                            href={fileDownloadUrl}
-                            download={archivo.nombre}
-                            className="btn btn-ghost btn-xs text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 px-2 py-1 rounded"
-                            title="Descargar archivo original"
-                          >
-                            <Download size={12} />
-                          </a>
+                            {archivo.nombre}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.12rem' }}>
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 600,
+                                padding: '0.08rem 0.4rem',
+                                borderRadius: '4px',
+                                backgroundColor: '#E2E8F0',
+                                color: '#334155'
+                              }}
+                            >
+                              {archivo.categoria || 'Documento'}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: '#64748B', fontFamily: 'ui-monospace, monospace' }}>
+                              {archivo.tamano_kb ? `${archivo.tamano_kb} KB` : 'PDF'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVerDocumento(archivo);
+                          }}
+                          className="btn btn-sm btn-outline"
+                          style={{ padding: '0.25rem 0.55rem', fontSize: '0.73rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                        >
+                          <Eye size={12} />
+                          <span>Ver</span>
+                        </button>
+                        <a
+                          href={fileDownloadUrl}
+                          download={archivo.nombre}
+                          className="btn btn-sm btn-outline"
+                          style={{ padding: '0.25rem 0.45rem', display: 'inline-flex', alignItems: 'center' }}
+                          title="Descargar archivo original"
+                        >
+                          <Download size={12} />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEliminarArchivo(archivo.nombre);
+                          }}
+                          className="action-btn-delete"
+                          style={{ width: '26px', height: '26px', borderRadius: '6px' }}
+                          title={`Eliminar ${archivo.nombre} del expediente`}
+                          aria-label={`Eliminar ${archivo.nombre}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Formulario Interactivo y Editable con los Datos Extraídos */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs space-y-6">
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface, #FFFFFF)',
+              border: '1px solid var(--border-color, #DFE4EB)',
+              borderRadius: '10px',
+              padding: '1.25rem 1.4rem',
+              boxShadow: '0 1px 2px rgba(20, 33, 61, 0.04)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.1rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #DFE4EB', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Edit3 size={18} className="text-[#176B52]" />
+                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#14213D', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <Edit3 size={17} color="#176B52" />
                   <span>Datos Normalizados del Expediente</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Revise los datos extraídos por la IA y realice cualquier ajuste necesario antes de emitir los documentos.
+                <p style={{ margin: '0.18rem 0 0', fontSize: '0.78rem', color: '#526783' }}>
+                  Revise los datos extraídos de la documentación y realice cualquier ajuste antes de emitir los anexos oficiales.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setModoEdicion(!modoEdicion)}
-                className="btn btn-sm btn-outline border-slate-300 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                className={modoEdicion ? 'btn btn-sm btn-uex' : 'btn btn-sm btn-outline'}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
               >
-                {modoEdicion ? 'Bloquear Campos' : 'Editar Datos Manualmente'}
+                <Edit3 size={13} />
+                <span>{modoEdicion ? 'Modo Edición Activo' : 'Editar Datos Manualmente'}</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Bloque 1: Datos del Proveedor */}
-              <div className="border border-slate-200 dark:border-zinc-800 rounded-xl p-4 space-y-3 bg-slate-50/40 dark:bg-zinc-950/20">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Building2 size={14} className="text-[#176B52]" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1rem' }}>
+              {/* Bloque 1: Proveedor */}
+              <div style={{ border: '1px solid #DFE4EB', borderRadius: '8px', padding: '1rem', backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.76rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Building2 size={14} color="#176B52" />
                   <span>1. Proveedor o Razón Social</span>
                 </h4>
-                <div className="space-y-2 text-xs">
+                <div>
+                  <label style={fieldLabelStyle}>Razón Social</label>
+                  <input
+                    type="text"
+                    disabled={!modoEdicion}
+                    value={expediente.proveedor.razon_social || ''}
+                    onChange={(e) => setExpediente({ ...expediente, proveedor: { ...expediente.proveedor, razon_social: e.target.value } })}
+                    style={{ ...getFieldStyle(modoEdicion), fontWeight: 600 }}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Razón Social</label>
+                    <label style={fieldLabelStyle}>CIF / NIF / VAT</label>
                     <input
                       type="text"
                       disabled={!modoEdicion}
-                      value={expediente.proveedor.razon_social || ''}
-                      onChange={(e) => {
-                        const nuevo = { ...expediente, proveedor: { ...expediente.proveedor, razon_social: e.target.value } };
-                        setExpediente(nuevo);
-                      }}
-                      className="input input-sm w-full font-semibold bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
+                      value={expediente.proveedor.cif || ''}
+                      onChange={(e) => setExpediente({ ...expediente, proveedor: { ...expediente.proveedor, cif: e.target.value } })}
+                      style={getFieldStyle(modoEdicion, true)}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">CIF / NIF / VAT</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.proveedor.cif || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, proveedor: { ...expediente.proveedor, cif: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full font-mono bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Domicilio Fiscal</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.proveedor.domicilio || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, proveedor: { ...expediente.proveedor, domicilio: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
+                  <div>
+                    <label style={fieldLabelStyle}>Domicilio Fiscal</label>
+                    <input
+                      type="text"
+                      disabled={!modoEdicion}
+                      value={expediente.proveedor.domicilio || ''}
+                      onChange={(e) => setExpediente({ ...expediente, proveedor: { ...expediente.proveedor, domicilio: e.target.value } })}
+                      style={getFieldStyle(modoEdicion)}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Bloque 2: Datos de la Factura */}
-              <div className="border border-slate-200 dark:border-zinc-800 rounded-xl p-4 space-y-3 bg-slate-50/40 dark:bg-zinc-950/20">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <FileText size={14} className="text-[#176B52]" />
+              {/* Bloque 2: Factura */}
+              <div style={{ border: '1px solid #DFE4EB', borderRadius: '8px', padding: '1rem', backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.76rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <FileText size={14} color="#176B52" />
                   <span>2. Factura del Proveedor</span>
                 </h4>
-                <div className="space-y-2 text-xs">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Número de Factura</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.factura.numero || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, factura: { ...expediente.factura, numero: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full font-mono font-bold bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Fecha de Emisión</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.factura.fecha_emision || expediente.factura.fecha || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, factura: { ...expediente.factura, fecha_emision: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
-                  </div>
-
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
                   <div>
-                    <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Concepto Facturado</label>
+                    <label style={fieldLabelStyle}>Número de Factura</label>
                     <input
                       type="text"
                       disabled={!modoEdicion}
-                      value={expediente.factura.concepto || ''}
-                      onChange={(e) => {
-                        const nuevo = { ...expediente, factura: { ...expediente.factura, concepto: e.target.value } };
-                        setExpediente(nuevo);
-                      }}
-                      className="input input-sm w-full bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
+                      value={expediente.factura.numero || ''}
+                      onChange={(e) => setExpediente({ ...expediente, factura: { ...expediente.factura, numero: e.target.value } })}
+                      style={{ ...getFieldStyle(modoEdicion, true), fontWeight: 700 }}
                     />
                   </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Base Imponible</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        disabled={!modoEdicion}
-                        value={expediente.factura.base_imponible ?? 0}
-                        onChange={(e) => {
-                          const base = parseFloat(e.target.value) || 0;
-                          const cuota = Math.round(base * (expediente.factura.tipo_iva / 100) * 100) / 100;
-                          const total = Math.round((base + cuota) * 100) / 100;
-                          const nuevo = {
-                            ...expediente,
-                            factura: { ...expediente.factura, base_imponible: base, cuota_iva: cuota, total }
-                          };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full font-mono bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">IVA ({expediente.factura.tipo_iva}%)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        disabled={!modoEdicion}
-                        value={expediente.factura.cuota_iva ?? 0}
-                        className="input input-sm w-full font-mono bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                        readOnly
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Total Factura</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        disabled={!modoEdicion}
-                        value={expediente.factura.total ?? 0}
-                        onChange={(e) => {
-                          const total = parseFloat(e.target.value) || 0;
-                          const nuevo = { ...expediente, factura: { ...expediente.factura, total } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full font-mono font-bold text-[#176B52] bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
+                  <div>
+                    <label style={fieldLabelStyle}>Fecha de Emisión</label>
+                    <input
+                      type="text"
+                      disabled={!modoEdicion}
+                      value={expediente.factura.fecha_emision || expediente.factura.fecha || ''}
+                      onChange={(e) => setExpediente({ ...expediente, factura: { ...expediente.factura, fecha_emision: e.target.value } })}
+                      style={getFieldStyle(modoEdicion)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={fieldLabelStyle}>Concepto Facturado</label>
+                  <input
+                    type="text"
+                    disabled={!modoEdicion}
+                    value={expediente.factura.concepto || ''}
+                    onChange={(e) => setExpediente({ ...expediente, factura: { ...expediente.factura, concepto: e.target.value } })}
+                    style={getFieldStyle(modoEdicion)}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem' }}>
+                  <div>
+                    <label style={fieldLabelStyle}>Base Imponible</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      disabled={!modoEdicion}
+                      value={expediente.factura.base_imponible ?? 0}
+                      onChange={(e) => {
+                        const base = parseFloat(e.target.value) || 0;
+                        const cuota = Math.round(base * (expediente.factura.tipo_iva / 100) * 100) / 100;
+                        const total = Math.round((base + cuota) * 100) / 100;
+                        setExpediente({
+                          ...expediente,
+                          factura: { ...expediente.factura, base_imponible: base, cuota_iva: cuota, total }
+                        });
+                      }}
+                      style={getFieldStyle(modoEdicion, true)}
+                    />
+                  </div>
+                  <div>
+                    <label style={fieldLabelStyle}>IVA ({expediente.factura.tipo_iva}%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      disabled={!modoEdicion}
+                      value={expediente.factura.cuota_iva ?? 0}
+                      readOnly
+                      style={getFieldStyle(modoEdicion, true)}
+                    />
+                  </div>
+                  <div>
+                    <label style={fieldLabelStyle}>Total Factura</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      disabled={!modoEdicion}
+                      value={expediente.factura.total ?? 0}
+                      onChange={(e) => {
+                        const total = parseFloat(e.target.value) || 0;
+                        setExpediente({ ...expediente, factura: { ...expediente.factura, total } });
+                      }}
+                      style={{ ...getFieldStyle(modoEdicion, true), fontWeight: 800, color: '#176B52' }}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Bloque 3: Datos Presupuestarios */}
-              <div className="border border-slate-200 dark:border-zinc-800 rounded-xl p-4 space-y-3 bg-slate-50/40 dark:bg-zinc-950/20">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Scale size={14} className="text-[#176B52]" />
+              {/* Bloque 3: Imputación Presupuestaria */}
+              <div style={{ border: '1px solid #DFE4EB', borderRadius: '8px', padding: '1rem', backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.76rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Scale size={14} color="#176B52" />
                   <span>3. Imputación Presupuestaria UEx</span>
                 </h4>
-                <div className="space-y-2 text-xs">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Investigador Principal</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.presupuesto.investigador_principal || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, presupuesto: { ...expediente.presupuesto, investigador_principal: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Solicitante</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.presupuesto.solicitante || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, presupuesto: { ...expediente.presupuesto, solicitante: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                  <div>
+                    <label style={fieldLabelStyle}>Investigador Principal</label>
+                    <input
+                      type="text"
+                      disabled={!modoEdicion}
+                      value={expediente.presupuesto.investigador_principal || ''}
+                      onChange={(e) => setExpediente({ ...expediente, presupuesto: { ...expediente.presupuesto, investigador_principal: e.target.value } })}
+                      style={getFieldStyle(modoEdicion)}
+                    />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Proyecto / Convenio</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.presupuesto.proyecto_referencia || expediente.presupuesto.proyecto || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, presupuesto: { ...expediente.presupuesto, proyecto_referencia: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full font-mono bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Orgánica Presupuestaria</label>
-                      <input
-                        type="text"
-                        disabled={!modoEdicion}
-                        value={expediente.presupuesto.organica || ''}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, presupuesto: { ...expediente.presupuesto, organica: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full font-mono font-bold bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
+                  <div>
+                    <label style={fieldLabelStyle}>Solicitante</label>
+                    <input
+                      type="text"
+                      disabled={!modoEdicion}
+                      value={expediente.presupuesto.solicitante || ''}
+                      onChange={(e) => setExpediente({ ...expediente, presupuesto: { ...expediente.presupuesto, solicitante: e.target.value } })}
+                      style={getFieldStyle(modoEdicion)}
+                    />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Tipo de Gasto Oficial</label>
-                      <select
-                        disabled={!modoEdicion}
-                        value={expediente.presupuesto.tipo_gasto || 'Gastos Varios'}
-                        onChange={(e) => {
-                          const nuevo = { ...expediente, presupuesto: { ...expediente.presupuesto, tipo_gasto: e.target.value } };
-                          setExpediente(nuevo);
-                        }}
-                        className="select select-sm w-full bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      >
-                        {TIPOS_GASTO_OFICIALES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Importe Solicitado</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        disabled={!modoEdicion}
-                        value={expediente.presupuesto.importe_solicitado ?? 0}
-                        onChange={(e) => {
-                          const imp = parseFloat(e.target.value) || 0;
-                          const nuevo = { ...expediente, presupuesto: { ...expediente.presupuesto, importe_solicitado: imp } };
-                          setExpediente(nuevo);
-                        }}
-                        className="input input-sm w-full font-mono font-bold bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                      />
-                    </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                  <div>
+                    <label style={fieldLabelStyle}>Proyecto / Convenio</label>
+                    <input
+                      type="text"
+                      disabled={!modoEdicion}
+                      value={expediente.presupuesto.proyecto_referencia || expediente.presupuesto.proyecto || ''}
+                      onChange={(e) => setExpediente({ ...expediente, presupuesto: { ...expediente.presupuesto, proyecto_referencia: e.target.value } })}
+                      style={getFieldStyle(modoEdicion, true)}
+                    />
+                  </div>
+                  <div>
+                    <label style={fieldLabelStyle}>Orgánica Presupuestaria</label>
+                    <input
+                      type="text"
+                      disabled={!modoEdicion}
+                      value={expediente.presupuesto.organica || ''}
+                      onChange={(e) => setExpediente({ ...expediente, presupuesto: { ...expediente.presupuesto, organica: e.target.value } })}
+                      style={{ ...getFieldStyle(modoEdicion, true), fontWeight: 700 }}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                  <div>
+                    <label style={fieldLabelStyle}>Tipo de Gasto Oficial</label>
+                    <select
+                      disabled={!modoEdicion}
+                      value={expediente.presupuesto.tipo_gasto || 'Gastos Varios'}
+                      onChange={(e) => setExpediente({ ...expediente, presupuesto: { ...expediente.presupuesto, tipo_gasto: e.target.value } })}
+                      style={getFieldStyle(modoEdicion)}
+                    >
+                      {TIPOS_GASTO_OFICIALES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={fieldLabelStyle}>Importe Solicitado</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      disabled={!modoEdicion}
+                      value={expediente.presupuesto.importe_solicitado ?? 0}
+                      onChange={(e) => {
+                        const imp = parseFloat(e.target.value) || 0;
+                        setExpediente({ ...expediente, presupuesto: { ...expediente.presupuesto, importe_solicitado: imp } });
+                      }}
+                      style={{ ...getFieldStyle(modoEdicion, true), fontWeight: 700 }}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Bloque 4: Modalidad de Pago y Conciliación */}
-              <div className="border border-slate-200 dark:border-zinc-800 rounded-xl p-4 space-y-3 bg-slate-50/40 dark:bg-zinc-950/20">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    {expediente.pago.modalidad === 'tarjeta' ? <CreditCard size={14} className="text-amber-600" /> : <Send size={14} className="text-blue-600" />}
+              {/* Bloque 4: Modalidad de Pago */}
+              <div style={{ border: '1px solid #DFE4EB', borderRadius: '8px', padding: '1rem', backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.76rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {expediente.pago.modalidad === 'tarjeta' ? <CreditCard size={14} color="#D97706" /> : <Send size={14} color="#2563EB" />}
                     <span>4. Modalidad de Pago</span>
                   </h4>
-                  <div className="flex items-center gap-1.5">
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     {modoEdicion ? (
                       <>
                         <button
@@ -1198,10 +1713,16 @@ export function GeneradorProveedoresInteligente() {
                             setExpediente(nuevo);
                             ejecutarValidacion(nuevo);
                           }}
-                          className={cn(
-                            'btn btn-xs rounded-md text-[11px] font-bold border-0',
-                            expediente.pago.modalidad === 'tarjeta' ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300'
-                          )}
+                          style={{
+                            padding: '0.24rem 0.6rem',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            backgroundColor: expediente.pago.modalidad === 'tarjeta' ? '#D97706' : '#E2E8F0',
+                            color: expediente.pago.modalidad === 'tarjeta' ? '#FFFFFF' : '#334155'
+                          }}
                         >
                           Tarjeta
                         </button>
@@ -1215,22 +1736,31 @@ export function GeneradorProveedoresInteligente() {
                             setExpediente(nuevo);
                             ejecutarValidacion(nuevo);
                           }}
-                          className={cn(
-                            'btn btn-xs rounded-md text-[11px] font-bold border-0',
-                            expediente.pago.modalidad === 'transferencia' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-zinc-800 dark:text-zinc-300'
-                          )}
+                          style={{
+                            padding: '0.24rem 0.6rem',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            backgroundColor: expediente.pago.modalidad === 'transferencia' ? '#2563EB' : '#E2E8F0',
+                            color: expediente.pago.modalidad === 'transferencia' ? '#FFFFFF' : '#334155'
+                          }}
                         >
                           Transferencia
                         </button>
                       </>
                     ) : (
                       <span
-                        className={cn(
-                          'px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide flex items-center gap-1 border shadow-xs',
-                          expediente.pago.modalidad === 'tarjeta'
-                            ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800'
-                            : 'bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800'
-                        )}
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          backgroundColor: '#F8FAFC',
+                          color: '#1E293B',
+                          border: '1px solid #CBD5E1'
+                        }}
                       >
                         {expediente.pago.modalidad === 'tarjeta' ? 'Modalidad A · Tarjeta Investigador' : 'Modalidad B · Pendiente Transferencia'}
                       </span>
@@ -1238,69 +1768,62 @@ export function GeneradorProveedoresInteligente() {
                   </div>
                 </div>
 
-                <div className="space-y-2 text-xs">
-                  {expediente.pago.modalidad === 'tarjeta' ? (
-                    <>
-                      <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-100 text-[11px]">
-                        <strong>Modalidad A: Gasto ya abonado con tarjeta del investigador.</strong> Se justificará el pago mediante Anexo A (tipo justificación) y comprobación del cargo bancario.
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Fecha de Pago</label>
-                          <input
-                            type="text"
-                            disabled={!modoEdicion}
-                            value={expediente.pago.fecha_pago || expediente.factura.fecha_emision || expediente.factura.fecha || ''}
-                            onChange={(e) => {
-                              const nuevo = { ...expediente, pago: { ...expediente.pago, fecha_pago: e.target.value } };
-                              setExpediente(nuevo);
-                            }}
-                            className="input input-sm w-full bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Identificación Tarjeta (4 dígitos)</label>
-                          <input
-                            type="text"
-                            disabled={!modoEdicion}
-                            value={expediente.pago.tarjeta_ultimos4 || expediente.pago.num_tarjeta || '**** **** **** 4171'}
-                            className="input input-sm w-full font-mono bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-blue-900 dark:text-blue-100 text-[11px]">
-                        <strong>Modalidad B: Factura pendiente de pago por transferencia.</strong> Corresponde a Gestión Económica tramitar el pago al proveedor mediante el Anexo A (propuesta de transferencia).
-                      </div>
+                {expediente.pago.modalidad === 'tarjeta' ? (
+                  <>
+                    <div style={{ padding: '0.6rem 0.75rem', borderRadius: '6px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#334155', fontSize: '0.75rem', lineHeight: 1.4 }}>
+                      <strong>Modalidad A: Gasto ya abonado con tarjeta del investigador.</strong> Se justificará el pago mediante Anexo A (tipo justificación) y comprobación del cargo bancario.
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">IBAN del Proveedor</label>
+                        <label style={fieldLabelStyle}>Fecha de Pago</label>
                         <input
                           type="text"
                           disabled={!modoEdicion}
-                          value={expediente.pago.iban_proveedor || expediente.proveedor.iban || ''}
-                          onChange={(e) => {
-                            const nuevo = {
-                              ...expediente,
-                              pago: { ...expediente.pago, iban_proveedor: e.target.value },
-                              proveedor: { ...expediente.proveedor, iban: e.target.value }
-                            };
-                            setExpediente(nuevo);
-                          }}
-                          className="input input-sm w-full font-mono bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700"
+                          value={expediente.pago.fecha_pago || expediente.factura.fecha_emision || expediente.factura.fecha || ''}
+                          onChange={(e) => setExpediente({ ...expediente, pago: { ...expediente.pago, fecha_pago: e.target.value } })}
+                          style={getFieldStyle(modoEdicion)}
                         />
                       </div>
-                    </>
-                  )}
-                </div>
+                      <div>
+                        <label style={fieldLabelStyle}>Identificación Tarjeta (4 dígitos)</label>
+                        <input
+                          type="text"
+                          disabled={!modoEdicion}
+                          value={expediente.pago.tarjeta_ultimos4 || expediente.pago.num_tarjeta || '**** **** **** 4171'}
+                          readOnly
+                          style={getFieldStyle(modoEdicion, true)}
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ padding: '0.6rem 0.75rem', borderRadius: '6px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#334155', fontSize: '0.75rem', lineHeight: 1.4 }}>
+                      <strong>Modalidad B: Factura pendiente de pago por transferencia.</strong> Corresponde a Gestión Económica tramitar el pago al proveedor mediante el Anexo A (propuesta de transferencia).
+                    </div>
+                    <div>
+                      <label style={fieldLabelStyle}>IBAN del Proveedor</label>
+                      <input
+                        type="text"
+                        disabled={!modoEdicion}
+                        value={expediente.pago.iban_proveedor || expediente.proveedor.iban || ''}
+                        onChange={(e) => {
+                          setExpediente({
+                            ...expediente,
+                            pago: { ...expediente.pago, iban_proveedor: e.target.value },
+                            proveedor: { ...expediente.proveedor, iban: e.target.value }
+                          });
+                        }}
+                        style={getFieldStyle(modoEdicion, true)}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Botón de Recalcular o Guardar si está en edición */}
             {modoEdicion && (
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-zinc-800">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', paddingTop: '0.85rem', borderTop: '1px solid #DFE4EB' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -1308,9 +1831,10 @@ export function GeneradorProveedoresInteligente() {
                     setModoEdicion(false);
                     avisar('Cambios guardados y validación recalculada.');
                   }}
-                  className="btn btn-sm bg-[#176B52] text-white px-4 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-xs"
+                  className="btn btn-md btn-uex"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                 >
-                  <RefreshCw size={13} />
+                  <RefreshCw size={14} />
                   <span>Guardar y Re-validar</span>
                 </button>
               </div>
@@ -1318,13 +1842,14 @@ export function GeneradorProveedoresInteligente() {
           </div>
 
           {/* Barra inferior de navegación de Paso 2 */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.25rem' }}>
             <button
               type="button"
               onClick={() => setPaso(1)}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer self-start"
+              className="btn btn-md btn-outline"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={15} />
               <span>Volver a Selección de Expedientes</span>
             </button>
 
@@ -1332,15 +1857,25 @@ export function GeneradorProveedoresInteligente() {
               <button
                 type="button"
                 onClick={handleGenerarDocumentos}
-                style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
-                className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
+                className="btn btn-md btn-uex"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
               >
                 <FileCheck size={16} />
                 <span>Generar Documentos Oficiales SGTRI</span>
                 <ArrowRight size={14} />
               </button>
             ) : (
-              <span className="text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 px-4 py-2.5 rounded-xl border border-rose-300 dark:border-rose-800">
+              <span
+                style={{
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#991B1B',
+                  backgroundColor: '#FEE2E2',
+                  padding: '0.5rem 0.9rem',
+                  borderRadius: '8px',
+                  border: '1px solid #FECACA'
+                }}
+              >
                 Subsanar discrepancia para continuar
               </span>
             )}
@@ -1349,244 +1884,532 @@ export function GeneradorProveedoresInteligente() {
       )}
 
       {/* ========================================================================= */}
-      {/* PASO 3: ENTREGA DE DOCUMENTOS OFICIALES SGTRI                             */}
+      {/* PASO 3: ENTREGA DE DOCUMENTOS OFICIALES SGTRI (ESTILO HONORARIOS/DIETAS)  */}
       {/* ========================================================================= */}
       {paso === 3 && resultadoDocumentos && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Cabecera de Entrega */}
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="p-2.5 rounded-xl bg-[#176B52] text-white shrink-0 shadow-xs">
-                <CheckCircle size={26} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Cabecera limpia de confirmación + resumen */}
+          <div
+            className="panel"
+            style={{
+              padding: '18px 22px',
+              borderLeft: '3px solid #166534',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#F0FDF4',
+                    border: '1px solid #BBF7D0',
+                    color: '#166534',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <CheckCircle size={20} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-navy, #14213D)' }}>
+                    Documentación Oficial Generada
+                  </h2>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary, #526783)' }}>
+                    Modelos oficiales SGTRI UEx cumplimentados conforme a las Bases de Ejecución 2026, listos para firma electrónica y remisión a Intervención.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-lg text-emerald-950 dark:text-emerald-100">
-                  Documentación Oficial Cumplimentada con Éxito
-                </h3>
-                <p className="text-xs sm:text-sm text-emerald-800 dark:text-emerald-200 mt-1 max-w-2xl leading-relaxed">
-                  Se han generado los dos modelos oficiales exigidos por SGTRI UEx conforme a las bases presupuestarias 2026. Los archivos están listos para firma electrónica y remisión a Intervención.
-                </p>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaso(1);
+                    setCasoActivoId(null);
+                    setExpediente(null);
+                    setDiagnostico(null);
+                    setResultadoDocumentos(null);
+                  }}
+                  className="btn btn-sm btn-outline"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <RotateCcw size={14} />
+                  <span>Nuevo Expediente</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaso(2)}
+                  className="btn btn-sm btn-outline"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Revisar Expediente</span>
+                </button>
+                {resultadoDocumentos.zip_url && (
+                  <a
+                    href={resultadoDocumentos.zip_url}
+                    download={resultadoDocumentos.zip_nombre || 'Pack_Oficial_Pago_Proveedores.zip'}
+                    className="btn btn-sm btn-uex"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}
+                  >
+                    <Archive size={14} />
+                    <span>Descargar Lote Completo (ZIP)</span>
+                  </a>
+                )}
               </div>
             </div>
 
-            {resultadoDocumentos.zip_url && (
-              <a
-                href={resultadoDocumentos.zip_url}
-                download={resultadoDocumentos.zip_nombre || 'Pack_Oficial_Pago_Proveedores.zip'}
-                className="btn btn-primary px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shrink-0 shadow-md text-white cursor-pointer hover:opacity-95 transition-all"
-                style={{ backgroundColor: '#176B52', color: '#ffffff', borderColor: '#176B52' }}
-              >
-                <Archive size={16} className="text-white" />
-                <span className="text-white font-bold">Descargar Pack Oficial (ZIP)</span>
-              </a>
+            {expediente && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.75rem', borderTop: '1px solid #F1F5FA', paddingTop: '0.9rem' }}>
+                <div style={{ backgroundColor: '#F7F9FC', border: '1px solid #DFE4EB', borderRadius: '8px', padding: '0.65rem 0.9rem' }}>
+                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, color: '#526783' }}>Expediente</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#14213D', marginTop: '0.15rem' }}>{nombreActivoVisible}</div>
+                </div>
+                <div style={{ backgroundColor: '#F7F9FC', border: '1px solid #DFE4EB', borderRadius: '8px', padding: '0.65rem 0.9rem' }}>
+                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, color: '#526783' }}>Proveedor y Modalidad</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#14213D', marginTop: '0.15rem' }}>
+                    {expediente.proveedor.razon_social} · {expediente.pago.modalidad === 'tarjeta' ? 'Tarjeta' : 'Transferencia'}
+                  </div>
+                </div>
+                <div style={{ backgroundColor: '#F7F9FC', border: '1px solid #DFE4EB', borderRadius: '8px', padding: '0.65rem 0.9rem' }}>
+                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, color: '#526783' }}>Importe Total</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#176B52', marginTop: '0.15rem', fontFamily: 'ui-monospace, monospace' }}>
+                    {fmtEur(expediente.factura.total)} ({docsGenerados.length} documentos)
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Tarjetas de Documentos Oficiales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {docsGenerados.map((doc, dIdx) => (
-              <div
-                key={dIdx}
-                className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex flex-col justify-between space-y-4"
-              >
-                <div className="flex items-start gap-3.5">
-                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-rose-600 shrink-0">
-                    <FileText size={24} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-[#176B52] dark:text-emerald-300">
-                      Oficial SGTRI 2026
-                    </span>
-                    <h4 className="font-bold text-base text-slate-900 dark:text-slate-100 mt-1">
-                      {doc.nombre}
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                      {doc.descripcion}
-                    </p>
-                    <span className="text-[11px] font-mono text-slate-400 block mt-2">
-                      Tamaño: {doc.tamano_kb} KB · Formato AcroForm PDF
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleVerDocSalida(doc)}
-                    className="btn btn-outline btn-sm border-slate-300 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800"
-                  >
-                    <Eye size={13} />
-                    <span>Previsualizar</span>
-                  </button>
-                  <a
-                    href={doc.url_descarga || doc.download_url || doc.preview_url || '#'}
-                    download={doc.nombre}
-                    className="btn btn-sm btn-primary text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer hover:opacity-95 transition-all"
-                    style={{ backgroundColor: '#176B52', color: '#ffffff', borderColor: '#176B52' }}
-                  >
-                    <Download size={14} className="text-white" />
-                    <span className="text-white font-bold">Descargar PDF</span>
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Botón Volver a Revisar */}
-          <div className="flex justify-between items-center pt-4">
-            <button
-              type="button"
-              onClick={() => setPaso(2)}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-100 text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
-            >
-              <ArrowLeft size={15} />
-              <span>Volver a Revisión y Conciliación</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPaso(1);
-                setCasoActivoId(null);
-                setExpediente(null);
-                setDiagnostico(null);
-                setResultadoDocumentos(null);
-              }}
-              style={{ backgroundColor: '#176B52', color: '#FFFFFF' }}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer border-0"
-            >
-              <RotateCcw size={14} />
-              <span>Tramitar Otro Expediente</span>
-            </button>
+          {/* Lista / Tabla Completa de Documentos Oficiales */}
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '130px' }}>Modelo</th>
+                  <th>Documento Oficial</th>
+                  <th style={{ width: '205px' }}>Formato</th>
+                  <th style={{ width: '215px', textAlign: 'right' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {docsGenerados.map((doc, dIdx) => {
+                  const badge = getDocSalidaBadge(doc.nombre || doc.titulo);
+                  return (
+                    <tr key={dIdx}>
+                      <td>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            whiteSpace: 'nowrap',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '6px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            backgroundColor: badge.bg,
+                            color: badge.color,
+                            border: `1px solid ${badge.border}`
+                          }}
+                        >
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: '#14213D', fontSize: '0.86rem' }}>
+                          {doc.titulo || doc.nombre}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#526783', marginTop: '0.15rem' }}>
+                          {doc.descripcion}
+                        </div>
+                        {doc.titulo && doc.nombre && doc.titulo !== doc.nombre && (
+                          <div style={{ fontSize: '0.71rem', color: '#64748B', fontFamily: 'ui-monospace, monospace', marginTop: '0.18rem' }}>
+                            {doc.nombre}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.76rem', color: '#526783', fontFamily: 'ui-monospace, monospace', whiteSpace: 'nowrap' }}>
+                          {doc.tamano_kb} KB · PDF AcroForm
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleVerDocSalida(doc)}
+                            className="btn btn-sm btn-outline"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                          >
+                            <Eye size={13} />
+                            <span>Ver</span>
+                          </button>
+                          <a
+                            href={doc.url_descarga || doc.download_url || doc.preview_url || '#'}
+                            download={doc.nombre}
+                            className="btn btn-sm btn-uex"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none' }}
+                          >
+                            <Download size={13} />
+                            <span>Descargar</span>
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* VISOR MODAL DE DOCUMENTOS CON FONDO OSCURO BORROSO (BACKDROP BLUR)       */}
+      {/* MODAL: NOMBRE DEL NUEVO EXPEDIENTE                                        */}
+      {/* ========================================================================= */}
+      {modalNombrarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99998,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #DFE4EB',
+              width: '100%',
+              maxWidth: '460px',
+              padding: '1.3rem 1.4rem',
+              boxShadow: '0 20px 50px rgba(15, 23, 42, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.9rem'
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#14213D' }}>
+              Nombre del Nuevo Expediente
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#526783', lineHeight: 1.45 }}>
+              Asigna un nombre identificativo para guardar y consultar este expediente de pago a proveedor ({pendingUploadFiles?.length || 0} archivo(s)).
+            </p>
+            <div>
+              <label style={fieldLabelStyle}>Nombre del expediente</label>
+              <input
+                type="text"
+                autoFocus
+                value={nombreNuevoCaso}
+                onChange={(e) => setNombreNuevoCaso(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && pendingUploadFiles && nombreNuevoCaso.trim()) {
+                    ejecutarSubidaArchivos(pendingUploadFiles, nombreNuevoCaso.trim());
+                  }
+                }}
+                style={getFieldStyle(true)}
+                placeholder="Ej: Factura_OpenAI_Mayo_2026"
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => {
+                  setModalNombrarOpen(false);
+                  setPendingUploadFiles(null);
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-uex"
+                disabled={!pendingUploadFiles || !nombreNuevoCaso.trim()}
+                onClick={() => {
+                  if (pendingUploadFiles && nombreNuevoCaso.trim()) {
+                    ejecutarSubidaArchivos(pendingUploadFiles, nombreNuevoCaso.trim());
+                  }
+                }}
+              >
+                Analizar y Guardar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: RENOMBRAR EXPEDIENTE                                               */}
+      {/* ========================================================================= */}
+      {modalRenombrarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99998,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #DFE4EB',
+              width: '100%',
+              maxWidth: '440px',
+              padding: '1.3rem 1.4rem',
+              boxShadow: '0 20px 50px rgba(15, 23, 42, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.9rem'
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#14213D' }}>
+              Renombrar Expediente
+            </h3>
+            <div>
+              <label style={fieldLabelStyle}>Nuevo nombre del expediente</label>
+              <input
+                type="text"
+                autoFocus
+                value={nuevoNombreRenombrar}
+                onChange={(e) => setNuevoNombreRenombrar(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleConfirmarRenombrar();
+                }}
+                style={getFieldStyle(true)}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setModalRenombrarOpen(false)}
+                disabled={cargandoAccion}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-uex"
+                onClick={handleConfirmarRenombrar}
+                disabled={cargandoAccion || !nuevoNombreRenombrar.trim()}
+              >
+                {cargandoAccion ? 'Guardando...' : 'Guardar Nombre'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ELIMINAR EXPEDIENTE                                                */}
+      {/* ========================================================================= */}
+      {modalEliminarOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99998,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '10px',
+              border: '1px solid #FECACA',
+              borderLeft: '4px solid #DC2626',
+              width: '100%',
+              maxWidth: '440px',
+              padding: '1.3rem 1.4rem',
+              boxShadow: '0 20px 50px rgba(15, 23, 42, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.9rem'
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#991B1B' }}>
+              Eliminar Expediente Permanentemente
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: '#334155', lineHeight: 1.5 }}>
+              ¿Seguro que deseas eliminar el expediente <strong>"{casoObjetivoAccion?.nombre}"</strong> y todos sus archivos asociados? Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => setModalEliminarOpen(false)}
+                disabled={cargandoAccion}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                onClick={handleConfirmarEliminar}
+                disabled={cargandoAccion}
+              >
+                {cargandoAccion ? 'Eliminando...' : 'Eliminar Permanentemente'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ========================================================================= */}
+      {/* VISOR MODAL DE DOCUMENTOS                                                 */}
       {/* ========================================================================= */}
       {docEnVisor && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 flex items-center justify-center p-3 sm:p-6 animate-fade-in"
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
-            height: '100vh',
+            inset: 0,
             zIndex: 99999,
             backgroundColor: 'rgba(15, 23, 42, 0.75)',
             backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            margin: 0
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.25rem'
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setDocEnVisor(null);
           }}
         >
           <div
-            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full flex flex-col overflow-hidden shadow-2xl"
             style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #CBD5E1',
+              borderRadius: '12px',
               width: '92vw',
               maxWidth: '1100px',
               height: '88vh',
-              maxHeight: '88vh',
               boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.6)',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              overflow: 'hidden'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Cabecera del Visor */}
-            <div className="px-5 py-3.5 bg-white dark:bg-zinc-900 border-b border-slate-300 dark:border-zinc-800 flex items-center justify-between gap-3 shrink-0 shadow-xs">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-[#176B52] dark:text-emerald-300 shrink-0">
+            <div
+              style={{
+                padding: '0.85rem 1.25rem',
+                backgroundColor: '#FFFFFF',
+                borderBottom: '1px solid #DFE4EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                flexShrink: 0
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                <div
+                  style={{
+                    padding: '0.45rem',
+                    borderRadius: '8px',
+                    backgroundColor: '#ECFDF5',
+                    color: '#176B52',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
                   <FileText size={18} />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate" title={docEnVisor.nombre}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#14213D' }}>
                       {docEnVisor.nombre}
                     </span>
-                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-[#176B52] dark:bg-emerald-950 dark:text-emerald-300">
+                    <span style={{ padding: '0.12rem 0.45rem', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 700, backgroundColor: '#ECFDF5', color: '#065F46' }}>
                       {docEnVisor.categoria || 'Documento'}
                     </span>
                     {docEnVisor.tamano ? (
-                      <span className="text-[11px] text-zinc-500 font-mono">
+                      <span style={{ fontSize: '0.72rem', color: '#64748B', fontFamily: 'ui-monospace, monospace' }}>
                         {(docEnVisor.tamano / 1024).toFixed(0)} KB
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  <p style={{ margin: '0.1rem 0 0', fontSize: '0.72rem', color: '#526783' }}>
                     Visualizador de documentos SGTRI UEx
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
                 <a
                   href={docEnVisor.url_raw}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-outline btn-xs px-2.5 py-1 text-xs border-slate-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1 rounded-md"
-                  title="Abrir en nueva pestaña"
+                  className="btn btn-sm btn-outline"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none' }}
                 >
                   <ExternalLink size={13} />
-                  <span className="hidden sm:inline">Abrir en Pestaña</span>
+                  <span>Abrir en Pestaña</span>
                 </a>
                 <a
                   href={docEnVisor.download_url}
                   download={docEnVisor.nombre}
-                  className="btn btn-outline btn-xs px-2.5 py-1 text-xs border-slate-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1 rounded-md"
+                  className="btn btn-sm btn-uex"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none' }}
                 >
                   <Download size={13} />
-                  <span className="hidden sm:inline">Descargar</span>
+                  <span>Descargar</span>
                 </a>
                 <button
                   type="button"
                   onClick={() => setDocEnVisor(null)}
-                  className="btn btn-ghost btn-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-1 rounded-md"
+                  className="btn btn-sm btn-outline"
+                  style={{ padding: '0.35rem 0.5rem' }}
                   title="Cerrar visor"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
             </div>
 
-            {/* Cuerpo del Visor con Hoja de Alto Contraste */}
-            <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-slate-100/80 dark:bg-zinc-950 flex flex-col items-center justify-start w-full">
+            <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', backgroundColor: '#F1F5F9', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               {cargandoVisor ? (
-                <div className="flex items-center gap-2 text-zinc-500 py-16">
-                  <Loader2 className="animate-spin" size={24} />
-                  <span className="text-sm font-medium">Cargando documento...</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#526783', padding: '4rem 0' }}>
+                  <Loader2 className="animate-spin" size={22} />
+                  <span style={{ fontSize: '0.86rem', fontWeight: 600 }}>Cargando documento...</span>
                 </div>
               ) : docEnVisor.tipo === 'pdf' ? (
-                <div
-                  className="w-full h-full min-h-[75vh] max-w-5xl mx-auto rounded-xl overflow-hidden shadow-xl"
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #94A3B8'
-                  }}
-                >
-                  <object
-                    data={docEnVisor.url_raw}
-                    type="application/pdf"
-                    className="w-full h-full min-h-[75vh]"
-                  >
-                    <iframe
-                      src={docEnVisor.url_raw}
-                      title={`Visor ${docEnVisor.nombre}`}
-                      className="w-full h-full min-h-[75vh] border-none"
-                    >
-                      <div className="p-8 text-center flex flex-col items-center justify-center gap-4">
-                        <p className="text-sm text-zinc-600">Su navegador no soporta visualización incrustada de PDFs.</p>
-                        <a
-                          href={docEnVisor.url_raw}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-primary btn-sm"
-                        >
+                <div style={{ width: '100%', height: '100%', minHeight: '72vh', maxWidth: '1040px', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid #94A3B8', boxShadow: '0 8px 25px rgba(15, 23, 42, 0.12)' }}>
+                  <object data={docEnVisor.url_raw} type="application/pdf" style={{ width: '100%', height: '100%', minHeight: '72vh' }}>
+                    <iframe src={docEnVisor.url_raw} title={`Visor ${docEnVisor.nombre}`} style={{ width: '100%', height: '100%', minHeight: '72vh', border: 'none' }}>
+                      <div style={{ padding: '2rem', textAlign: 'center' }}>
+                        <p>Su navegador no soporta visualización incrustada de PDFs.</p>
+                        <a href={docEnVisor.url_raw} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-uex">
                           Abrir PDF en nueva pestaña
                         </a>
                       </div>
@@ -1594,22 +2417,14 @@ export function GeneradorProveedoresInteligente() {
                   </object>
                 </div>
               ) : docEnVisor.tipo === 'imagen' ? (
-                <div className="w-full flex flex-col items-center justify-start py-4">
-                  <img
-                    src={docEnVisor.url_raw}
-                    alt={docEnVisor.nombre}
-                    className="max-w-4xl w-full h-auto rounded-xl shadow-xl border border-slate-300 dark:border-zinc-700 object-contain my-2 bg-white"
-                  />
-                </div>
+                <img
+                  src={docEnVisor.url_raw}
+                  alt={docEnVisor.nombre}
+                  style={{ maxWidth: '900px', width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF' }}
+                />
               ) : (
-                <div
-                  className="p-6 rounded-xl w-full max-w-4xl mx-auto shadow-xl my-4"
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #94A3B8'
-                  }}
-                >
-                  <pre className="font-mono text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                <div style={{ padding: '1.5rem', borderRadius: '8px', width: '100%', maxWidth: '900px', backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1' }}>
+                  <pre style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.78rem', color: '#1E293B', whiteSpace: 'pre-wrap', lineHeight: 1.55, margin: 0 }}>
                     {docEnVisor.texto || 'Sin contenido textual.'}
                   </pre>
                 </div>

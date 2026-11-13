@@ -299,7 +299,26 @@
 .text-zinc-500 { color: var(--text-muted); }
 .text-zinc-400 { color: var(--text-faint); }
 .text-zinc-300 { color: var(--slate-300); }
+.text-zinc-200 { color: #E2E8F0; }
 .text-zinc-100 { color: var(--slate-100); }
+
+/* Semantic Emerald & Amber Utilities */
+.bg-emerald-50 { background-color: #ECFDF5; }
+.bg-emerald-100 { background-color: #D1FAE5; }
+.text-emerald-300 { color: #6EE7B7; }
+.text-emerald-400 { color: #34D399; }
+.text-emerald-600 { color: #059669; }
+.text-emerald-700 { color: #047857; }
+.text-emerald-800 { color: #065F46; }
+.border-emerald-200 { border-color: #A7F3D0; }
+.border-emerald-300 { border-color: #6EE7B7; }
+
+.bg-amber-50 { background-color: #FFFBEB; }
+.bg-amber-100 { background-color: #FEF3C7; }
+.text-amber-700 { color: #B45309; }
+.text-amber-800 { color: #92400E; }
+.border-amber-200 { border-color: #FDE68A; }
+.border-amber-300 { border-color: #FCD34D; }
 
 .border-zinc-100 { border-color: var(--slate-100); }
 .border-zinc-200 { border-color: var(--border-color); }

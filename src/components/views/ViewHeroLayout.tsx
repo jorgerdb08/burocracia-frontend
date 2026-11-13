@@ -333,6 +333,31 @@ export function ViewHeroLayout({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
             
+            {/* Dietas y desplazamientos */}
+            <div 
+              onClick={() => onComenzarConPlantilla ? onComenzarConPlantilla('dietas') : onComenzar()}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                padding: '16px 18px',
+                cursor: 'pointer',
+                transition: 'all var(--transition-fast)'
+              }}
+              className="action-card-hover"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Plane size={18} color="var(--color-blue-inst)" strokeWidth={1.8} />
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-blue-inst)' }}>Dietas y desplazamientos</span>
+                </div>
+                <ArrowRight size={14} color="var(--color-blue-inst)" />
+              </div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                Comisiones de servicio y liquidación de gastos
+              </div>
+            </div>
+
             {/* Honorarios */}
             <div 
               onClick={() => onIrHonorarios ? onIrHonorarios() : (onComenzarConPlantilla ? onComenzarConPlantilla('honorarios') : onComenzar())}
@@ -380,31 +405,6 @@ export function ViewHeroLayout({
               </div>
               <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                 Transferencia o tarjeta del investigador
-              </div>
-            </div>
-
-            {/* Dietas y desplazamientos */}
-            <div 
-              onClick={() => onComenzarConPlantilla ? onComenzarConPlantilla('dietas') : onComenzar()}
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                padding: '16px 18px',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)'
-              }}
-              className="action-card-hover"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Plane size={18} color="var(--color-blue-inst)" strokeWidth={1.8} />
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-blue-inst)' }}>Dietas y desplazamientos</span>
-                </div>
-                <ArrowRight size={14} color="var(--color-blue-inst)" />
-              </div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                Comisiones de servicio y liquidación de gastos
               </div>
             </div>
 
