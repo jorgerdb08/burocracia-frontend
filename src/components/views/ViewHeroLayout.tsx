@@ -170,16 +170,27 @@ export function ViewHeroLayout({
             <h1 
               style={{ 
                 fontFamily: 'var(--font-serif)', 
-                fontSize: '40px', 
-                fontWeight: 400, 
+                fontSize: '42px', 
+                fontWeight: 500, 
                 letterSpacing: '-0.01em', 
                 color: 'var(--color-navy)', 
-                lineHeight: 1.18,
-                margin: '0 0 10px 0'
+                lineHeight: 1.15,
+                margin: '0 0 8px 0'
               }}
             >
-              Gestión y Liquidación Económica
+              BurocracIA
             </h1>
+
+            <div 
+              style={{ 
+                fontSize: '17px', 
+                fontWeight: 500, 
+                color: 'var(--text-primary)', 
+                marginBottom: '10px' 
+              }}
+            >
+              Gestión y Liquidación Económica de la Universidad de Extremadura
+            </div>
 
             <p 
               style={{ 
@@ -190,7 +201,7 @@ export function ViewHeroLayout({
                 margin: 0
               }}
             >
-              Tramitación administrativa, verificación de requisitos normativos y generación de modelos oficiales de gasto en proyectos de investigación.
+              Plataforma y agente inteligente para la tramitación administrativa, verificación de requisitos normativos y generación de modelos oficiales de gasto en proyectos de investigación.
             </p>
           </div>
         </div>

@@ -29,6 +29,10 @@ export interface RequisitoCaso {
 
 export interface DetalleCaso {
   id: string
+  codigo?: string
+  titulo?: string
+  descripcion?: string
+  modalidad?: string
   tipo: string
   archivos: ArchivoCaso[]
   total_archivos: number
@@ -38,4 +42,11 @@ export interface DetalleCaso {
   estado_validacion?: 'error' | 'valido_con_advertencias' | 'valido_completo'
   errores_obligatorios?: string[]
   warnings_opcionales?: string[]
+  referencia_sugerida?: string
+  organica_sugerida?: string
+  organica_secundaria_sugerida?: string
+  es_multiorganica?: boolean
+  cofinanciacion_sugerida?: string | Record<string, number>
+  tipo_proyecto_sugerido?: string
+  modalidad_sugerida?: string
 }

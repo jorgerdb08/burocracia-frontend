@@ -1261,9 +1261,9 @@ export function ViewLotesBatch() {
           <div className="view-header" style={{ marginBottom: 0 }}>
             <div>
               <div className="view-breadcrumb">
-                <span>Gestión Económica UEx</span>
+                <span>BurocracIA</span>
                 <span>/</span>
-                <span>Liquidación Masiva</span>
+                <span>Fiscalización de Lotes Masivos</span>
               </div>
               <h1 className="view-title">Procesamiento por Lotes de Expedientes</h1>
               <p className="view-desc">
@@ -2084,7 +2084,7 @@ export function ViewLotesBatch() {
               <div className="view-header" style={{ marginBottom: 0 }}>
                 <div>
                   <div className="view-breadcrumb">
-                    <span>Gestión Económica UEx</span>
+                    <span>BurocracIA</span>
                     <span>/</span>
                     <span>Liquidación Masiva</span>
                     <span>/</span>

@@ -87,11 +87,32 @@ class ApiService {
     });
   }
 
-  async renombrarCaso(casoId: string, nuevoNombre: string): Promise<any> {
+  async crearCaso(nombre: string, tipo: string = 'dietas', descripcion?: string): Promise<any> {
+    return this.request('/api/caso/crear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, tipo, descripcion })
+    });
+  }
+
+  async renombrarCaso(casoId: string, payload: { nuevoId?: string; titulo?: string; descripcion?: string } | string, descripcion?: string): Promise<any> {
+    const titulo = typeof payload === 'string' ? payload : (payload.titulo || payload.nuevoId || '');
+    const nuevoId = typeof payload === 'string' ? payload : (payload.nuevoId || '');
+    const desc = typeof payload === 'string' ? descripcion : payload.descripcion;
+
+    const body: Record<string, any> = {
+      nuevo_nombre: titulo,
+      titulo: titulo,
+      descripcion: desc
+    };
+    if (nuevoId) {
+      body.nuevo_id = nuevoId;
+    }
+
     return this.request(`/api/caso/${encodeURIComponent(casoId)}/renombrar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nuevo_nombre: nuevoNombre })
+      body: JSON.stringify(body)
     });
   }
 

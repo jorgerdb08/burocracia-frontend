@@ -602,7 +602,7 @@ export function GeneradorProveedoresInteligente({ initialCasoId }: { initialCaso
       <div className="view-header" style={{ marginBottom: 0 }}>
         <div>
           <div className="view-breadcrumb">
-            <span>Sede Electrónica UEx</span>
+            <span>BurocracIA</span>
             <span>/</span>
             <span>Gestión Económica</span>
             <span>/</span>

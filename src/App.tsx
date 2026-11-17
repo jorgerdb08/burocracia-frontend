@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, Sparkles } from 'lucide-react'
 import { cn } from './lib/utils'
 import { ChatWidget } from './ChatWidget'
 import { ViewHeroLayout } from './components/views/ViewHeroLayout'
@@ -34,6 +34,7 @@ export default function App() {
   const [casoParam, setCaso]         = useState<string | undefined>()
   const [templateParam, setTemplate] = useState<string | undefined>()
   const [inspectCasoId, setInspectCasoId] = useState<string | null>(null)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const irProcesar = (casoId?: string, tipoOrTemplate?: string) => {
     setCaso(casoId);
@@ -67,8 +68,8 @@ export default function App() {
               </div>
               <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--border-color)', margin: '0 8px' }} />
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, textAlign: 'left' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', letterSpacing: '-0.01em' }}>SGTRI</span>
-                <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)', fontWeight: 400 }}>Gestión Económica</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', letterSpacing: '-0.01em' }}>BurocracIA</span>
+                <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)', fontWeight: 400 }}>SGTRI · Sede UEx</span>
               </div>
             </button>
             
@@ -117,7 +118,22 @@ export default function App() {
             </nav>
           </div>
 
-          <div className="uex-header-right">
+          <div className="uex-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => setIsChatOpen(prev => !prev)}
+              style={{
+                backgroundColor: isChatOpen ? '#125440' : '#176B52',
+                color: '#ffffff',
+                border: 'none',
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xs hover:bg-[#125440] hover:brightness-110 cursor-pointer transition-all"
+              title="Abrir Asistente Normativo IA de la UEx"
+              type="button"
+            >
+              <Sparkles size={14} style={{ color: '#FBBF24' }} />
+              <span className="hidden sm:inline">Asistente BurocracIA</span>
+            </button>
+
             <button 
               onClick={() => setIsDark(!isDark)} 
               className="uex-theme-btn"
@@ -178,7 +194,11 @@ export default function App() {
         />
       )}
 
-      <ChatWidget currentView={view} />
+      <ChatWidget 
+        currentView={view} 
+        externalOpen={isChatOpen} 
+        onToggleOpen={setIsChatOpen} 
+      />
     </div>
   )
 }

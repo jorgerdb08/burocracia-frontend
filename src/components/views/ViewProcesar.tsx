@@ -15,7 +15,7 @@ import {
 
   ArrowLeft, Table, Layers, Filter, Landmark, Utensils, Code2, GitFork, Download, Menu,
 
-  Train, Plane, Bus, FolderPlus, Edit3, User
+  Train, Plane, Bus, FolderPlus, Edit3, User, Plus
 
 } from 'lucide-react';
 
@@ -1263,23 +1263,47 @@ export function ViewProcesar({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setMostrarDocumentosEntrada(!mostrarDocumentosEntrada)}
-            className="btn btn-ghost btn-xs text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shadow-2xs self-end sm:self-auto"
-          >
-            {mostrarDocumentosEntrada ? (
-              <>
-                <span>Ocultar lista</span>
-                <ChevronUp size={14} />
-              </>
-            ) : (
-              <>
-                <span>Ver lista ({archivos.length})</span>
-                <ChevronDown size={14} />
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <input
+              type="file"
+              ref={inputAdjuntarDocRef}
+              onChange={onSeleccionarArchivosAdjuntar}
+              multiple
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => inputAdjuntarDocRef.current?.click()}
+              style={{
+                backgroundColor: '#176B52',
+                color: '#ffffff',
+                border: 'none',
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#125440] hover:brightness-110 shadow-xs cursor-pointer transition-all"
+              title="Añadir nuevos documentos o justificantes faltantes a este expediente"
+            >
+              <Plus size={13} style={{ color: '#ffffff' }} />
+              <span style={{ color: '#ffffff' }}>Añadir documentos</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMostrarDocumentosEntrada(!mostrarDocumentosEntrada)}
+              className="btn btn-ghost btn-xs text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shadow-2xs"
+            >
+              {mostrarDocumentosEntrada ? (
+                <>
+                  <span>Ocultar lista</span>
+                  <ChevronUp size={14} />
+                </>
+              ) : (
+                <>
+                  <span>Ver lista ({archivos.length})</span>
+                  <ChevronDown size={14} />
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Contenido en 2 columnas (Oculto por defecto) */}
@@ -1404,6 +1428,14 @@ export function ViewProcesar({
 
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputAdjuntarDocRef = useRef<HTMLInputElement>(null);
+
+  const onSeleccionarArchivosAdjuntar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      subirArchivos(Array.from(e.target.files));
+      e.target.value = '';
+    }
+  };
 
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -1908,6 +1940,31 @@ export function ViewProcesar({
 
     try {
 
+      // Si ya hay un caso seleccionado, adjuntamos directamente a ese expediente
+      if (casoSel) {
+        const fd = new FormData();
+        nuevosArchivos.forEach(f => fd.append('files', f));
+        if (selectedTemplate) {
+          fd.append('tipo', selectedTemplate);
+        }
+        const res = await fetch(`/api/caso/${encodeURIComponent(casoSel)}/adjuntar`, {
+          method: 'POST',
+          body: fd
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        if (data.detalle) {
+          setCasoDetalle(data.detalle);
+        }
+        // Refrescar listado global de casos
+        const rCasos = await fetch('/api/casos');
+        const dCasos = await rCasos.json();
+        if (dCasos.casos) setCasos(dCasos.casos);
+        return;
+      }
+
+      // Si no hay caso seleccionado, creamos una subida nueva
       const fd = new FormData();
 
       nuevosArchivos.forEach(f => fd.append('files', f));
@@ -2447,7 +2504,11 @@ export function ViewProcesar({
 
             <div className="view-breadcrumb">
 
-              <span>Gestión Económica UEx</span>
+              <span>BurocracIA</span>
+
+              <span>/</span>
+
+              <span>Dietas y Desplazamientos</span>
 
               <span>/</span>
 
@@ -3422,57 +3483,61 @@ export function ViewProcesar({
 
 
 
-              {/* Zona de Arrastre de Archivos */}
+              {/* Zona de Arrastre de Archivos (solo cuando no hay expediente precargado/seleccionado) */}
 
-              <div
+              {!casoSel && (
 
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                <div
 
-                onDragLeave={() => setIsDragging(false)}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
 
-                onDrop={handleFileDrop}
+                  onDragLeave={() => setIsDragging(false)}
 
-                onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleFileDrop}
 
-                className={cn(
+                  onClick={() => fileInputRef.current?.click()}
 
-                  "p-8 rounded-md border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-3",
+                  className={cn(
 
-                  isDragging 
+                    "p-8 rounded-md border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-3",
 
-                    ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/40" 
+                    isDragging 
 
-                    : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-[#FAF8F5]/40 dark:bg-zinc-950/30"
+                      ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/40" 
 
-                )}
+                      : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-[#FAF8F5]/40 dark:bg-zinc-950/30"
 
-              >
+                  )}
 
-                <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx" onChange={handleFileSelect} className="hidden" />
+                >
 
-                <div className="w-12 h-12 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                  <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx" onChange={handleFileSelect} className="hidden" />
 
-                  <UploadCloud size={24} />
+                  <div className="w-12 h-12 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+
+                    <UploadCloud size={24} />
+
+                  </div>
+
+                  <div>
+
+                    <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+
+                      Haga clic para subir archivos o arrástrelos aquí
+
+                    </p>
+
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+
+                      Facturas de proveedor, tickets, certificados de asistencia o documentos justificativos
+
+                    </p>
+
+                  </div>
 
                 </div>
 
-                <div>
-
-                  <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-
-                    Haga clic para subir archivos o arrástrelos aquí
-
-                  </p>
-
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
-
-                    Facturas de proveedor, tickets, certificados de asistencia o documentos justificativos
-
-                  </p>
-
-                </div>
-
-              </div>
+              )}
 
 
 
@@ -3547,6 +3612,22 @@ export function ViewProcesar({
                     No es posible continuar al Paso 3 hasta adjuntar todos los documentos obligatorios requeridos.
 
                   </p>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => inputAdjuntarDocRef.current?.click()}
+                      style={{
+                        backgroundColor: '#dc2626',
+                        color: '#ffffff',
+                        border: 'none',
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-red-700 shadow-xs cursor-pointer transition-all"
+                    >
+                      <Plus size={13} style={{ color: '#ffffff' }} />
+                      <span style={{ color: '#ffffff' }}>Adjuntar documentos faltantes</span>
+                    </button>
+                  </div>
 
                 </div>
 
