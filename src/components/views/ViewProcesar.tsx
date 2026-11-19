@@ -25,6 +25,7 @@ import { FormularioHonorariosUEx } from './FormularioHonorariosUEx';
 
 import { FormularioLiquidacionEditable } from './FormularioLiquidacionEditable';
 import { DocumentosSalidaHonorarios } from './DocumentosSalidaHonorarios';
+import { ModalEditorDatosPersonales } from '../modals/ModalEditorDatosPersonales';
 
 import { cn, pollTask, fmtEur } from '../../lib/utils';
 
@@ -1091,6 +1092,8 @@ export function ViewProcesar({
   const [casos, setCasos] = useState<{ id: string, tipo: string, total_archivos?: number, porcentaje?: number, completo?: boolean, estado_validacion?: string, errores_obligatorios?: string[], warnings_opcionales?: string[] }[]>([]);
 
   const [showExpedientes, setShowExpedientes] = useState(true);
+  const [mostrarCasosRef, setMostrarCasosRef] = useState(true);
+  const [mostrarCasosPropios, setMostrarCasosPropios] = useState(true);
 
   const [running, setRunning] = useState(false);
 
@@ -1124,6 +1127,70 @@ export function ViewProcesar({
   const [loadingDocVisor, setLoadingDocVisor] = useState<boolean>(false);
   const [errorDocVisor, setErrorDocVisor] = useState<string | null>(null);
   const [hojaExcelActiva, setHojaExcelActiva] = useState<number>(0);
+
+  // Estados para Edición Directa de Archivos (.xlsx, .txt)
+  const [editorArchivoModalOpen, setEditorArchivoModalOpen] = useState<boolean>(false);
+  const [archivoParaEditar, setArchivoParaEditar] = useState<string>('');
+
+  const abrirEditorArchivo = (nombreArchivo: string) => {
+    setArchivoParaEditar(nombreArchivo);
+    setEditorArchivoModalOpen(true);
+  };
+
+  const handleArchivoGuardado = (detalleActualizado: any) => {
+    const aplicarDetalle = (d: any) => {
+      if (!d) return;
+      setCasoDetalle(d);
+      setReferenciaProyecto(d.referencia_sugerida || '');
+      setOrganica(d.organica_sugerida || '');
+      if (d.organica_secundaria_sugerida || d.es_multiorganica) {
+        setEsMultiorganica(true);
+        setOrganicaSecundaria(d.organica_secundaria_sugerida || '');
+      } else {
+        setEsMultiorganica(false);
+        setOrganicaSecundaria('');
+      }
+      if (d.tipo_proyecto_sugerido) {
+        setTipoProyecto(d.tipo_proyecto_sugerido);
+      } else if (d.referencia_sugerida) {
+        const rUpper = d.referencia_sugerida.toUpperCase();
+        if (rUpper.includes('GR24') || rUpper.includes('GR21') || rUpper.includes('IB24')) {
+          setTipoProyecto('G24');
+        } else if (rUpper.includes('PID') || rUpper.includes('TED') || rUpper.includes('PRTR')) {
+          setTipoProyecto('PEI');
+        } else if (rUpper.includes('PCO')) {
+          setTipoProyecto('PCO');
+        } else {
+          setTipoProyecto('UEX');
+        }
+      } else {
+        setTipoProyecto('');
+      }
+      setFormConfirmacion(prev => ({
+        ...prev,
+        referencia: d.referencia_sugerida || '',
+        organica: d.organica_sugerida || '',
+        organica_secundaria: d.organica_secundaria_sugerida || '',
+        es_multiorganica: Boolean(d.es_multiorganica || d.organica_secundaria_sugerida),
+        tipo_proyecto: d.tipo_proyecto_sugerido || ''
+      }));
+    };
+
+    if (detalleActualizado) {
+      aplicarDetalle(detalleActualizado);
+    }
+    const cid = result?.caso_id || casoSel || '';
+    if (cid) {
+      fetch(`/api/caso/${encodeURIComponent(cid)}/detalle?tipo=${encodeURIComponent(selectedTemplate || '')}`)
+        .then(r => r.json())
+        .then(d => { if (d && !d.error) aplicarDetalle(d); })
+        .catch(() => {});
+    }
+    fetch('/api/casos')
+      .then(r => r.json())
+      .then(d => { if (d && d.casos) setCasos(d.casos); })
+      .catch(() => {});
+  };
 
   // Estados para nombrar y gestionar expedientes nuevos / personalizados
   const [nombreNuevoCaso, setNombreNuevoCaso] = useState<string>('');
@@ -1314,6 +1381,8 @@ export function ViewProcesar({
                 const nombre = archivo.name || archivo.nombre || '';
                 const ext = nombre.split('.').pop()?.toLowerCase() || '';
                 const esExcel = ['xlsx', 'xls', 'csv'].includes(ext);
+                const esTxt = ['txt', 'tsv'].includes(ext);
+                const esEditable = esExcel || esTxt;
                 const esPdf = ext === 'pdf';
                 const esWord = ['docx', 'doc'].includes(ext);
                 const esImg = ['png', 'jpg', 'jpeg', 'webp'].includes(ext);
@@ -1327,6 +1396,10 @@ export function ViewProcesar({
                   iconElem = <FileSpreadsheet size={16} color="#176B52" />;
                   iconBg = '#ECFDF5';
                   iconBorder = '#A7F3D0';
+                } else if (esTxt) {
+                  iconElem = <FileText size={16} color="#2563EB" />;
+                  iconBg = '#EFF6FF';
+                  iconBorder = '#BFDBFE';
                 } else if (esPdf) {
                   iconElem = <FileText size={16} color="#DC2626" />;
                   iconBg = '#FEF2F2';
@@ -1385,34 +1458,46 @@ export function ViewProcesar({
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {esEditable && (
+                        <button
+                          type="button"
+                          onClick={() => abrirEditorArchivo(nombre)}
+                          className="w-7 h-7 inline-flex items-center justify-center rounded-md text-xs font-semibold bg-emerald-50 text-[#176B52] border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700 hover:bg-[#176B52] hover:text-white cursor-pointer transition-all shadow-2xs"
+                          title={`Editar ${nombre} (${esExcel ? 'Hoja de Cálculo' : 'Texto'})`}
+                          aria-label={`Editar ${nombre}`}
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => handleVerDocumento(archivo)}
-                        className="btn btn-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-[#176B52] border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 hover:bg-[#176B52] hover:text-white cursor-pointer transition-all"
+                        className="w-7 h-7 inline-flex items-center justify-center rounded-md text-xs font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer transition-all"
                         title="Ver documento en ventana modal estructurada"
+                        aria-label="Ver documento"
                       >
-                        <Eye size={12} />
-                        <span>Ver</span>
+                        <Eye size={13} />
                       </button>
 
                       <a
                         href={fileDownloadUrl}
                         download={nombre}
-                        className="btn btn-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer transition-all"
-                        title="Descargar archivo original"
+                        className="w-7 h-7 inline-flex items-center justify-center rounded-md text-xs font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer transition-all"
+                        title={`Descargar ${nombre}`}
+                        aria-label="Descargar archivo"
                       >
-                        <Download size={12} />
-                        <span>Descargar</span>
+                        <Download size={13} />
                       </a>
 
                       <button
                         type="button"
                         onClick={() => ejecutarEliminarArchivo(cid, nombre)}
-                        className="btn btn-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60 hover:bg-rose-600 hover:text-white cursor-pointer transition-all"
+                        className="w-7 h-7 inline-flex items-center justify-center rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60 hover:bg-rose-600 hover:text-white cursor-pointer transition-all"
                         title={`Eliminar ${nombre} de este expediente`}
+                        aria-label="Eliminar archivo"
                       >
-                        <Trash2 size={12} />
-                        <span>Eliminar</span>
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
@@ -1624,6 +1709,15 @@ export function ViewProcesar({
             setOrganicaSecundaria('');
           }
 
+          setFormConfirmacion(prev => ({
+            ...prev,
+            referencia: d?.referencia_sugerida || '',
+            organica: d?.organica_sugerida || '',
+            organica_secundaria: d?.organica_secundaria_sugerida || '',
+            es_multiorganica: Boolean(d?.es_multiorganica || d?.organica_secundaria_sugerida),
+            tipo_proyecto: d?.tipo_proyecto_sugerido || ''
+          }));
+
           // Autoselección contextual de Tipo de Proyecto (G24, UEX, PEI, PCO, etc.)
 
           if (d?.tipo_proyecto_sugerido) {
@@ -1715,6 +1809,93 @@ export function ViewProcesar({
     return casos.filter(c => c.tipo === selectedTemplate);
 
   }, [casos, selectedTemplate]);
+
+  const BUILTIN_DIETAS_IDS = useMemo(() => new Set([
+    '01_Comision_Transporte_Publico',
+    '02_Comision_Vehiculo_Particular',
+    'caso_vehiculo_particular',
+    'caso_multiorganico',
+    '03_Comision_Multiorganica',
+    '04_Control_Falta_Datos_Personales'
+  ]), []);
+
+  const casosReferenciaDietas = useMemo(() => [
+    {
+      id: '01_Comision_Transporte_Publico',
+      nombre: 'Comisión de Servicio — Transporte Público (SISTEDES)',
+      modalidad: 'Transporte Público',
+      desc: 'Comisión de servicio en transporte público con billetes oficiales, factura de hotel y certificado de asistencia.'
+    },
+    {
+      id: '02_Comision_Vehiculo_Particular',
+      nombre: 'Comisión de Servicio — Vehículo Particular y Peajes',
+      modalidad: 'Vehículo Particular',
+      desc: 'Expediente de demostración con cálculo de kilómetros, peajes, estacionamiento, alojamiento compartido y memoria de actividades.'
+    },
+    {
+      id: 'caso_multiorganico',
+      nombre: 'Comisión de Servicio — Financiación Multiorgánica',
+      modalidad: 'Multiorgánica',
+      desc: 'Expediente de demostración con dos fuentes de financiación (DEMO-ORG-01 y DEMO-ORG-02) sin desglose previo.'
+    },
+    {
+      id: '04_Control_Falta_Datos_Personales',
+      nombre: 'Control Preceptivo — Falta Hoja de Datos Personales',
+      modalidad: 'Control Preceptivo',
+      desc: 'Comisión con facturas pero sin la preceptiva Hoja de Datos Personales debidamente cumplimentada (Semáforo Rojo).'
+    }
+  ], []);
+
+  const casosPropios = useMemo(() => {
+    return casosFiltrados.filter(c => !BUILTIN_DIETAS_IDS.has(c.id));
+  }, [casosFiltrados, BUILTIN_DIETAS_IDS]);
+
+  const getModBadgeMetaDietas = (modLabel: string): { style: React.CSSProperties; icon: React.ReactNode; label: string } => {
+    const m = (modLabel || '').toLowerCase();
+    const base: React.CSSProperties = {
+      padding: '2px 8px',
+      borderRadius: '4px',
+      fontSize: '11px',
+      fontWeight: 600,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px',
+      whiteSpace: 'nowrap'
+    };
+    if (m.includes('transporte') || m.includes('público') || m.includes('publico') || m.includes('tren') || m.includes('avion')) {
+      return {
+        style: { ...base, backgroundColor: '#EFF4FB', color: '#174F91', border: '1px solid #CEDDF0' },
+        icon: <Train size={12} />,
+        label: 'Transporte Público'
+      };
+    }
+    if (m.includes('vehículo') || m.includes('vehiculo') || m.includes('particular') || m.includes('coche')) {
+      return {
+        style: { ...base, backgroundColor: '#FDF6EC', color: '#9A5B13', border: '1px solid #F2DCBA' },
+        icon: <Car size={12} />,
+        label: 'Vehículo Particular'
+      };
+    }
+    if (m.includes('multi') || m.includes('organica') || m.includes('orgánica')) {
+      return {
+        style: { ...base, backgroundColor: '#F5F3FF', color: '#6D28D9', border: '1px solid #DDD6FE' },
+        icon: <Layers size={12} />,
+        label: 'Multiorgánica'
+      };
+    }
+    if (m.includes('control') || m.includes('preceptivo') || m.includes('falta')) {
+      return {
+        style: { ...base, backgroundColor: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA' },
+        icon: <AlertOctagon size={12} />,
+        label: 'Control Preceptivo'
+      };
+    }
+    return {
+      style: { ...base, backgroundColor: '#F1F5F9', color: '#334155', border: '1px solid #CBD5E1' },
+      icon: <FileText size={12} />,
+      label: modLabel || 'Dietas'
+    };
+  };
 
 
 
@@ -1817,12 +1998,12 @@ export function ViewProcesar({
         const inscImporte = Number(insc.importe) || Number(dp.inscripcion) || 0;
         const inscNombre = insc.nombre_congreso || '';
 
-        const curRef = referenciaProyecto || proy.referencia || dp.referencia || '';
-        const curOrg = organica || proy.organica || dp.organica || '';
-        const curOrgSec = organicaSecundaria || proy.organica_secundaria || dp.organica_secundaria || '';
-        const curEsMulti = Boolean(esMultiorganica || curOrgSec || proy.es_multiorganica || dp.es_multiorganica);
+        const curRef = dp.referencia || proy.referencia || referenciaProyecto || '';
+        const curOrg = dp.organica || proy.organica || organica || '';
+        const curOrgSec = dp.organica_secundaria || proy.organica_secundaria || organicaSecundaria || '';
+        const curEsMulti = Boolean(dp.es_multiorganica || proy.es_multiorganica || esMultiorganica || curOrgSec);
         const finalOrgSec = curEsMulti ? curOrgSec : '';
-        const rawCofin = proy.cofinanciacion || dp.cofinanciacion || '';
+        const rawCofin = dp.cofinanciacion || proy.cofinanciacion || '';
         const curCofin = typeof rawCofin === 'string' ? rawCofin : '';
         const curTipoProy = tipoProyecto || proy.tipo_proyecto || '';
         const curKm = Number(veh?.km) || Number(dp.km) || 0;
@@ -1868,11 +2049,11 @@ export function ViewProcesar({
           congreso_pagada_por: insc.pagada_por || 'investigador'
         });
 
-        if (!referenciaProyecto && curRef) setReferenciaProyecto(curRef);
-        if (!organica && curOrg) setOrganica(curOrg);
-        if (!organicaSecundaria && finalOrgSec) setOrganicaSecundaria(finalOrgSec);
+        if (curRef) setReferenciaProyecto(curRef);
+        if (curOrg) setOrganica(curOrg);
+        if (finalOrgSec) setOrganicaSecundaria(finalOrgSec);
         if (curEsMulti) setEsMultiorganica(true);
-        if (!tipoProyecto && curTipoProy) setTipoProyecto(curTipoProy);
+        if (curTipoProy) setTipoProyecto(curTipoProy);
       }
     } catch (e) {
       console.error('Error al cargar datos de extracción:', e);
@@ -1882,10 +2063,10 @@ export function ViewProcesar({
   }, [referenciaProyecto, organica, tipoProyecto]);
 
   useEffect(() => {
-    if (currentStep === 4 && casoSel) {
+    if (casoSel) {
       cargarDatosConfirmacion(casoSel);
     }
-  }, [currentStep, casoSel, cargarDatosConfirmacion]);
+  }, [casoSel, currentStep, cargarDatosConfirmacion]);
 
   const guardarSoloDatos = async () => {
     if (!casoSel) return;
@@ -2321,6 +2502,17 @@ export function ViewProcesar({
           tipo_tramite: selectedTemplate || 'dietas'
         })
       });
+      if (!respAct.ok) {
+        let errMsg = `Error del servidor (${respAct.status})`;
+        try {
+          const errData = await respAct.json();
+          if (errData.error) errMsg = errData.error;
+        } catch {
+          const rawTxt = await respAct.text();
+          if (rawTxt && !rawTxt.startsWith('<!')) errMsg = rawTxt;
+        }
+        throw new Error(errMsg);
+      }
       const dataAct = await respAct.json();
       if (dataAct.error) throw new Error(dataAct.error);
 
@@ -3052,180 +3244,326 @@ export function ViewProcesar({
 
 
 
-              {/* Selector Desplegable de Casos */}
-
-              {casosFiltrados.length > 0 && (
-
-                <div className="bg-[#FAF9F7] dark:bg-zinc-950/70 rounded-md border border-zinc-200/80 dark:border-zinc-800 overflow-hidden transition-all">
-
-                  <div
-
-                    onClick={() => setShowExpedientes(prev => !prev)}
-
-                    className="p-4 flex items-center justify-between cursor-pointer select-none hover:bg-zinc-100/60 dark:hover:bg-zinc-900/60 transition-colors"
-
-                  >
-
-                    <div className="flex items-center gap-2">
-
-                      <FolderOpen size={16} className="text-zinc-500 dark:text-zinc-400" />
-
-                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-
-                        Expedientes Registrados en el Servidor
-
-                      </span>
-
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono font-bold">
-
-                        {casosFiltrados.length}
-
-                      </span>
-
-                    </div>
-
-                    <div className="flex items-center gap-1 text-xs text-zinc-400 font-medium">
-
-                      <span>{showExpedientes ? 'Ocultar' : 'Mostrar'}</span>
-
-                      {showExpedientes ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-
-                    </div>
-
+              {/* Panel Superior: Aportar documentación del expediente */}
+              <div
+                className="admin-card"
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleFileDrop}
+                style={{
+                  padding: '16px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  border: isDragging ? '1px solid var(--teal-600)' : '1px solid var(--border-color)',
+                  backgroundColor: isDragging ? 'var(--bg-secondary)' : 'var(--bg-surface)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                  <div>
+                    <h2 style={{ fontSize: '0.94rem', fontWeight: 600, color: 'var(--color-navy)', margin: 0 }}>
+                      Aportar documentación del expediente
+                    </h2>
+                    <p style={{ fontSize: '0.79rem', color: 'var(--text-secondary)', margin: '3px 0 0 0' }}>
+                      Arrastre o seleccione solicitudes, comisiones de servicio, hojas de datos o justificantes de gasto.
+                    </p>
                   </div>
 
+                  <label
+                    className="btn btn-sm btn-outline"
+                    style={{ cursor: running || uploadingFiles ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <UploadCloud size={14} />
+                    <span>Examinar archivos...</span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept=".pdf,.png,.jpg,.jpeg,.xlsx,.txt,.csv"
+                      onChange={handleFileSelect}
+                      disabled={running || uploadingFiles}
+                      className="hidden"
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
 
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    Nombre del expediente <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opcional)</span>:
+                  </label>
+                  <input
+                    type="text"
+                    value={nombreNuevoCaso}
+                    onChange={(e) => setNombreNuevoCaso(e.target.value)}
+                    placeholder="Ej: Viaje_Madrid_SISTEDES o Congreso_Sevilla_2026"
+                    style={{ flex: 1, minWidth: '240px', padding: '7px 11px', fontSize: '12.5px', fontFamily: 'var(--font-mono)', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                  />
+                  {nombreNuevoCaso && (
+                    <button
+                      type="button"
+                      onClick={() => setNombreNuevoCaso('')}
+                      className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer"
+                      title="Borrar nombre"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                  {showExpedientes && (
+              {/* Casos Guardados del Usuario (si existen) */}
+              {casosPropios.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                        Expedientes Guardados ({casosPropios.length})
+                      </span>
+                    </div>
 
-                    <div className="p-4 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50 animate-fade-in">
+                    <button
+                      type="button"
+                      onClick={() => setMostrarCasosPropios(prev => !prev)}
+                      style={{
+                        fontSize: '11.5px',
+                        color: 'var(--text-secondary)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        background: 'none',
+                        border: '1px solid var(--border-color)',
+                        padding: '3px 9px',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                      className="hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      <span>{mostrarCasosPropios ? 'Ocultar' : 'Mostrar'}</span>
+                      {mostrarCasosPropios ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                  </div>
 
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {casosFiltrados.map((c) => {
+                  {mostrarCasosPropios && (
+                    <div className="admin-table-container" style={{ borderRadius: '10px', overflow: 'hidden' }}>
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '150px' }}>MODALIDAD</th>
+                            <th>EXPEDIENTE</th>
+                            <th style={{ width: '200px' }}>JUSTIFICANTES</th>
+                            <th style={{ width: '80px', textAlign: 'center' }}>DOCS</th>
+                            <th style={{ width: '215px', textAlign: 'right' }}>ACCIONES</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {casosPropios.map((c) => {
+                            const isSel = casoSel === c.id;
+                            const modMeta = getModBadgeMetaDietas(c.tipo || 'Dietas');
+                            return (
+                              <tr key={c.id} style={{ backgroundColor: isSel ? 'var(--bg-secondary)' : undefined }}>
+                                <td>
+                                  <span style={modMeta.style}>
+                                    {modMeta.icon}
+                                    <span>{modMeta.label}</span>
+                                  </span>
+                                </td>
+                                <td>
+                                  <div style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
+                                    {c.id}
+                                  </div>
+                                </td>
+                                <td style={{ fontSize: '12px', fontWeight: 500, color: '#334155', fontFamily: 'var(--font-mono)' }}>
+                                  {c.total_archivos ? `${c.total_archivos} documentos` : 'Sin documentos'}
+                                </td>
+                                <td style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                  {c.total_archivos ?? 0}
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setNuevoNombreRenombrar(c.id);
+                                        setModalRenombrarOpen(true);
+                                      }}
+                                      className="action-btn-edit"
+                                      title="Renombrar expediente guardado"
+                                      aria-label="Renombrar expediente"
+                                    >
+                                      <Edit3 size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCasoSel(c.id);
+                                        setModalEliminarOpen(true);
+                                      }}
+                                      className="action-btn-delete"
+                                      title="Eliminar expediente"
+                                      aria-label="Eliminar expediente"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => { setCasoSel(isSel ? '' : c.id); setFiles([]); }}
+                                      className="btn btn-sm btn-outline"
+                                      style={{ fontSize: '11.5px', padding: '4px 10px' }}
+                                    >
+                                      {isSel ? 'Cargado ✓' : 'Cargar →'}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
 
+              {/* Casos de Referencia en Modo Lista / Tabla */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                      CASOS DE REFERENCIA ({casosReferenciaDietas.length})
+                    </span>
+                    <span style={{ fontSize: '0.77rem', color: '#526783' }}>
+                      Expedientes de prueba SGTRI para comisiones de servicio, transporte y dietas
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMostrarCasosRef(prev => !prev)}
+                    style={{
+                      fontSize: '11.5px',
+                      color: 'var(--text-secondary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: 'none',
+                      border: '1px solid var(--border-color)',
+                      padding: '3px 9px',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                    className="hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <span>{mostrarCasosRef ? 'Ocultar' : 'Mostrar'}</span>
+                    {mostrarCasosRef ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                </div>
+
+                {mostrarCasosRef && (
+                  <div className="admin-table-container" style={{ borderRadius: '10px', overflow: 'hidden' }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '160px' }}>MODALIDAD</th>
+                          <th>EXPEDIENTE</th>
+                          <th style={{ width: '200px' }}>JUSTIFICANTES</th>
+                          <th style={{ width: '150px' }}>ESTADO</th>
+                          <th style={{ width: '130px', textAlign: 'right' }}>ACCIÓN</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {casosReferenciaDietas.map((c) => {
                           const isSel = casoSel === c.id;
+                          const modMeta = getModBadgeMetaDietas(c.modalidad);
+                          const liveCaso = casos.find(x => x.id === c.id);
+                          const totalDocs = (isSel && casoDetalle?.archivos)
+                            ? casoDetalle.archivos.length
+                            : (liveCaso?.total_archivos ?? (isSel && casoDetalle?.total_archivos ? casoDetalle.total_archivos : undefined));
+                          const justificantesStr = totalDocs !== undefined
+                            ? `${totalDocs} justificante${totalDocs === 1 ? '' : 's'}`
+                            : (liveCaso?.total_archivos !== undefined ? `${liveCaso.total_archivos} justificantes` : '—');
+
+                          const liveEstado = (isSel && casoDetalle?.estado_validacion)
+                            ? casoDetalle.estado_validacion
+                            : (liveCaso?.estado_validacion || ((liveCaso?.errores_obligatorios && liveCaso.errores_obligatorios.length > 0) ? 'error' : (liveCaso?.warnings_opcionales && liveCaso.warnings_opcionales.length > 0) ? 'valido_con_advertencias' : 'valido_completo'));
+
+                          const hayErrores = liveEstado === 'error' || liveEstado === 'faltan_datos' || (isSel ? Boolean(casoDetalle?.errores_obligatorios && casoDetalle.errores_obligatorios.length > 0) : Boolean(liveCaso?.errores_obligatorios && liveCaso.errores_obligatorios.length > 0));
+                          const hayAvisos = !hayErrores && (liveEstado === 'valido_con_advertencias' || (isSel ? Boolean(casoDetalle?.warnings_opcionales && casoDetalle.warnings_opcionales.length > 0) : Boolean(liveCaso?.warnings_opcionales && liveCaso.warnings_opcionales.length > 0)));
+
+                          let estadoText = 'Listo para tramitar';
+                          let estadoColor = '#15803D';
+                          let dotBg = '#16A34A';
+
+                          if (hayErrores) {
+                            estadoText = 'Faltan requisitos';
+                            estadoColor = '#DC2626';
+                            dotBg = '#DC2626';
+                          } else if (hayAvisos) {
+                            estadoText = 'Avisos opcionales';
+                            estadoColor = '#B45309';
+                            dotBg = '#D97706';
+                          }
 
                           return (
-
-                            <button
-
-                              key={c.id}
-
-                              type="button"
-
-                              onClick={() => { setCasoSel(isSel ? '' : c.id); setFiles([]); }}
-
-                              style={{
-
-                                padding: '6px 10px',
-
-                                borderRadius: 'var(--radius-sm)',
-
-                                fontSize: '12px',
-
-                                fontFamily: 'var(--font-mono)',
-
-                                display: 'inline-flex',
-
-                                alignItems: 'center',
-
-                                gap: '6px',
-
-                                border: isSel ? '1px solid var(--teal-600)' : '1px solid var(--border-color)',
-
-                                backgroundColor: isSel ? 'var(--bg-secondary)' : 'var(--bg-surface)',
-
-                                color: isSel ? 'var(--teal-700)' : 'var(--text-primary)',
-
-                                fontWeight: isSel ? 600 : 400,
-
-                                cursor: 'pointer'
-
-                              }}
-
-                            >
-
-                              <FolderOpen size={13} style={{ color: isSel ? 'var(--teal-600)' : 'var(--text-secondary)' }} />
-
-                              <span>{c.id}</span>
-
-                              {c.total_archivos !== undefined && (
-
-                                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-
-                                  ({c.total_archivos})
-
+                            <tr key={c.id} style={{ backgroundColor: isSel ? 'var(--bg-secondary)' : undefined }}>
+                              <td>
+                                <span style={modMeta.style}>
+                                  {modMeta.icon}
+                                  <span>{modMeta.label}</span>
                                 </span>
-
-                              )}
-
-
-                              {c.estado_validacion === 'error' && (
-
-                                <span className="status-dot status-dot-danger" title="Faltan documentos obligatorios" />
-
-                              )}
-
-                              {c.estado_validacion === 'valido_con_advertencias' && (
-
-                                <span className="status-dot status-dot-warning" title="Obligatorios completos (avisos opcionales)" />
-
-                              )}
-
-                              {c.estado_validacion === 'valido_completo' && (
-
-                                <span className="status-dot status-dot-success" title="Expediente conforme" />
-
-                              )}
-
-                            </button>
-
+                              </td>
+                              <td>
+                                <div style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
+                                  {(liveCaso as any)?.titulo || c.nombre}
+                                </div>
+                                <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                  {(liveCaso as any)?.descripcion || c.desc}
+                                </div>
+                              </td>
+                              <td style={{ fontSize: '12px', fontWeight: 500, color: '#334155', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                                {justificantesStr}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    color: estadoColor,
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotBg, display: 'inline-block' }} />
+                                  <span>{estadoText}</span>
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => { setCasoSel(isSel ? '' : c.id); setFiles([]); }}
+                                  disabled={running}
+                                  className="btn btn-sm btn-outline"
+                                  style={{
+                                    fontSize: '11.5px',
+                                    padding: '4px 12px',
+                                    fontWeight: isSel ? 700 : 500,
+                                    borderColor: isSel ? 'var(--teal-600)' : undefined,
+                                    color: isSel ? 'var(--teal-700)' : undefined
+                                  }}
+                                >
+                                  {isSel ? 'Cargado ✓' : 'Cargar →'}
+                                </button>
+                              </td>
+                            </tr>
                           );
-
                         })}
-
-                      </div>
-
-                    </div>
-
-                  )}
-
-                </div>
-
-              )}
-
-
-
-              {/* Campo para nombrar el nuevo expediente al subir desde cero */}
-              {!casoSel && (
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Nombre o Referencia del Expediente <span className="text-zinc-400 font-normal">(opcional)</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={nombreNuevoCaso}
-                      onChange={(e) => setNombreNuevoCaso(e.target.value)}
-                      placeholder="Ej: Viaje_Madrid_SISTEDES o Congreso_Sevilla_2026"
-                      className="flex-1 px-3 py-2 text-xs font-mono rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600"
-                    />
-                    {nombreNuevoCaso && (
-                      <button
-                        type="button"
-                        onClick={() => setNombreNuevoCaso('')}
-                        className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-2 cursor-pointer"
-                        title="Borrar nombre"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
+                      </tbody>
+                    </table>
                   </div>
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                    Indique un nombre identificativo para este expediente o déjelo en blanco si prefiere que se asigne automáticamente.
-                  </p>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Listado y Checklist de Documentos del Expediente Seleccionado */}
 
@@ -3483,61 +3821,7 @@ export function ViewProcesar({
 
 
 
-              {/* Zona de Arrastre de Archivos (solo cuando no hay expediente precargado/seleccionado) */}
-
-              {!casoSel && (
-
-                <div
-
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-
-                  onDragLeave={() => setIsDragging(false)}
-
-                  onDrop={handleFileDrop}
-
-                  onClick={() => fileInputRef.current?.click()}
-
-                  className={cn(
-
-                    "p-8 rounded-md border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-3",
-
-                    isDragging 
-
-                      ? "border-zinc-900 dark:border-zinc-100 bg-[#FAF9F7] dark:bg-zinc-800/40" 
-
-                      : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-[#FAF8F5]/40 dark:bg-zinc-950/30"
-
-                  )}
-
-                >
-
-                  <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.xlsx" onChange={handleFileSelect} className="hidden" />
-
-                  <div className="w-12 h-12 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-
-                    <UploadCloud size={24} />
-
-                  </div>
-
-                  <div>
-
-                    <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-
-                      Haga clic para subir archivos o arrástrelos aquí
-
-                    </p>
-
-                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
-
-                      Facturas de proveedor, tickets, certificados de asistencia o documentos justificativos
-
-                    </p>
-
-                  </div>
-
-                </div>
-
-              )}
+              {/* Documentos seleccionados pendientes de procesar */}
 
 
 
@@ -3584,36 +3868,27 @@ export function ViewProcesar({
               )}
 
               {/* Alerta si faltan documentos obligatorios en el expediente seleccionado */}
-
               {tieneFicheroOExpediente && !tieneDocumentosObligatorios && casoDetalle?.errores_obligatorios && (
-
                 <div className="p-3.5 rounded-md bg-red-50/90 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-800 dark:text-red-200 space-y-1 animate-fade-in">
-
                   <div className="flex items-center gap-2 font-bold text-red-900 dark:text-red-100">
-
                     <AlertTriangle size={15} className="text-red-600 dark:text-red-400 shrink-0" />
-
-                    <span>Faltan documentos obligatorios para tramitar este expediente:</span>
-
+                    <span>Faltan requisitos obligatorios para tramitar este expediente:</span>
                   </div>
 
-                  <ul className="list-disc list-inside pl-5 space-y-0.5 text-[11.5px] text-red-700 dark:text-red-300">
-
+                  <ul 
+                    style={{ margin: '6px 0 8px 24px', paddingLeft: '4px', listStyleType: 'disc' }}
+                    className="space-y-1 text-[11.5px] text-red-700 dark:text-red-300"
+                  >
                     {casoDetalle.errores_obligatorios.map((err: string, i: number) => (
-
-                      <li key={i}>{err}</li>
-
+                      <li key={i} style={{ paddingLeft: '4px' }}>{err}</li>
                     ))}
-
                   </ul>
 
                   <p className="text-[11px] text-red-600 dark:text-red-400 pt-1 font-medium">
-
-                    No es posible continuar al Paso 3 hasta adjuntar todos los documentos obligatorios requeridos.
-
+                    No es posible continuar con la liquidación hasta cumplimentar o aportar todos los requisitos preceptivos.
                   </p>
 
-                  <div className="pt-2">
+                  <div className="pt-2 flex items-center flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => inputAdjuntarDocRef.current?.click()}
@@ -3625,12 +3900,25 @@ export function ViewProcesar({
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-red-700 shadow-xs cursor-pointer transition-all"
                     >
                       <Plus size={13} style={{ color: '#ffffff' }} />
-                      <span style={{ color: '#ffffff' }}>Adjuntar documentos faltantes</span>
+                      <span style={{ color: '#ffffff' }}>Adjuntar documentos</span>
                     </button>
+                    {casoDetalle.errores_obligatorios.some((e: string) => /datos personales/i.test(e)) && (
+                      <button
+                        type="button"
+                        onClick={() => abrirEditorArchivo('DatosPersonales.txt')}
+                        style={{
+                          backgroundColor: '#176B52',
+                          color: '#ffffff',
+                          border: 'none',
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-[#125842] shadow-xs cursor-pointer transition-all"
+                      >
+                        <Edit3 size={13} style={{ color: '#ffffff' }} />
+                        <span style={{ color: '#ffffff' }}>Editar Hoja de Datos Personales</span>
+                      </button>
+                    )}
                   </div>
-
                 </div>
-
               )}
 
             </div>
@@ -5524,15 +5812,6 @@ export function ViewProcesar({
                       Anexo II de Aprobación de Gasto Oficial Generado
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleVerDocumento('02_Anexo_II_Aprobacion_Gasto.pdf')}
-                    className="btn btn-outline btn-sm"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                  >
-                    <FileText size={13} />
-                    <span>Ver Anexo II (Aprobación Gasto)</span>
-                  </button>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
@@ -7382,31 +7661,54 @@ export function ViewProcesar({
 
                         {/* PARTIDA 4: INSCRIPCIÓN Y CUOTAS DE CONGRESO */}
 
-                        {showInscripcion && (
+                        {showInscripcion && (() => {
+                          const esReembolsableInsc = Boolean(inscripcion.reembolsable_al_investigador);
+                          const congresoNombre = result?.extraccion?.inscripcion?.nombre_congreso || result?.extraccion?.comision?.motivo || 'Congreso / Jornadas Oficiales';
+                          const importeTotalInsc = Number(inscripcion.importe_total ?? inscripcion.importe ?? 375.0);
+                          const importeReembolsoInsc = esReembolsableInsc ? Number(inscripcion.importe_reembolsable ?? importeTotalInsc) : 0;
 
-                          <div className="space-y-4 pt-2">
+                          return (
+                            <div className="space-y-4 pt-2">
 
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
 
-                              <div className="flex items-center gap-2.5">
+                                <div className="flex items-center gap-2.5">
 
-                                <div className="w-9 h-9 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                  <div className="w-9 h-9 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[#176B52] dark:text-[#86EFAC] flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-xs">
 
-                                  <Building2 size={18} />
+                                    <Building2 size={18} />
+
+                                  </div>
+
+                                  <div>
+
+                                    <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+
+                                      Inscripción y Matrícula Oficial al Congreso
+
+                                    </h4>
+
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+
+                                      Transferencia de Conocimiento · Imputación a Proyecto SGTRI
+
+                                    </span>
+
+                                  </div>
 
                                 </div>
 
-                                <div>
+                                <div className="flex items-center gap-2">
 
-                                  <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                                  <span className="text-xs px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-medium border border-zinc-200 dark:border-zinc-700">
 
-                                    Inscripción y Matrícula Oficial al Congreso
+                                    Factura: {importeTotalInsc.toFixed(2)} €
 
-                                  </h4>
+                                  </span>
 
-                                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                  <span className="text-sm font-mono font-bold px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
 
-                                    Transferencia de Conocimiento · Imputación a Proyecto SGTRI
+                                    {esReembolsableInsc ? `${importeReembolsoInsc.toFixed(2)} €` : '0,00 € a transferir'}
 
                                   </span>
 
@@ -7414,109 +7716,99 @@ export function ViewProcesar({
 
                               </div>
 
-                              <div className="flex items-center gap-2">
 
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono font-medium border border-zinc-200 dark:border-zinc-700">
 
-                                  Factura: {(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €
+                              <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-4 shadow-xs text-xs">
 
-                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-                                <span className="text-sm font-mono font-bold px-3 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 shadow-xs">
+                                  <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
 
-                                  {inscripcion.reembolsable_al_investigador ? `${(inscripcion.importe_reembolsable || 0).toFixed(2)} €` : '0,00 € a transferir'}
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
 
-                                </span>
+                                      Actividad Científica
+
+                                    </span>
+
+                                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 block">
+
+                                      {congresoNombre}
+
+                                    </span>
+
+                                  </div>
+
+
+
+                                  <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+
+                                      Modalidad de Pago
+
+                                    </span>
+
+                                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 block">
+
+                                      {esReembolsableInsc ? 'Personal Investigador / Tarjeta' : 'Tarjeta Institucional UEx'}
+
+                                    </span>
+
+                                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+
+                                      {esReembolsableInsc ? 'Abonado con fondos particulares del comisionado' : 'Abono centralizado por la Universidad'}
+
+                                    </span>
+
+                                  </div>
+
+
+
+                                  <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
+
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
+
+                                      Efecto en Nómina / Transferencia
+
+                                    </span>
+
+                                    <span className="font-bold font-mono text-zinc-900 dark:text-zinc-100 block">
+
+                                      {esReembolsableInsc ? `${importeReembolsoInsc.toFixed(2)} € a abonar al interesado` : '0,00 € a abonar al interesado'}
+
+                                    </span>
+
+                                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
+
+                                      {esReembolsableInsc ? 'Gasto adelantado por el investigador (reembolsable)' : 'Gasto no adelantado con fondos particulares'}
+
+                                    </span>
+
+                                  </div>
+
+                                </div>
+
+
+
+                                <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
+
+                                  {esReembolsableInsc ? (
+                                    <>
+                                      La cuota de <strong>{importeTotalInsc.toFixed(2)} €</strong> se encuentra justificada documentalmente mediante factura oficial emitida a nombre de la <strong>Universidad de Extremadura (CIF Q1018001F)</strong> y acreditada mediante cargo bancario/tarjeta del investigador. Procede su reembolso e inclusión íntegra en la transferencia de la liquidación de la comisión de servicio.
+                                    </>
+                                  ) : (
+                                    <>
+                                      La cuota de <strong>{importeTotalInsc.toFixed(2)} €</strong> se encuentra justificada documentalmente mediante factura oficial emitida a nombre de la <strong>Universidad de Extremadura (CIF Q1018001F)</strong> e imputada a la partida de congresos del proyecto. No procede su abono en la nómina del comisionado al haber sido satisfecha de forma directa y centralizada por la Universidad.
+                                    </>
+                                  )}
+
+                                </div>
 
                               </div>
 
                             </div>
-
-
-
-                            <div className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-6 space-y-4 shadow-xs text-xs">
-
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                                <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
-
-                                  <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
-
-                                    Actividad Científica
-
-                                  </span>
-
-                                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block">
-
-                                    Jornadas de Ingeniería del Software y BD (JISBD)
-
-                                  </span>
-
-                                </div>
-
-
-
-                                <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
-
-                                  <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
-
-                                    Modalidad de Pago
-
-                                  </span>
-
-                                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 block">
-
-                                    Tarjeta Institucional UEx
-
-                                  </span>
-
-                                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
-
-                                    Abono centralizado por la Universidad
-
-                                  </span>
-
-                                </div>
-
-
-
-                                <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/60">
-
-                                  <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-1">
-
-                                    Efecto en Nómina / Transferencia
-
-                                  </span>
-
-                                  <span className="font-bold font-mono text-zinc-900 dark:text-zinc-100 block">
-
-                                    0,00 € a abonar al interesado
-
-                                  </span>
-
-                                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 block">
-
-                                    Gasto no adelantado con fondos particulares
-
-                                  </span>
-
-                                </div>
-
-                              </div>
-
-
-
-                              <div className="p-3.5 rounded-md bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/70 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-
-                                La cuota de <strong>{(inscripcion.importe_total || inscripcion.importe || 475.0).toFixed(2)} €</strong> se encuentra justificada documentalmente mediante factura oficial emitida a nombre de la <strong>Universidad de Extremadura (CIF Q1018001F)</strong> e imputada a la partida de congresos del proyecto. No procede su abono en la nómina del comisionado al haber sido satisfecha de forma directa y centralizada por la Universidad.
-
-                              </div>
-
-                            </div>
-
-                          </div>
-
-                        )}
+                          );
+                        })()}
 
 
 
@@ -8897,6 +9189,21 @@ export function ViewProcesar({
 
               {/* Acciones de la Ventana */}
               <div className="flex items-center gap-2 shrink-0">
+                {(['xlsx', 'xls', 'csv', 'txt', 'tsv'].includes((docEnVisor.nombre || '').split('.').pop()?.toLowerCase() || '') || docEnVisor.tipo === 'xlsx' || docEnVisor.tipo === 'texto') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nom = docEnVisor.nombre;
+                      setDocEnVisor(null);
+                      abrirEditorArchivo(nom);
+                    }}
+                    className="btn btn-primary btn-xs flex items-center gap-1.5 bg-[#176B52] hover:bg-[#125842] text-white font-semibold px-3 py-1.5 rounded-lg border-none cursor-pointer shadow-xs transition-all"
+                    title="Editar directamente el contenido de este archivo"
+                  >
+                    <Edit3 size={13} />
+                    <span>Editar Archivo</span>
+                  </button>
+                )}
                 <a
                   href={docEnVisor.download_url || `/api/caso/${encodeURIComponent(result?.caso_id || casoSel || '')}/archivo/${encodeURIComponent(docEnVisor.nombre)}?download=1`}
                   download={docEnVisor.nombre}
@@ -9423,6 +9730,17 @@ export function ViewProcesar({
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Modal Editor Oficial de Archivos (.xlsx y .txt) */}
+      {editorArchivoModalOpen && (
+        <ModalEditorDatosPersonales
+          isOpen={editorArchivoModalOpen}
+          onClose={() => setEditorArchivoModalOpen(false)}
+          casoId={result?.caso_id || casoSel || ''}
+          archivoNombre={archivoParaEditar}
+          onGuardado={handleArchivoGuardado}
+        />
       )}
 
     </div>

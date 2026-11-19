@@ -71,6 +71,19 @@
   flex-shrink: 0;
 }
 
+.uex-brand-logo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.dark .uex-brand-logo {
+  background-color: rgba(255, 255, 255, 0.92);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .uex-brand-info {
   display: flex;
   flex-direction: column;

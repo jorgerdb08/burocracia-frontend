@@ -1,18 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Scale, Send, Plus, History, X, Trash2, Sparkles, Bot, Zap, CheckCircle2 } from 'lucide-react';
+import { Bot, Send, Plus, History, X, Trash2, CheckCircle2, AlertCircle, ArrowLeft, MessageSquare } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  provider?: string;
+  model?: string;
+  error?: boolean;
 }
 
 interface ChatSession {
   id: string;
   title: string;
   messages: Message[];
-  model: string;
+  model: 'gemini' | 'groq';
   updatedAt: number;
 }
 
@@ -29,31 +32,42 @@ export function ChatWidget({
   externalOpen, 
   onToggleOpen 
 }: { 
-  currentView: string;
-  externalOpen?: boolean;
+  currentView: string; 
+  externalOpen?: boolean; 
   onToggleOpen?: (open: boolean) => void;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
-
   const setIsOpen = (val: boolean) => {
-    setInternalOpen(val);
     if (onToggleOpen) onToggleOpen(val);
+    else setInternalOpen(val);
   };
 
-  const [selectedModel, setSelectedModel] = useState<'gemini' | 'gpt-oss'>('gemini');
-
+  const [selectedModel, setSelectedModel] = useState<'gemini' | 'groq'>('gemini');
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    const saved = localStorage.getItem('burocracia_chat_sessions') || localStorage.getItem('gcia_chat_sessions');
+    const saved = localStorage.getItem('burocracia_chat_sessions');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try { return JSON.parse(saved); } catch (e) { }
     }
     return [{
       id: 'default',
       title: 'Consulta Normativa UEx',
       messages: [{ 
         role: 'assistant', 
-        content: '👋 **Bienvenido/a al Asistente Normativo y Fiscal de BurocracIA (UEx - SGTRI).**\n\nEstoy conectado con **Google Gemini 2.5 Flash** y capacitado en la normativa oficial de la Universidad de Extremadura:\n- **Baremos de dietas y manutención** (Decreto 42/2025: 102,56 €/día; 51,28 € comida/cena).\n- **Kilometraje en vehículo particular** (0,26 €/km y peajes/parking).\n- **Límites de hotel y exención de IRPF** (102,56 € UEx y 65,97 € límite fiscal Grupo 2).\n- **Pagos a proveedores y honorarios** (Modelo M-03 con 15 % IRPF).\n- **Instrucciones para tramitar** expedientes con BurocracIA y el agente liquidador.\n\n¿En qué podemos orientarle hoy?' 
+        content: `👋 ¡Bienvenido/a al **Asistente Normativo y Fiscal de BurocracIA** (UEx – SGTRI).
+
+Estoy capacitado en la normativa oficial de la Universidad de Extremadura:
+- **Baremos de dietas y manutención** (Decreto 42/2025: 102,56 €/día; 51,28 € comida/cena).
+- **Kilometraje en vehículo particular** (0,26 €/km y peajes/parking).
+- **Límites de hotel y exención de IRPF** (102,56 € UEx y 65,97 € límite fiscal Grupo 2).
+- **Pagos a proveedores y honorarios** (Modelo M-03 con 15 % IRPF).
+- **Instrucciones para tramitar** expedientes con BurocracIA y el agente liquidador.
+
+Puede alternar entre **Google Gemini 2.5 Flash** y **Groq LPU (GPT-OSS 120B)** desde el selector superior.
+
+¿En qué podemos orientarle hoy?`,
+        provider: 'Google Gemini',
+        model: 'gemini-2.5-flash'
       }],
       model: 'gemini',
       updatedAt: Date.now()
@@ -61,54 +75,103 @@ export function ChatWidget({
   });
 
   const [currentSessionId, setCurrentSessionId] = useState<string>('default');
-  const [showHistory, setShowHistory] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const currentSession = sessions.find(s => s.id === currentSessionId) || sessions[0];
   const messages = currentSession?.messages || [];
 
+  // Sincronizar sesiones en localStorage
   useEffect(() => {
-    localStorage.setItem('burocracia_chat_sessions', JSON.stringify(sessions));
+    try {
+      localStorage.setItem('burocracia_chat_sessions', JSON.stringify(sessions));
+    } catch (e) { }
   }, [sessions]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Auto-scroll
   useEffect(() => {
-    if (isOpen) scrollToBottom();
-  }, [messages, isOpen]);
+    if (isOpen && !showHistory) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, loading, isOpen, showHistory]);
+
+  // Autofocus en el input al abrir el chat
+  useEffect(() => {
+    if (isOpen && !showHistory) {
+      setTimeout(() => inputRef.current?.focus(), 150);
+    }
+  }, [isOpen, showHistory]);
+
+  // Cierre automático al hacer clic fuera del chat
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDownOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (chatWindowRef.current && !chatWindowRef.current.contains(target)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDownOutside);
+    document.addEventListener('touchstart', handlePointerDownOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDownOutside);
+      document.removeEventListener('touchstart', handlePointerDownOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
 
   const enviarMensajeTexto = async (texto: string) => {
-    const msgText = texto.trim();
-    if (!msgText || loading) return;
+    if (!texto.trim() || loading) return;
 
-    const userMsg: Message = { role: 'user', content: msgText };
-    const updatedMessages = [...messages, userMsg];
-    
+    const userText = texto.trim();
+    setInput('');
+
+    const newMessages: Message[] = [
+      ...messages,
+      { role: 'user', content: userText }
+    ];
+
+    let newTitle = currentSession.title;
+    if (currentSession.messages.length <= 1) {
+      newTitle = userText.slice(0, 30) + (userText.length > 30 ? '...' : '');
+    }
+
     setSessions(prev => prev.map(s => {
       if (s.id === currentSessionId) {
         return {
           ...s,
-          messages: updatedMessages,
-          title: s.messages.length <= 1 ? msgText.slice(0, 32) + '...' : s.title,
+          title: newTitle,
+          messages: newMessages,
           updatedAt: Date.now()
         };
       }
       return s;
     }));
 
-    setInput('');
     setLoading(true);
+    const updatedMessages = newMessages;
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages,
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           model: selectedModel,
           current_view: currentView
         })
@@ -116,28 +179,45 @@ export function ChatWidget({
       const data = await res.json();
       
       let botResponse = 'Lo sentimos, hubo un problema al procesar la respuesta con el servicio institucional.';
+      let isError = false;
+      let respProvider = selectedModel === 'groq' ? 'Groq LPU' : 'Google Gemini';
+      let respModel = selectedModel === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-2.5-flash';
+
       if (data.ok && data.response) {
         botResponse = data.response;
+        if (data.provider) respProvider = data.provider;
+        if (data.model) respModel = data.model;
       } else if (data.error) {
-        botResponse = `Error: ${data.error}`;
+        botResponse = data.error;
+        isError = true;
       }
 
       setSessions(prev => prev.map(s => {
         if (s.id === currentSessionId) {
           return {
             ...s,
-            messages: [...updatedMessages, { role: 'assistant', content: botResponse }],
+            messages: [...updatedMessages, { 
+              role: 'assistant', 
+              content: botResponse,
+              provider: respProvider,
+              model: respModel,
+              error: isError
+            }],
             updatedAt: Date.now()
           };
         }
         return s;
       }));
-    } catch {
+    } catch (err: any) {
       setSessions(prev => prev.map(s => {
         if (s.id === currentSessionId) {
           return {
             ...s,
-            messages: [...updatedMessages, { role: 'assistant', content: 'No se pudo contactar con el servicio de IA de la UEx. Verifique que el servidor backend esté en ejecución.' }],
+            messages: [...updatedMessages, { 
+              role: 'assistant', 
+              content: 'No se pudo contactar con el servidor backend de BurocracIA. Compruebe que el servicio Flask esté en ejecución en http://localhost:5000.',
+              error: true
+            }],
             updatedAt: Date.now()
           };
         }
@@ -154,12 +234,15 @@ export function ChatWidget({
 
   const handleNewChat = (model = selectedModel) => {
     const newId = Date.now().toString();
+    const providerLabel = model === 'groq' ? 'Groq LPU (GPT-OSS 120B)' : 'Google Gemini 2.5 Flash';
     const newSession: ChatSession = {
       id: newId,
       title: 'Nueva Consulta',
       messages: [{ 
         role: 'assistant', 
-        content: `¡Hola! Soy el asistente virtual de la UEx operando con **${model === 'gemini' ? 'Google Gemini 2.5 Flash' : 'Groq LPU'}**. Pregúntame cualquier duda sobre normativas de dietas, kilometraje, límites de IRPF o justificación de tus gastos.` 
+        content: `¡Hola! Soy el asistente virtual de la UEx operando con **${providerLabel}**.\n\nPuedo resolver dudas sobre el Decreto 42/2025, justificación de dietas, kilometraje, límites de IRPF o el funcionamiento del agente liquidador.`,
+        provider: model === 'groq' ? 'Groq LPU' : 'Google Gemini',
+        model: model === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-2.5-flash'
       }],
       model: model,
       updatedAt: Date.now()
@@ -184,187 +267,240 @@ export function ChatWidget({
   };
 
   return (
-    <div className="chat-root" style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 99999 }}>
+    <div className="chat-root">
       
-      {/* Botón flotante prominente (FAB) */}
+      {/* Botón flotante circular institucional (FAB) */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
-          style={{
-            background: 'linear-gradient(135deg, #176B52 0%, #0F4C3A 100%)',
-            color: '#FFFFFF',
-            border: '1.5px solid rgba(255, 255, 255, 0.25)',
-          }}
-          className="flex items-center gap-2.5 px-4 py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer font-semibold text-xs tracking-wide group"
-          title="Abrir Asistente Virtual Inteligente UEx (Consultas Normativas)"
+          onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
+          className="chat-fab-btn"
+          title="Abrir Asistente BurocracIA"
+          aria-label="Abrir Asistente BurocracIA"
           type="button"
         >
-          <div className="relative flex items-center justify-center">
-            <Sparkles size={18} style={{ color: '#FBBF24' }} className="group-hover:rotate-12 transition-transform" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-300 rounded-full animate-ping" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-white" />
-          </div>
-          <span className="font-bold tracking-tight">Asistente BurocracIA</span>
-          <span className="hidden sm:inline text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/20 text-emerald-100 font-semibold">
-            Gemini 2.5 Flash
-          </span>
+          <Bot size={26} />
         </button>
       )}
 
       {/* Ventana de chat desplegada */}
       {isOpen && (
         <div 
-          className="chat-window bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in"
-          style={{
-            width: '450px',
-            maxWidth: 'calc(100vw - 32px)',
-            height: '610px',
-            maxHeight: 'calc(100vh - 70px)'
-          }}
+          ref={chatWindowRef}
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="chat-window"
         >
-          {/* Header Institucional Pulido */}
-          <div 
-            style={{ background: 'linear-gradient(135deg, #176B52 0%, #115340 100%)' }}
-            className="p-3.5 text-white flex items-center justify-between shadow-xs select-none border-b border-emerald-800/40"
-          >
-            <div className="flex items-center gap-2.5">
-              <button 
-                onClick={() => setShowHistory(!showHistory)}
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: 'none' }}
-                className="p-1.5 rounded-lg hover:bg-white/25 text-white transition-colors cursor-pointer"
-                title="Historial de consultas"
-                type="button"
-              >
-                <History size={15} />
-              </button>
-              
-              <div className="flex items-center gap-2">
-                <div 
-                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.18)' }}
-                  className="p-1.5 rounded-lg text-white flex items-center justify-center"
-                >
-                  <Scale size={16} />
+          {/* Cabecera institucional moderna */}
+          <div className="chat-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#FFFFFF'
+              }}>
+                <Bot size={18} />
+              </div>
+              <div style={{ lineHeight: 1.25 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#FFFFFF' }}>
+                  <span>Asistente BurocracIA</span>
                 </div>
-                <div>
-                  <div className="font-bold text-xs leading-tight flex items-center gap-1.5">
-                    <span>Asistente BurocracIA</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" title="Servicio activo" />
-                  </div>
-                  <div className="text-[10.5px] text-emerald-100/90 flex items-center gap-1 mt-0.5">
-                    <span>SGTRI</span>
-                    <span>·</span>
-                    <span>Decreto 42/2025</span>
-                  </div>
+                <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2 }}>
+                  SGTRI · Sede Electrónica UEx
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-1.5">
-              {/* Badge indicativo del modelo en uso */}
-              <div 
-                style={{ backgroundColor: 'rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.2)' }}
-                className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-emerald-100 font-semibold"
-                title="Modelo de lenguaje activo para inferencia y fiscalización"
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button 
+                onClick={() => setShowHistory(!showHistory)}
+                type="button"
+                className="chat-header-btn"
+                title={showHistory ? "Volver a la conversación" : "Historial de consultas"}
               >
-                <Zap size={11} className="text-amber-300" />
-                <span>{selectedModel === 'gemini' ? 'Gemini 2.5 Flash' : 'Groq LPU'}</span>
-              </div>
+                <History size={15} />
+              </button>
 
               <button 
                 onClick={() => handleNewChat()} 
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: 'none' }}
-                className="p-1.5 rounded-lg hover:bg-white/25 text-white transition-colors cursor-pointer"
-                title="Nueva Consulta"
                 type="button"
+                className="chat-header-btn"
+                title="Nueva consulta"
               >
                 <Plus size={15} />
               </button>
               
               <button 
                 onClick={() => setIsOpen(false)} 
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: 'none' }}
-                className="p-1.5 rounded-lg hover:bg-white/25 text-white transition-colors cursor-pointer"
-                title="Minimizar chat"
                 type="button"
+                className="chat-header-btn"
+                title="Cerrar asistente"
               >
                 <X size={15} />
               </button>
             </div>
           </div>
 
-          {/* Selector de Modelo y Estado */}
-          <div className="px-3.5 py-1.5 bg-emerald-50/70 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between text-[11px] text-zinc-600 dark:text-zinc-300">
-            <div className="flex items-center gap-1.5 font-medium">
-              <Bot size={13} className="text-[#176B52]" />
-              <span>Modelo activo:</span>
-              <span className="font-bold text-[#176B52] dark:text-emerald-400">
-                {selectedModel === 'gemini' ? 'Google Gemini 2.5 Flash' : 'Groq LPU (Llama-3.3 70B)'}
-              </span>
+          {/* Subcabecera: Selector de modelo con alto contraste */}
+          <div className="chat-subbar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>MOTOR:</span>
+              <select
+                value={selectedModel}
+                onChange={(e) => {
+                  const m = e.target.value as 'gemini' | 'groq';
+                  setSelectedModel(m);
+                  handleNewChat(m);
+                }}
+                className="chat-model-select"
+                title="Seleccionar motor de inteligencia artificial"
+              >
+                <option value="gemini">Google Gemini 2.5 Flash</option>
+                <option value="groq">Groq LPU (GPT-OSS 120B)</option>
+              </select>
             </div>
-            <select
-              value={selectedModel}
-              onChange={(e) => {
-                const m = e.target.value as 'gemini' | 'gpt-oss';
-                setSelectedModel(m);
-                handleNewChat(m);
-              }}
-              className="text-[10px] px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 cursor-pointer focus:outline-none"
-              title="Cambiar motor de inferencia"
-            >
-              <option value="gemini">Gemini 2.5 Flash (Predeterminado)</option>
-              <option value="gpt-oss">Groq LPU (Respaldo ultrarrápido)</option>
-            </select>
           </div>
 
           {/* Historial o Conversación */}
           {showHistory ? (
-            <div className="flex-1 overflow-y-auto p-3.5 space-y-2 bg-zinc-50 dark:bg-zinc-950/40">
-              <div className="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
-                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Historial de Consultas</span>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--bg-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <History size={16} style={{ color: '#176B52' }} />
+                  <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>Historial de Consultas</span>
+                </div>
                 <button
+                  type="button"
                   onClick={() => setShowHistory(false)}
-                  className="text-xs text-[#176B52] hover:underline cursor-pointer font-semibold"
+                  className="chat-back-btn"
                 >
-                  Volver al chat
+                  <ArrowLeft size={14} />
+                  <span>Volver al chat</span>
                 </button>
               </div>
-              {sessions.map(s => (
-                <div 
-                  key={s.id}
-                  onClick={() => { setCurrentSessionId(s.id); setShowHistory(false); }}
-                  className={`p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-all ${
-                    s.id === currentSessionId 
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 font-semibold text-[#176B52] dark:text-emerald-300' 
-                      : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-zinc-700 dark:text-zinc-300'
-                  }`}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {sessions.map(s => {
+                  const isCurrent = s.id === currentSessionId;
+                  return (
+                    <div 
+                      key={s.id}
+                      onClick={() => { setCurrentSessionId(s.id); setShowHistory(false); }}
+                      className={'chat-history-card' + (isCurrent ? ' current' : '')}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0, paddingRight: 8 }}>
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 8,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          backgroundColor: isCurrent ? '#176B52' : 'var(--bg-secondary)',
+                          color: isCurrent ? '#FFFFFF' : 'var(--text-secondary)'
+                        }}>
+                          <MessageSquare size={14} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <span style={{
+                            display: 'block',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontSize: 12.5,
+                            fontWeight: isCurrent ? 700 : 500,
+                            color: isCurrent ? '#176B52' : 'var(--text-primary)'
+                          }}>
+                            {s.title || 'Consulta'}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, fontSize: 11, color: 'var(--text-muted)' }}>
+                            <span>{new Date(s.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>•</span>
+                            <span style={{ fontWeight: 600, color: '#176B52' }}>
+                              {s.model === 'groq' ? 'Groq LPU' : 'Gemini'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={(e) => handleDeleteChat(s.id, e)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-faint)',
+                          padding: 6,
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = '#DC2626')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-faint)')}
+                        title="Eliminar sesión"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Iniciar nueva consulta */}
+              <div style={{ paddingTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => handleNewChat()}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: '1px dashed var(--border-hover)',
+                    backgroundColor: 'var(--bg-surface)',
+                    color: '#176B52',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#176B52';
+                    e.currentTarget.style.backgroundColor = '#ECFDF5';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-hover)';
+                    e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
+                  }}
                 >
-                  <div className="truncate pr-2">
-                    <span className="truncate">{s.title || 'Consulta'}</span>
-                    <span className="block text-[10px] text-zinc-400 font-normal">{new Date(s.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                  <button 
-                    onClick={(e) => handleDeleteChat(s.id, e)}
-                    className="text-zinc-400 hover:text-red-500 p-1 cursor-pointer transition-colors"
-                    title="Eliminar sesión"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
+                  <Plus size={14} />
+                  <span>Iniciar nueva consulta</span>
+                </button>
+              </div>
             </div>
           ) : (
             <>
               {/* Sugerencias Rápidas / Atajos */}
-              <div className="px-3 py-2 bg-zinc-50/80 dark:bg-zinc-950/60 border-b border-zinc-200/70 dark:border-zinc-800/80 overflow-x-auto no-scrollbar flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider pl-0.5">
-                  Atajos:
+              <div className="chat-shortcuts-bar">
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
+                  ATAJOS:
                 </span>
                 {PREGUNTAS_SUGERIDAS.map((item, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => enviarMensajeTexto(item.prompt)}
-                    className="text-[11px] px-2.5 py-1 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-[#176B52] text-zinc-700 dark:text-zinc-300 hover:text-[#176B52] dark:hover:text-emerald-400 transition-all cursor-pointer shrink-0 shadow-2xs font-medium hover:bg-emerald-50/50"
+                    className="chat-shortcut-chip"
                   >
                     {item.etiqueta}
                   </button>
@@ -372,38 +508,73 @@ export function ChatWidget({
               </div>
 
               {/* Mensajes */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-zinc-900 text-xs">
+              <div className="chat-body">
                 {messages.map((m, i) => (
-                  <div key={i} className={`flex w-full ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={i} style={{ display: 'flex', width: '100%', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-start', gap: 10 }}>
                     {m.role === 'assistant' && (
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-[#176B52] dark:text-emerald-300 flex items-center justify-center mr-2 shrink-0 mt-0.5 shadow-2xs">
-                        <Scale size={14} />
+                      <div style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        backgroundColor: '#176B52',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        marginTop: 2
+                      }}>
+                        <Bot size={15} />
                       </div>
                     )}
-                    <div 
-                      className={`max-w-[85%] rounded-2xl p-3.5 leading-relaxed ${
-                        m.role === 'user' 
-                          ? 'bg-[#176B52] text-white rounded-br-xs shadow-xs font-normal' 
-                          : 'bg-zinc-50 dark:bg-zinc-800/70 text-zinc-800 dark:text-zinc-200 rounded-bl-xs border border-zinc-200/80 dark:border-zinc-700/70 shadow-xs'
-                      }`}
-                    >
+                    <div className={m.role === 'user' ? 'chat-bubble-user' : (m.error ? 'chat-bubble-error' : 'chat-bubble-assistant')}>
                       {m.role === 'assistant' && (
-                        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-zinc-200/60 dark:border-zinc-700/60 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
-                          <span>Asistente Oficial UEx</span>
-                          <span className="font-mono text-emerald-600 dark:text-emerald-400">Gemini 2.5 Flash</span>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingBottom: 6,
+                          marginBottom: 8,
+                          borderBottom: '1px solid var(--border-color)',
+                          fontSize: 10.5
+                        }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>
+                            {m.error ? 'Incidencia del servicio' : 'Asistente BurocracIA'}
+                          </span>
+                          <span style={{
+                            fontFamily: 'monospace',
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            backgroundColor: m.error ? '#FEE2E2' : '#ECFDF5',
+                            color: m.error ? '#B91C1C' : '#047857',
+                            border: `1px solid ${m.error ? '#FCA5A5' : '#A7F3D0'}`
+                          }}>
+                            {m.model ? `${m.provider ? m.provider + ' · ' : ''}${m.model}` : (selectedModel === 'groq' ? 'Groq · GPT-OSS 120B' : 'Google Gemini · 2.5 Flash')}
+                          </span>
                         </div>
                       )}
+
+                      {m.error && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#DC2626', fontWeight: 600, fontSize: 11 }}>
+                          <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                          <span>Error en la consulta:</span>
+                        </div>
+                      )}
+
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          p: ({ node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
-                          ul: ({ node, ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
-                          ol: ({ node, ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
-                          li: ({ node, ...props }) => <li className="leading-snug" {...props} />,
-                          strong: ({ node, ...props }) => <strong className="font-bold text-inherit" {...props} />,
-                          table: ({ node, ...props }) => <div className="overflow-x-auto my-2"><table className="w-full text-[11px] border-collapse border border-zinc-300 dark:border-zinc-700" {...props} /></div>,
-                          th: ({ node, ...props }) => <th className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 bg-zinc-200/60 dark:bg-zinc-700/60 font-bold text-left" {...props} />,
-                          td: ({ node, ...props }) => <td className="border border-zinc-300 dark:border-zinc-700 px-2 py-1" {...props} />,
+                          p: ({ node, ...props }) => <p style={{ marginBottom: 8 }} {...props} />,
+                          ul: ({ node, ...props }) => <ul style={{ paddingLeft: 18, marginBottom: 8, listStyleType: 'disc' }} {...props} />,
+                          ol: ({ node, ...props }) => <ol style={{ paddingLeft: 18, marginBottom: 8, listStyleType: 'decimal' }} {...props} />,
+                          li: ({ node, ...props }) => <li style={{ marginBottom: 4 }} {...props} />,
+                          strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: 'inherit' }} {...props} />,
+                          table: ({ node, ...props }) => <div style={{ overflowX: 'auto', margin: '8px 0' }}><table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse', border: '1px solid var(--border-color)' }} {...props} /></div>,
+                          th: ({ node, ...props }) => <th style={{ border: '1px solid var(--border-color)', padding: '4px 8px', backgroundColor: 'var(--bg-secondary)', fontWeight: 700, textAlign: 'left' }} {...props} />,
+                          td: ({ node, ...props }) => <td style={{ border: '1px solid var(--border-color)', padding: '4px 8px' }} {...props} />,
+                          code: ({ node, ...props }) => <code style={{ padding: '2px 5px', borderRadius: 4, backgroundColor: 'var(--bg-secondary)', fontFamily: 'monospace', fontSize: 11 }} {...props} />,
                         }}
                       >
                         {m.content}
@@ -413,45 +584,78 @@ export function ChatWidget({
                 ))}
 
                 {loading && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-[#176B52] dark:text-emerald-300 flex items-center justify-center shrink-0 shadow-2xs">
-                      <Scale size={14} />
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      backgroundColor: '#176B52',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      marginTop: 2
+                    }}>
+                      <Bot size={15} />
                     </div>
-                    <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs flex items-center gap-2 border border-zinc-200 dark:border-zinc-700 animate-pulse">
-                      <Sparkles size={14} className="text-[#176B52] animate-spin" />
-                      <span>Google Gemini 2.5 Flash analizando normativa UEx...</span>
+                    <div className="chat-bubble-assistant" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#176B52', animation: 'pulse 1.5s infinite' }} />
+                      <span>
+                        {selectedModel === 'groq' 
+                          ? 'Groq LPU (GPT-OSS 120B) analizando normativa UEx...' 
+                          : 'Google Gemini 2.5 Flash analizando normativa UEx...'}
+                      </span>
                     </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Area */}
-              <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950/50">
+              {/* Campo de escritura y pie */}
+              <div className="chat-footer">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSend(); }} 
-                  className="flex items-center gap-2"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                 >
                   <input 
+                    ref={inputRef}
                     type="text" 
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    placeholder="Pregunte sobre dietas, km, IRPF o el agente..." 
-                    className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#176B52] shadow-2xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder="Consulte sobre dietas, km, IRPF, facturas o el agente..." 
+                    className="chat-input"
                   />
                   <button 
                     type="submit" 
                     disabled={!input.trim() || loading}
-                    style={{ backgroundColor: '#176B52', color: '#ffffff', border: 'none' }}
-                    className="p-2.5 rounded-xl text-white disabled:opacity-40 hover:bg-[#125842] transition-colors cursor-pointer shadow-xs shrink-0 flex items-center justify-center"
-                    title="Enviar consulta"
+                    className={'chat-send-btn ' + (input.trim() && !loading ? 'active' : 'disabled')}
+                    title={input.trim() ? "Enviar consulta" : "Escriba su consulta para enviar"}
                   >
-                    <Send size={14} />
+                    <Send size={16} />
                   </button>
                 </form>
-                <div className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center mt-1.5 flex items-center justify-center gap-1">
-                  <CheckCircle2 size={10} className="text-emerald-600" />
-                  <span>Motor activo: <strong>Google Gemini 2.5 Flash</strong> · Decreto 42/2025</span>
+                <div style={{
+                  fontSize: 10.5,
+                  color: 'var(--text-muted)',
+                  textAlign: 'center',
+                  marginTop: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  userSelect: 'none'
+                }}>
+                  <CheckCircle2 size={12} style={{ color: '#176B52', flexShrink: 0 }} />
+                  <span>
+                    Motor activo: <strong style={{ color: 'var(--text-primary)' }}>{selectedModel === 'groq' ? 'Groq LPU (GPT-OSS 120B)' : 'Google Gemini 2.5 Flash'}</strong> · Decreto 42/2025
+                  </span>
                 </div>
               </div>
             </>

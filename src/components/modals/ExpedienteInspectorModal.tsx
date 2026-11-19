@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  X, FileText, Download, Trash2, Plus, Loader2, Play
+  X, FileText, Download, Trash2, Plus, Loader2, Play, Edit3
 } from 'lucide-react';
 import { AlertErr } from '../ui/Alerts';
 import { Btn } from '../ui/Btn';
 import type { DetalleCaso } from '../../lib/types';
+import { ModalEditorDatosPersonales } from './ModalEditorDatosPersonales';
 
 export function ExpedienteInspectorModal({
   casoId,
@@ -20,6 +21,13 @@ export function ExpedienteInspectorModal({
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editorArchivoModalOpen, setEditorArchivoModalOpen] = useState(false);
+  const [archivoParaEditar, setArchivoParaEditar] = useState('');
+
+  const abrirEditorArchivo = (nombreArchivo: string) => {
+    setArchivoParaEditar(nombreArchivo);
+    setEditorArchivoModalOpen(true);
+  };
 
   const archivosValidos = useMemo(() => {
     return (detalle?.archivos || []).filter(a => {
@@ -216,6 +224,18 @@ export function ExpedienteInspectorModal({
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          {['xlsx', 'xls', 'csv', 'txt', 'tsv'].includes((archivo.name || '').split('.').pop()?.toLowerCase() || '') && (
+                            <button
+                              type="button"
+                              onClick={() => abrirEditorArchivo(archivo.name)}
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: '2px 7px', fontSize: '11px', color: '#176B52', borderColor: '#A7F3D0', backgroundColor: '#ECFDF5' }}
+                              title="Editar archivo directamente"
+                            >
+                              <Edit3 size={11} />
+                              <span>Editar</span>
+                            </button>
+                          )}
                           <a
                             href={`/api/caso/${casoId}/archivo/${encodeURIComponent(archivo.name)}`}
                             target="_blank"
@@ -346,6 +366,17 @@ export function ExpedienteInspectorModal({
         </div>
 
       </div>
+
+      {/* Editor Modal de Archivos (.xlsx y .txt) */}
+      {editorArchivoModalOpen && (
+        <ModalEditorDatosPersonales
+          isOpen={editorArchivoModalOpen}
+          onClose={() => setEditorArchivoModalOpen(false)}
+          casoId={casoId}
+          archivoNombre={archivoParaEditar}
+          onGuardado={() => cargarDetalle()}
+        />
+      )}
     </div>
   );
 }

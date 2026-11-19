@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Sun, Moon, Sparkles } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Sun, Moon, ChevronDown, Plane, GraduationCap, CreditCard, FolderArchive } from 'lucide-react'
 import { cn } from './lib/utils'
 import { ChatWidget } from './ChatWidget'
 import { ViewHeroLayout } from './components/views/ViewHeroLayout'
@@ -31,10 +31,50 @@ export default function App() {
     const v = params.get('view') as View;
     return (v && ['inicio', 'procesar', 'expedientes', 'lotes', 'honorarios', 'proveedores'].includes(v)) ? v : 'inicio';
   })
-  const [casoParam, setCaso]         = useState<string | undefined>()
-  const [templateParam, setTemplate] = useState<string | undefined>()
+  const [casoParam, setCaso]         = useState<string | undefined>(() => {
+    return new URLSearchParams(window.location.search).get('caso') || undefined;
+  })
+  const [templateParam, setTemplate] = useState<string | undefined>(() => {
+    return new URLSearchParams(window.location.search).get('template') || undefined;
+  })
   const [inspectCasoId, setInspectCasoId] = useState<string | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isTramitarOpen, setIsTramitarOpen] = useState(false)
+  const tramitarRef = useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = useRef<any>(null)
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsTramitarOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsTramitarOpen(false);
+    }, 220);
+  };
+
+  // Cerrar el desplegable de trámites al hacer clic fuera o pulsar Escape
+  useEffect(() => {
+    if (!isTramitarOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (tramitarRef.current && !tramitarRef.current.contains(e.target as Node)) {
+        setIsTramitarOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsTramitarOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [isTramitarOpen]);
 
   const irProcesar = (casoId?: string, tipoOrTemplate?: string) => {
     setCaso(casoId);
@@ -60,17 +100,13 @@ export default function App() {
             <button 
               onClick={() => setView('inicio')}
               className="uex-header-brand"
+              title="Ir a Inicio"
             >
-              <img src="/uex_emblem.svg" alt="UEx" style={{ height: '30px', width: 'auto', flexShrink: 0 }} />
-              <div style={{ display: 'flex', flexDirection: 'column', fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1.15, color: 'var(--color-navy)', textAlign: 'left' }}>
-                <span>UNIVERSIDAD</span>
-                <span>DE EXTREMADURA</span>
-              </div>
-              <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--border-color)', margin: '0 8px' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, textAlign: 'left' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-navy)', letterSpacing: '-0.01em' }}>BurocracIA</span>
-                <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)', fontWeight: 400 }}>SGTRI · Sede UEx</span>
-              </div>
+              <img 
+                src="/logo-uex.png" 
+                alt="Universidad de Extremadura" 
+                className="uex-brand-logo"
+              />
             </button>
             
             <nav className="uex-nav">
@@ -88,52 +124,167 @@ export default function App() {
                 Expedientes
               </button>
 
-              <button 
-                onClick={() => irProcesar()}
-                className={cn('uex-nav-link', view === 'procesar' && 'active')}
+              {/* Desplegable institucional: Nuevo trámite (Hover y Horizontal) */}
+              <div 
+                ref={tramitarRef} 
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                style={{ position: 'relative' }}
               >
-                Tramitar expediente
-              </button>
+                <button 
+                  type="button"
+                  onClick={() => setIsTramitarOpen(prev => !prev)}
+                  className={cn(
+                    'uex-nav-link',
+                    ['procesar', 'lotes', 'honorarios', 'proveedores'].includes(view) && 'active'
+                  )}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}
+                  aria-expanded={isTramitarOpen}
+                >
+                  <span>Nuevo trámite</span>
+                  <ChevronDown 
+                    size={14} 
+                    style={{ 
+                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)', 
+                      transform: isTramitarOpen ? 'rotate(180deg)' : 'none' 
+                    }} 
+                  />
+                </button>
 
-              <button 
-                onClick={() => setView('lotes')}
-                className={cn('uex-nav-link', view === 'lotes' && 'active')}
-              >
-                Lotes masivos
-              </button>
+                {isTramitarOpen && (
+                  <div 
+                    className="uex-dropdown-menu"
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      width: '740px',
+                      maxWidth: 'calc(100vw - 32px)',
+                      backgroundColor: 'var(--bg-surface)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '14px',
+                      boxShadow: '0 16px 36px -4px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+                      padding: '12px',
+                      zIndex: 100,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '10px'
+                    }}
+                  >
+                    {/* Tarjeta 1: Dietas y desplazamientos */}
+                    <button
+                      type="button"
+                      onClick={() => { irProcesar(undefined, 'dietas'); setIsTramitarOpen(false); }}
+                      className={cn('uex-dropdown-card', view === 'procesar' && 'active-card')}
+                    >
+                      <div style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 8,
+                        backgroundColor: 'rgba(23, 107, 82, 0.12)',
+                        color: '#176B52',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 10
+                      }}>
+                        <Plane size={18} />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3, lineHeight: 1.2 }}>
+                        Dietas y viajes
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                        Comisiones de servicio, kilometraje y alojamiento
+                      </span>
+                    </button>
 
-              <button 
-                onClick={() => setView('honorarios')}
-                className={cn('uex-nav-link', view === 'honorarios' && 'active')}
-              >
-                Honorarios IA
-              </button>
+                    {/* Tarjeta 2: Honorarios a terceros */}
+                    <button
+                      type="button"
+                      onClick={() => { setView('honorarios'); setIsTramitarOpen(false); }}
+                      className={cn('uex-dropdown-card', view === 'honorarios' && 'active-card')}
+                    >
+                      <div style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 8,
+                        backgroundColor: 'rgba(20, 33, 61, 0.1)',
+                        color: 'var(--color-navy)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 10
+                      }}>
+                        <GraduationCap size={18} />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3, lineHeight: 1.2 }}>
+                        Honorarios
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                        Conferencias, colaboraciones y retenciones IRPF
+                      </span>
+                    </button>
 
-              <button 
-                onClick={() => setView('proveedores')}
-                className={cn('uex-nav-link', view === 'proveedores' && 'active')}
-              >
-                Pago a Proveedores
-              </button>
+                    {/* Tarjeta 3: Pago a proveedores */}
+                    <button
+                      type="button"
+                      onClick={() => { setView('proveedores'); setIsTramitarOpen(false); }}
+                      className={cn('uex-dropdown-card', view === 'proveedores' && 'active-card')}
+                    >
+                      <div style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 8,
+                        backgroundColor: 'rgba(23, 79, 145, 0.1)',
+                        color: 'var(--color-blue-inst)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 10
+                      }}>
+                        <CreditCard size={18} />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3, lineHeight: 1.2 }}>
+                        Proveedores
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                        Facturas de compras con tarjeta o transferencia
+                      </span>
+                    </button>
+
+                    {/* Tarjeta 4: Tramitación por lotes */}
+                    <button
+                      type="button"
+                      onClick={() => { setView('lotes'); setIsTramitarOpen(false); }}
+                      className={cn('uex-dropdown-card', view === 'lotes' && 'active-card')}
+                    >
+                      <div style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 8,
+                        backgroundColor: 'rgba(57, 150, 109, 0.12)',
+                        color: '#39966D',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 10
+                      }}>
+                        <FolderArchive size={18} />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3, lineHeight: 1.2 }}>
+                        Lotes masivos
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                        Procesamiento simultáneo en carpetas de I+D
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </nav>
           </div>
 
           <div className="uex-header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => setIsChatOpen(prev => !prev)}
-              style={{
-                backgroundColor: isChatOpen ? '#125440' : '#176B52',
-                color: '#ffffff',
-                border: 'none',
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-xs hover:bg-[#125440] hover:brightness-110 cursor-pointer transition-all"
-              title="Abrir Asistente Normativo IA de la UEx"
-              type="button"
-            >
-              <Sparkles size={14} style={{ color: '#FBBF24' }} />
-              <span className="hidden sm:inline">Asistente BurocracIA</span>
-            </button>
-
             <button 
               onClick={() => setIsDark(!isDark)} 
               className="uex-theme-btn"

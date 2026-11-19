@@ -1404,7 +1404,7 @@ export function ViewLotesBatch() {
                   </div>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6', margin: 0 }}>
-                  Accede a los lotes que ya residen en el servidor (ej. <em>Cátedra Telefónica</em>). Podrás consultar las auditorías realizadas, visualizar los modelos oficiales PDF emitidos o descargar el archivo ZIP final.
+                  Accede a los lotes que ya residen en el servidor (ej. <em>Lote Demostración</em>). Podrás consultar las auditorías realizadas, visualizar los modelos oficiales PDF emitidos o descargar el archivo ZIP final.
                 </p>
               </div>
 

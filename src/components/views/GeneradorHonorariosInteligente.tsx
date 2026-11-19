@@ -9,6 +9,7 @@ import {
   RefreshCw, FileText, File, ExternalLink, Info, UserPlus, CreditCard, Wrench, FilePlus, Users
 } from 'lucide-react';
 import { fmtEur, cn } from '../../lib/utils';
+import { ModalEditorDatosPersonales } from '../modals/ModalEditorDatosPersonales';
 
 const getDecStatus = (val: any): 'confirmada' | 'no_confirmada' | 'pendiente' => {
   if (!val) return 'pendiente';
@@ -568,6 +569,13 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
   const [loadingDocVisor, setLoadingDocVisor] = useState<boolean>(false);
   const [errorDocVisor, setErrorDocVisor] = useState<string | null>(null);
   const [hojaExcelActiva, setHojaExcelActiva] = useState<number>(0);
+  const [editorArchivoModalOpen, setEditorArchivoModalOpen] = useState<boolean>(false);
+  const [archivoParaEditar, setArchivoParaEditar] = useState<string>('');
+
+  const abrirEditorArchivo = (nombreArchivo: string) => {
+    setArchivoParaEditar(nombreArchivo);
+    setEditorArchivoModalOpen(true);
+  };
   const paso2TopRef = useRef<HTMLDivElement>(null);
 
   // Asegurar scroll arriba del todo siempre que cambie de paso (p. ej. al cargar un caso demo)
@@ -670,6 +678,7 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
   const [eliminandoCaso, setEliminandoCaso] = useState<boolean>(false);
   const inputAdendaRef = useRef<HTMLInputElement>(null);
   const [mensajeToast, setMensajeToast] = useState<{ texto: string; tipo: 'success' | 'info' | 'warning' } | null>(null);
+  const [mostrarCasosRef, setMostrarCasosRef] = useState<boolean>(true);
 
   const recargarCasosGuardados = async () => {
     try {
@@ -1704,8 +1713,6 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
         nombre: 'Premio Cátedra Telefónica',
         modalidad: 'Premio',
         perceptores: '4 beneficiarios · 1.200,00 € total',
-        estadoOk: true,
-        resultadoEsperado: 'Listo para tramitar',
         desc: 'Convocatoria y resolución definitivas con 4 beneficiarios, certificados bancarios, SICAP y declaraciones responsables.'
       },
       {
@@ -1713,8 +1720,6 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
         nombre: 'Conferencia Ponente Externa UEx',
         modalidad: 'Conferencia',
         perceptores: '1 ponente · 400,00 € (200,00 €/h)',
-        estadoOk: true,
-        resultadoEsperado: 'Listo para tramitar',
         desc: 'Ponencia acreditada dentro del límite oficial (< 320 €/h) con alta de terceros y Modelo 7.'
       },
       {
@@ -1722,8 +1727,6 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
         nombre: 'Contrato Art. 83 / Art. 60 LOSU',
         modalidad: 'Contrato Art. 83',
         perceptores: '1 perceptor · 900,00 € bruto',
-        estadoOk: true,
-        resultadoEsperado: 'Listo para tramitar',
         desc: 'Contrato formalizado, alta de terceros y justificante bancario de ingreso de la anualidad.'
       },
       {
@@ -1731,8 +1734,6 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
         nombre: 'Convenio de Colaboración',
         modalidad: 'Convenio',
         perceptores: '1 colaborador · 1.800,00 € bruto',
-        estadoOk: true,
-        resultadoEsperado: 'Listo para tramitar',
         desc: 'Convenio formalizado con acreditación bancaria y memoria económica justificativa.'
       }
     ];
@@ -1937,89 +1938,131 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
         )}
 
         {/* Casos de Referencia en Modo Lista */}
-        <div className="space-y-2.5">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-              Casos de Referencia ({casosDemo.length})
-            </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                Casos de Referencia ({casosDemo.length})
+              </span>
+              <span style={{ fontSize: '0.77rem', color: '#526783' }}>
+                Expedientes de prueba SGTRI para conferencias, cursos y colaboraciones
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMostrarCasosRef(prev => !prev)}
+              style={{
+                fontSize: '11.5px',
+                color: 'var(--text-secondary)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'none',
+                border: '1px solid var(--border-color)',
+                padding: '3px 9px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+              className="hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              <span>{mostrarCasosRef ? 'Ocultar' : 'Mostrar'}</span>
+              {mostrarCasosRef ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
           </div>
 
-          <div className="admin-table-container" style={{ borderRadius: '10px', overflow: 'hidden' }}>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '150px' }}>Modalidad</th>
-                  <th>Expediente</th>
-                  <th style={{ width: '240px' }}>Perceptores e Importe</th>
-                  <th style={{ width: '140px' }}>Estado</th>
-                  <th style={{ width: '130px', textAlign: 'right' }}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {casosDemo.map((c) => {
-                  const modMeta = getModBadgeMeta(c.modalidad);
-                  return (
-                    <tr key={c.id} data-testid={`row-demo-${c.id}`}>
-                      <td>
-                        <span style={modMeta.style}>
-                          {modMeta.icon}
-                          <span>{c.modalidad}</span>
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
-                          {c.nombre}
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          {c.desc}
-                        </div>
-                      </td>
-                      <td style={{ fontSize: '12px', fontWeight: 500, color: '#334155', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
-                        {c.perceptores}
-                      </td>
-                      <td>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            color: '#15803D',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#16A34A', display: 'inline-block' }} />
-                          <span>{c.resultadoEsperado}</span>
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          data-testid={`btn-cargar-demo-${c.id}`}
-                          onClick={() => handleCargarDemo(c.id)}
-                          disabled={loading}
-                          className="btn btn-sm btn-outline"
-                        >
-                          {loadingCasoId === c.id ? (
+          {mostrarCasosRef && (
+            <div className="admin-table-container" style={{ borderRadius: '10px', overflow: 'hidden' }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '150px' }}>Modalidad</th>
+                    <th>Expediente</th>
+                    <th style={{ width: '240px' }}>Perceptores e Importe</th>
+                    <th style={{ width: '140px' }}>Estado</th>
+                    <th style={{ width: '130px', textAlign: 'right' }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {casosDemo.map((c) => {
+                    const modMeta = getModBadgeMeta(c.modalidad);
+                    return (
+                      <tr key={c.id} data-testid={`row-demo-${c.id}`}>
+                        <td>
+                          <span style={modMeta.style}>
+                            {modMeta.icon}
+                            <span>{c.modalidad}</span>
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '13px' }}>
+                            {c.nombre}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {c.desc}
+                          </div>
+                        </td>
+                        {(() => {
+                          const liveCaso = casosGuardados.find((x: any) => x.id === c.id);
+                          const perceptoresStr = liveCaso?.perceptores_texto || c.perceptores;
+                          const estVal = liveCaso?.estado_validacion || 'valido_completo';
+                          const esErr = estVal === 'error';
+                          const esWarn = estVal === 'valido_con_advertencias';
+                          const estadoLabel = esErr ? 'Faltan obligatorios' : esWarn ? 'Avisos opcionales' : 'Listo para tramitar';
+                          const estadoColor = esErr ? '#DC2626' : esWarn ? '#B45309' : '#15803D';
+                          const dotColor = esErr ? '#DC2626' : esWarn ? '#D97706' : '#16A34A';
+                          return (
                             <>
-                              <Loader2 size={12} className="animate-spin" />
-                              <span>Cargando...</span>
+                              <td style={{ fontSize: '12px', fontWeight: 500, color: '#334155', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+                                {perceptoresStr}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    color: estadoColor,
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: dotColor, display: 'inline-block' }} />
+                                  <span>{estadoLabel}</span>
+                                </span>
+                              </td>
                             </>
-                          ) : (
-                            <>
-                              <span>Cargar</span>
-                              <ArrowRight size={13} />
-                            </>
-                          )}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          );
+                        })()}
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            data-testid={`btn-cargar-demo-${c.id}`}
+                            onClick={() => handleCargarDemo(c.id)}
+                            disabled={loading}
+                            className="btn btn-sm btn-outline"
+                          >
+                            {loadingCasoId === c.id ? (
+                              <>
+                                <Loader2 size={12} className="animate-spin" />
+                                <span>Cargando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Cargar</span>
+                                <ArrowRight size={13} />
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Loading overlay */}
@@ -2484,6 +2527,8 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
                   {archivosAnalizados.map((archivo, aIdx) => {
                     const ext = archivo.nombre.split('.').pop()?.toLowerCase() || '';
                     const esExcel = ['xlsx', 'xls', 'csv'].includes(ext);
+                    const esTxt = ['txt', 'tsv'].includes(ext);
+                    const esEditable = esExcel || esTxt;
                     const esPdf = ext === 'pdf';
                     const esWord = ['docx', 'doc'].includes(ext);
                     const esImg = ['png', 'jpg', 'jpeg', 'webp'].includes(ext);
@@ -2497,6 +2542,10 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
                       iconElem = <FileSpreadsheet size={16} color="#176B52" />;
                       iconBg = '#ECFDF5';
                       iconBorder = '#A7F3D0';
+                    } else if (esTxt) {
+                      iconElem = <FileText size={16} color="#2563EB" />;
+                      iconBg = '#EFF6FF';
+                      iconBorder = '#BFDBFE';
                     } else if (esPdf) {
                       iconElem = <FileText size={16} color="#DC2626" />;
                       iconBg = '#FEF2F2';
@@ -2593,16 +2642,39 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
 
                         {/* Botones de Acción Estilizados */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                          {esEditable && (
+                            <button
+                              type="button"
+                              onClick={() => abrirEditorArchivo(archivo.nombre)}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                backgroundColor: '#E0F2FE',
+                                color: '#0369A1',
+                                border: '1px solid #BAE6FD',
+                                cursor: 'pointer',
+                                outline: 'none'
+                              }}
+                              title={`Editar ${archivo.nombre} (${esExcel ? 'Hoja de Cálculo' : 'Texto'})`}
+                              aria-label={`Editar ${archivo.nombre}`}
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => handleVerDocumento(archivo)}
                             style={{
+                              width: '28px',
+                              height: '28px',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              padding: '4px 8px',
+                              justifyContent: 'center',
                               borderRadius: '6px',
                               backgroundColor: '#E8F5E9',
                               color: '#176B52',
@@ -2611,21 +2683,20 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
                               outline: 'none'
                             }}
                             title="Abrir y ver este documento arriba de la página"
+                            aria-label="Ver documento"
                           >
-                            <Eye size={12} />
-                            <span>Ver</span>
+                            <Eye size={13} />
                           </button>
 
                           <a
                             href={fileDownloadUrl}
                             download={archivo.nombre}
                             style={{
+                              width: '28px',
+                              height: '28px',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              padding: '4px 8px',
+                              justifyContent: 'center',
                               borderRadius: '6px',
                               backgroundColor: '#F1F5F9',
                               color: '#334155',
@@ -2634,9 +2705,9 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
                               cursor: 'pointer'
                             }}
                             title="Descargar archivo original a su ordenador"
+                            aria-label="Descargar archivo"
                           >
-                            <Download size={12} />
-                            <span>Descargar</span>
+                            <Download size={13} />
                           </a>
 
                           <button
@@ -2647,7 +2718,7 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
                             title={`Eliminar ${archivo.nombre} del expediente`}
                             aria-label={`Eliminar ${archivo.nombre}`}
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </div>
@@ -4055,6 +4126,25 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
           </div>,
           document.body
         )}
+
+        {editorArchivoModalOpen && (
+          <ModalEditorDatosPersonales
+            isOpen={editorArchivoModalOpen}
+            onClose={() => setEditorArchivoModalOpen(false)}
+            casoId={casoId || ''}
+            archivoNombre={archivoParaEditar}
+            onGuardado={() => {
+              if (casoId) {
+                fetch(`/api/caso/${encodeURIComponent(casoId)}/detalle?tipo=honorarios`)
+                  .then(r => r.json())
+                  .then(d => {
+                    if (d?.archivos) setArchivosAnalizados(normalizarArchivos(d.archivos));
+                  })
+                  .catch(() => {});
+              }
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -4358,6 +4448,25 @@ export function GeneradorHonorariosInteligente({ initialCasoId }: { initialCasoI
             </div>
           </div>,
           document.body
+        )}
+
+        {editorArchivoModalOpen && (
+          <ModalEditorDatosPersonales
+            isOpen={editorArchivoModalOpen}
+            onClose={() => setEditorArchivoModalOpen(false)}
+            casoId={casoId || ''}
+            archivoNombre={archivoParaEditar}
+            onGuardado={() => {
+              if (casoId) {
+                fetch(`/api/caso/${encodeURIComponent(casoId)}/detalle?tipo=honorarios`)
+                  .then(r => r.json())
+                  .then(d => {
+                    if (d?.archivos) setArchivosAnalizados(normalizarArchivos(d.archivos));
+                  })
+                  .catch(() => {});
+              }
+            }}
+          />
         )}
       </div>
     );

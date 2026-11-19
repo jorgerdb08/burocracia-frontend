@@ -208,6 +208,7 @@ export function GeneradorProveedoresInteligente({ initialCasoId }: { initialCaso
   const [nuevoNombreRenombrar, setNuevoNombreRenombrar] = useState<string>('');
   const [modalEliminarOpen, setModalEliminarOpen] = useState<boolean>(false);
   const [cargandoAccion, setCargandoAccion] = useState<boolean>(false);
+  const [mostrarCasosRef, setMostrarCasosRef] = useState<boolean>(true);
 
   const recargarCasos = () => {
     fetch('/api/proveedores/casos_precargados')
@@ -857,17 +858,41 @@ export function GeneradorProveedoresInteligente({ initialCasoId }: { initialCaso
           )}
 
           {/* Lista de Casos de Referencia */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                Casos de Referencia ({casosReferencia.length})
-              </span>
-              <span style={{ fontSize: '0.77rem', color: '#526783' }}>
-                Expedientes de prueba SGTRI con factura real para ambas modalidades de pago
-              </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                  Casos de Referencia ({casosReferencia.length})
+                </span>
+                <span style={{ fontSize: '0.77rem', color: '#526783' }}>
+                  Expedientes de prueba SGTRI con factura real para ambas modalidades de pago
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMostrarCasosRef(prev => !prev)}
+                style={{
+                  fontSize: '11.5px',
+                  color: 'var(--text-secondary)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: 'none',
+                  border: '1px solid var(--border-color)',
+                  padding: '3px 9px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+                className="hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <span>{mostrarCasosRef ? 'Ocultar' : 'Mostrar'}</span>
+                {mostrarCasosRef ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
             </div>
 
-            <div className="admin-table-container">
+            {mostrarCasosRef && (
+              <div className="admin-table-container">
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -957,6 +982,7 @@ export function GeneradorProveedoresInteligente({ initialCasoId }: { initialCaso
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         </div>
       )}

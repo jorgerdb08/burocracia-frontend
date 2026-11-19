@@ -164,7 +164,7 @@ export function ViewHeroLayout({
                 marginBottom: '8px' 
               }}
             >
-              SEDE ELECTRÓNICA UEX &nbsp;/&nbsp; INTERVENCIÓN ECONÓMICA &nbsp;/&nbsp; SGTRI
+              INTERVENCIÓN ECONÓMICA &nbsp;/&nbsp; SGTRI
             </div>
 
             <h1 
