@@ -1,3 +1,14 @@
+/**
+ * UNIVERSIDAD DE EXTREMADURA (UEx) - SGTRI
+ * Generador Inteligente de Abono a Proveedores y Facturas de Compra
+ *
+ * Tramitación de compras de suministros, servicios y material de investigación:
+ * - Modalidad A: Pago directo por transferencia previa comprobación de alta de terceros.
+ * - Modalidad B: Reembolso de gastos abonados con tarjeta de crédito corporativa o personal.
+ * - Auditoría de contratos menores (LCSP Art. 30: umbral máximo de 15.000 €).
+ * - Generación de documentos oficiales: Anexo II (Justificación), Anexo A y Propuesta de Pago.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {

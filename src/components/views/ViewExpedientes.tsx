@@ -1,3 +1,14 @@
+/**
+ * UNIVERSIDAD DE EXTREMADURA (UEx) - SGTRI
+ * Bandeja de Gestión y Archivo de Expedientes
+ *
+ * Ofrece la vista centralizada de expedientes del sistema:
+ * - Listado y filtrado por tipo de trámite (dietas, honorarios, proveedores).
+ * - Búsqueda en tiempo real por identificador, título o descripción.
+ * - Operaciones CRUD: creación de nuevos expedientes, renombrado/edición y borrado seguro.
+ * - Indicadores visuales de completitud documental y semáforo de validación previa.
+ */
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, RefreshCw, Search, Eye, ArrowRight, Pencil, Trash2, Plus, X, FolderPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { AlertErr } from '../ui/Alerts';
@@ -67,17 +78,20 @@ export function ViewExpedientes({
     let dietas = 0;
     let proveedores = 0;
     let honorarios = 0;
+    let lotes = 0;
     for (const c of casos) {
       const t = (c.tipo || '').toLowerCase();
       if (t === 'dietas' || t === 'dieta') dietas++;
       else if (t === 'proveedores' || t === 'pago_proveedor' || t === 'proveedor') proveedores++;
       else if (t === 'honorarios' || t === 'honorario') honorarios++;
+      else if (t === 'lote' || t === 'lotes' || (c as any).es_lote) lotes++;
     }
     return {
       todos: casos.length,
       dietas,
       pago_proveedor: proveedores,
-      honorarios
+      honorarios,
+      lotes
     };
   }, [casos]);
 
@@ -92,6 +106,8 @@ export function ViewExpedientes({
         matchTipo = tipoNorm === 'proveedores' || tipoNorm === 'pago_proveedor' || tipoNorm === 'proveedor';
       } else if (tipoFiltro === 'honorarios') {
         matchTipo = tipoNorm === 'honorarios' || tipoNorm === 'honorario';
+      } else if (tipoFiltro === 'lotes') {
+        matchTipo = tipoNorm === 'lote' || tipoNorm === 'lotes' || !!(c as any).es_lote;
       }
       if (!matchTipo) return false;
 
@@ -132,6 +148,14 @@ export function ViewExpedientes({
         border: '#CEDDF0'
       };
     }
+    if (t === 'lote' || t === 'lotes') {
+      return {
+        label: 'Lote de Expedientes',
+        bg: '#F5F3FF',
+        color: '#6D28D9',
+        border: '#DDD6FE'
+      };
+    }
     return {
       label: tipo || 'General',
       bg: '#F1F5F9',
@@ -152,32 +176,47 @@ export function ViewExpedientes({
     if (!editandoCaso || !nuevoTitulo.trim()) return;
     setGuardandoEdicion(true);
     try {
-      const resp = await api.renombrarCaso(editandoCaso.id, {
-        nuevoId: nuevoIdCarpeta.trim() && nuevoIdCarpeta.trim() !== editandoCaso.id ? nuevoIdCarpeta.trim() : undefined,
-        titulo: nuevoTitulo.trim(),
-        descripcion: nuevaDescripcion.trim()
-      });
-      setFeedback({ tipo: 'success', texto: `Expediente actualizado correctamente a "${nuevoTitulo.trim()}".` });
+      const esLote = (editandoCaso as any).tipo === 'lote' || (editandoCaso as any).es_lote;
+      if (esLote) {
+        await api.editarLote(editandoCaso.id, {
+          nuevo_id: nuevoIdCarpeta.trim() && nuevoIdCarpeta.trim() !== editandoCaso.id ? nuevoIdCarpeta.trim() : undefined,
+          titulo: nuevoTitulo.trim(),
+          descripcion: nuevaDescripcion.trim()
+        });
+      } else {
+        await api.renombrarCaso(editandoCaso.id, {
+          nuevoId: nuevoIdCarpeta.trim() && nuevoIdCarpeta.trim() !== editandoCaso.id ? nuevoIdCarpeta.trim() : undefined,
+          titulo: nuevoTitulo.trim(),
+          descripcion: nuevaDescripcion.trim()
+        });
+      }
+      setFeedback({ tipo: 'success', texto: `${esLote ? 'Lote' : 'Expediente'} actualizado correctamente a "${nuevoTitulo.trim()}".` });
       setEditandoCaso(null);
       await cargar();
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar el expediente');
+      alert(err.message || 'Error al actualizar');
     } finally {
       setGuardandoEdicion(false);
     }
   };
 
-  const handleEliminarCaso = async (c: { id: string; titulo?: string }) => {
+  const handleEliminarCaso = async (c: { id: string; titulo?: string; tipo?: string }) => {
+    const esLote = c.tipo === 'lote' || (c as any).es_lote;
+    const tipoTexto = esLote ? 'el lote' : 'el expediente';
     const nombre = c.titulo || c.id;
-    if (!window.confirm(`¿Está seguro de que desea eliminar definitivamente el expediente "${nombre}"?\n\nEsta acción borrará la carpeta en el servidor y todos sus justificantes asociados.`)) {
+    if (!window.confirm(`¿Está seguro de que desea eliminar definitivamente ${tipoTexto} "${nombre}"?\n\nEsta acción borrará la carpeta en el servidor y todos sus justificantes asociados.`)) {
       return;
     }
     try {
-      await api.eliminarCaso(c.id);
-      setFeedback({ tipo: 'success', texto: `Expediente "${nombre}" eliminado del sistema.` });
+      if (esLote) {
+        await api.eliminarLote(c.id);
+      } else {
+        await api.eliminarCaso(c.id);
+      }
+      setFeedback({ tipo: 'success', texto: `${esLote ? 'Lote' : 'Expediente'} "${nombre}" eliminado del sistema.` });
       await cargar();
     } catch (err: any) {
-      alert(err.message || 'Error al eliminar el expediente');
+      alert(err.message || `Error al eliminar ${tipoTexto}`);
     }
   };
 
@@ -268,6 +307,7 @@ export function ViewExpedientes({
             { id: 'dietas', label: `Dietas y Desplazamientos (${counts.dietas})` },
             { id: 'pago_proveedor', label: `Pago a Proveedor (${counts.pago_proveedor})` },
             { id: 'honorarios', label: `Honorarios (${counts.honorarios})` },
+            { id: 'lotes', label: `Lotes Masivos (${counts.lotes})` },
           ].map(f => (
             <button
               key={f.id}
@@ -382,7 +422,9 @@ export function ViewExpedientes({
                       })()}
                     </td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '12px', fontVariantNumeric: 'tabular-nums' }}>
-                      {c.total_archivos || 0} archivo(s)
+                      {(c as any).es_lote || c.tipo === 'lote' 
+                        ? `${(c as any).total_expedientes ?? 0} expedientes` 
+                        : `${c.total_archivos || 0} archivo(s)`}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
@@ -406,10 +448,16 @@ export function ViewExpedientes({
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <button
-                          onClick={() => onInspeccionar(c.id)}
+                          onClick={() => {
+                            if (c.tipo === 'lote' || (c as any).es_lote) {
+                              onProcesar(c.id, 'lote');
+                            } else {
+                              onInspeccionar(c.id);
+                            }
+                          }}
                           className="btn btn-secondary btn-sm"
                           type="button"
-                          title="Inspeccionar archivos y requisitos"
+                          title={c.tipo === 'lote' || (c as any).es_lote ? "Abrir árbol del lote" : "Inspeccionar archivos y requisitos"}
                           style={{ padding: '4px 7px' }}
                         >
                           <Eye size={12} style={{ color: 'var(--text-muted)' }} />
@@ -431,7 +479,7 @@ export function ViewExpedientes({
                           onClick={() => handleEliminarCaso(c)}
                           className="btn btn-secondary btn-sm"
                           type="button"
-                          title="Eliminar expediente"
+                          title={c.tipo === 'lote' || (c as any).es_lote ? "Eliminar lote completo" : "Eliminar expediente"}
                           style={{ padding: '4px 7px', color: '#DC2626' }}
                         >
                           <Trash2 size={12} />

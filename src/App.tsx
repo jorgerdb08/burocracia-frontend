@@ -1,3 +1,15 @@
+/**
+ * UNIVERSIDAD DE EXTREMADURA (UEx) - SGTRI
+ * Componente Principal de la Aplicación de Sede Electrónica (BurocracIA)
+ *
+ * Gestiona:
+ * - El enrutamiento de vistas (inicio, procesar, expedientes, lotes, honorarios, proveedores).
+ * - La sincronización bidireccional con los parámetros de la URL (?view, ?caso, ?template).
+ * - El tema visual claro/oscuro persistido en el elemento raíz del DOM.
+ * - El menú desplegable institucional de nuevo trámite administrativo.
+ * - La apertura del modal de inspección detallada y el widget de asistencia conversacional.
+ */
+
 import { useState, useEffect, useRef } from 'react'
 import { Sun, Moon, ChevronDown, Plane, GraduationCap, CreditCard, FolderArchive } from 'lucide-react'
 import { cn } from './lib/utils'
@@ -13,6 +25,7 @@ import { ExpedienteInspectorModal } from './components/modals/ExpedienteInspecto
 type View = 'inicio' | 'procesar' | 'expedientes' | 'lotes' | 'honorarios' | 'proveedores'
 
 export default function App() {
+  // Estado y sincronización del tema visual (claro / oscuro)
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
     if (isDark) {
@@ -26,6 +39,7 @@ export default function App() {
     }
   }, [isDark])
 
+  // Vista activa inicializada a partir de los parámetros de consulta de la URL
   const [view, setView] = useState<View>(() => {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('view') as View;
@@ -43,6 +57,7 @@ export default function App() {
   const tramitarRef = useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = useRef<any>(null)
 
+  // Control de retardo al abrir y cerrar el menú desplegable con el ratón
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -57,7 +72,7 @@ export default function App() {
     }, 220);
   };
 
-  // Cerrar el desplegable de trámites al hacer clic fuera o pulsar Escape
+  // Cierre del menú al hacer clic fuera del contenedor o presionar la tecla Escape
   useEffect(() => {
     if (!isTramitarOpen) return;
     const handleOutside = (e: MouseEvent) => {
@@ -76,12 +91,17 @@ export default function App() {
     };
   }, [isTramitarOpen]);
 
+  /**
+   * Navega a la vista de tramitación adecuada deduciendo el tipo de procedimiento.
+   */
   const irProcesar = (casoId?: string, tipoOrTemplate?: string) => {
     setCaso(casoId);
     setTemplate(tipoOrTemplate);
     const tNorm = (tipoOrTemplate || '').toLowerCase();
     const cNorm = (casoId || '').toLowerCase();
-    if (tNorm === 'honorarios' || tNorm === 'honorario' || cNorm.includes('premio') || cNorm.includes('conferencia') || cNorm.includes('contrato') || cNorm.includes('convenio') || cNorm.includes('honorarios')) {
+    if (tNorm === 'lote' || tNorm === 'lotes' || tNorm === 'batch' || cNorm.startsWith('lote_')) {
+      setView('lotes');
+    } else if (tNorm === 'honorarios' || tNorm === 'honorario' || cNorm.includes('premio') || cNorm.includes('conferencia') || cNorm.includes('contrato') || cNorm.includes('convenio') || cNorm.includes('honorarios')) {
       setView('honorarios');
     } else if (tNorm === 'proveedores' || tNorm === 'pago_proveedor' || tNorm === 'proveedor' || cNorm.includes('tarjeta') || cNorm.includes('transferencia') || cNorm.startsWith('exp_prov')) {
       setView('proveedores');
@@ -93,7 +113,7 @@ export default function App() {
   return (
     <div className="uex-shell">
       
-      {/* Header Institucional: UEx SGTRI / Intervención Económica */}
+      {/* Cabecera institucional con logotipo oficial y navegación principal */}
       <header className="uex-header">
         <div className="uex-header-inner">
           <div className="uex-header-left">
@@ -124,7 +144,7 @@ export default function App() {
                 Expedientes
               </button>
 
-              {/* Desplegable institucional: Nuevo trámite (Hover y Horizontal) */}
+              {/* Menú desplegable para iniciar nuevos trámites administrativos */}
               <div 
                 ref={tramitarRef} 
                 onMouseEnter={handleMouseEnter}
@@ -171,7 +191,7 @@ export default function App() {
                       gap: '10px'
                     }}
                   >
-                    {/* Tarjeta 1: Dietas y desplazamientos */}
+                    {/* Trámite 1: Dietas y comisiones de servicio */}
                     <button
                       type="button"
                       onClick={() => { irProcesar(undefined, 'dietas'); setIsTramitarOpen(false); }}
@@ -198,7 +218,7 @@ export default function App() {
                       </span>
                     </button>
 
-                    {/* Tarjeta 2: Honorarios a terceros */}
+                    {/* Trámite 2: Abono de honorarios y conferencias */}
                     <button
                       type="button"
                       onClick={() => { setView('honorarios'); setIsTramitarOpen(false); }}
@@ -225,7 +245,7 @@ export default function App() {
                       </span>
                     </button>
 
-                    {/* Tarjeta 3: Pago a proveedores */}
+                    {/* Trámite 3: Facturas y pagos a proveedores */}
                     <button
                       type="button"
                       onClick={() => { setView('proveedores'); setIsTramitarOpen(false); }}
@@ -252,7 +272,7 @@ export default function App() {
                       </span>
                     </button>
 
-                    {/* Tarjeta 4: Tramitación por lotes */}
+                    {/* Trámite 4: Lotes masivos de investigación */}
                     <button
                       type="button"
                       onClick={() => { setView('lotes'); setIsTramitarOpen(false); }}
@@ -297,6 +317,7 @@ export default function App() {
         </div>
       </header>
 
+      {/* Contenedor dinámico de la vista activa */}
       <main className="uex-main">
         {view === 'inicio' && (
           <ViewHeroLayout 
@@ -327,7 +348,7 @@ export default function App() {
           />
         )}
         {view === 'lotes' && (
-          <ViewLotesBatch />
+          <ViewLotesBatch initialLoteId={casoParam} />
         )}
         {view === 'honorarios' && (
           <GeneradorHonorariosInteligente initialCasoId={casoParam} />
@@ -337,6 +358,7 @@ export default function App() {
         )}
       </main>
 
+      {/* Modal para inspección rápida de documentos y datos del expediente */}
       {inspectCasoId && (
         <ExpedienteInspectorModal 
           casoId={inspectCasoId} 
@@ -345,6 +367,7 @@ export default function App() {
         />
       )}
 
+      {/* Widget flotante del asistente normativo conversacional */}
       <ChatWidget 
         currentView={view} 
         externalOpen={isChatOpen} 

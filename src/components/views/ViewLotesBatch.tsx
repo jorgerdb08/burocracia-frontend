@@ -5,9 +5,10 @@ import {
   Building2, Scale, Wallet, AlertTriangle, CheckCircle2,
   ShieldCheck, Trash2, Layers, FileCode, ArrowRight, ArrowLeft,
   FolderOpen, FileSpreadsheet, CheckCircle, FileCheck2, Sparkles, Folder, HelpCircle,
-  LayoutGrid, List, Clock, ChevronLeft, ChevronRight
+  LayoutGrid, List, Clock, ChevronLeft, ChevronRight, Pencil
 } from 'lucide-react';
 import { cn, pollTask, fmtEur } from '../../lib/utils';
+import { api } from '../../services/api';
 import { Btn } from '../ui/Btn';
 import { AlertErr, AlertSucc } from '../ui/Alerts';
 
@@ -548,12 +549,26 @@ function LoteProcesandoOverlay({
   );
 }
 
-export function ViewLotesBatch() {
+export function ViewLotesBatch({ initialLoteId }: { initialLoteId?: string } = {}) {
   const [lotes, setLotes] = useState<LoteInfo[]>([]);
   const [selectedLote, setSelectedLote] = useState<string>('');
   const [loadingLotes, setLoadingLotes] = useState<boolean>(true);
   const [loteDetalle, setLoteDetalle] = useState<LoteDetalle | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState<boolean>(false);
+
+  // Modal y estados de edición de lote
+  const [modalEditarLoteOpen, setModalEditarLoteOpen] = useState(false);
+  const [editLoteId, setEditLoteId] = useState('');
+  const [editNuevoNombre, setEditNuevoNombre] = useState('');
+  const [editInvestigador, setEditInvestigador] = useState('');
+  const [editOrganica, setEditOrganica] = useState('');
+  const [editReferencia, setEditReferencia] = useState('');
+  const [editTipoFinanciacion, setEditTipoFinanciacion] = useState('UEX');
+  const [editFormaPago, setEditFormaPago] = useState('tarjeta');
+  const [editCentro, setEditCentro] = useState('Escuela Politécnica (Cáceres)');
+  const [editCampus, setEditCampus] = useState('Cáceres');
+  const [editFinalidad, setEditFinalidad] = useState('');
+  const [guardandoEdicionLote, setGuardandoEdicionLote] = useState(false);
 
   // -------------------------------------------------------------------------
   // ARQUITECTURA DE PANTALLAS SEPARADAS (NO TODO EN LA MISMA)
@@ -1227,13 +1242,96 @@ export function ViewLotesBatch() {
       await cargarLotes(data.lote_id);
       setSelectedLote(data.lote_id);
       await cargarDetalleLote(data.lote_id);
+      await cargarResumen(data.lote_id);
 
-      // Avanzar al Paso 2: Ver Árbol de Directorios
-      setPasoCarga('arbol');
+      // Pasar directamente a la vista de árbol limpio idéntica a los casos precargados
+      setPantallaActual('precargados');
+      setModoPrecargados('arbol');
     } catch (err: any) {
       setCrearError(err.message || 'Error al crear el lote.');
     } finally {
       setCreandoLote(false);
+    }
+  };
+
+  useEffect(() => {
+    if (initialLoteId) {
+      setSelectedLote(initialLoteId);
+      setPantallaActual('precargados');
+      setModoPrecargados('arbol');
+      cargarDetalleLote(initialLoteId);
+      cargarResumen(initialLoteId);
+    }
+  }, [initialLoteId]);
+
+  const handleAbrirEditarLote = (lote: LoteInfo) => {
+    setEditLoteId(lote.id);
+    setEditNuevoNombre(lote.id);
+    const dc = (lote as any).datos_comunes || {};
+    setEditInvestigador(dc.investigador || lote.investigador || 'Prof. Dr. Pedro J. Clemente Martín');
+    setEditOrganica(dc.organica || lote.organica || '18.IW.97.89');
+    setEditReferencia(dc.referencia_proyecto || lote.proyecto || '256/21');
+    setEditTipoFinanciacion(dc.tipo_financiacion || lote.tipo_financiacion || 'UEX');
+    setEditFormaPago(dc.forma_pago || 'tarjeta');
+    setEditCentro(dc.centro || 'Escuela Politécnica (Cáceres)');
+    setEditCampus(dc.campus || 'Cáceres');
+    setEditFinalidad(dc.finalidad || 'Actividades de investigación, docencia y gastos tecnológicos');
+    setModalEditarLoteOpen(true);
+  };
+
+  const handleGuardarEditarLote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editLoteId) return;
+    setGuardandoEdicionLote(true);
+    try {
+      const res = await api.editarLote(editLoteId, {
+        nuevo_id: editNuevoNombre.trim() !== editLoteId ? editNuevoNombre.trim() : undefined,
+        investigador: editInvestigador.trim(),
+        organica: editOrganica.trim(),
+        referencia_proyecto: editReferencia.trim(),
+        tipo_financiacion: editTipoFinanciacion,
+        forma_pago: editFormaPago,
+        centro: editCentro.trim(),
+        campus: editCampus.trim(),
+        finalidad: editFinalidad.trim()
+      });
+      const nuevoId = res.lote_id || editNuevoNombre.trim() || editLoteId;
+      setNotifExito(`Lote "${nuevoId}" actualizado correctamente.`);
+      setModalEditarLoteOpen(false);
+      await cargarLotes(nuevoId);
+      setSelectedLote(nuevoId);
+      await cargarDetalleLote(nuevoId);
+      await cargarResumen(nuevoId);
+    } catch (err: any) {
+      alert(err.message || 'Error al actualizar el lote.');
+    } finally {
+      setGuardandoEdicionLote(false);
+    }
+  };
+
+  const handleEliminarLote = async (loteId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm(`¿Está seguro de que desea eliminar definitivamente el lote "${loteId}"?\n\nEsta acción borrará la carpeta en el servidor con todos sus expedientes y justificantes.`)) {
+      return;
+    }
+    try {
+      await api.eliminarLote(loteId);
+      setNotifExito(`Lote "${loteId}" eliminado correctamente.`);
+      const remaining = lotes.filter(l => l.id !== loteId);
+      setLotes(remaining);
+      if (selectedLote === loteId) {
+        if (remaining.length > 0) {
+          setSelectedLote(remaining[0].id);
+          cargarDetalleLote(remaining[0].id);
+          cargarResumen(remaining[0].id);
+        } else {
+          setSelectedLote('');
+          setModoPrecargados('seleccion');
+        }
+      }
+      await cargarLotes();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar el lote.');
     }
   };
 
@@ -1541,7 +1639,14 @@ export function ViewLotesBatch() {
                 onDrop={(e) => {
                   e.preventDefault();
                   setIsDragging(false);
-                  if (e.dataTransfer.files) setNuevosArchivos(Array.from(e.dataTransfer.files));
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const fl = Array.from(e.dataTransfer.files);
+                    setNuevosArchivos(fl);
+                    if (!nuevoNombre.trim()) {
+                      const baseName = fl[0].name.replace(/\.[^/.]+$/, "");
+                      setNuevoNombre(baseName);
+                    }
+                  }
                 }}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
@@ -1567,7 +1672,14 @@ export function ViewLotesBatch() {
                   multiple
                   style={{ display: 'none' }}
                   onChange={(e) => {
-                    if (e.target.files) setNuevosArchivos(Array.from(e.target.files));
+                    if (e.target.files && e.target.files.length > 0) {
+                      const fl = Array.from(e.target.files);
+                      setNuevosArchivos(fl);
+                      if (!nuevoNombre.trim()) {
+                        const baseName = fl[0].name.replace(/\.[^/.]+$/, "");
+                        setNuevoNombre(baseName);
+                      }
+                    }
                   }}
                   accept=".zip,.pdf,.txt,.md,.png,.jpg"
                 />
@@ -2199,21 +2311,45 @@ export function ViewLotesBatch() {
                             </div>
                           </div>
 
-                          {/* Radio selector con animación suave */}
-                          <div style={{
-                            width: '18px',
-                            height: '18px',
-                            borderRadius: '50%',
-                            border: isSelected ? 'none' : '1.5px solid var(--border-color)',
-                            backgroundColor: isSelected ? 'var(--color-blue-inst)' : 'transparent',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#fff',
-                            transition: 'background-color 0.2s ease, border-color 0.2s ease',
-                            flexShrink: 0
-                          }}>
-                            {isSelected && <Check size={11} strokeWidth={2.5} />}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                            {/* Botones de acción rápida: Editar y Eliminar */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={e => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => handleAbrirEditarLote(lote)}
+                                className="btn btn-secondary btn-sm"
+                                style={{ padding: '4px 7px' }}
+                                title="Editar nombre y contexto común del lote"
+                              >
+                                <Pencil size={12} style={{ color: 'var(--text-muted)' }} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleEliminarLote(lote.id, e)}
+                                className="btn btn-secondary btn-sm"
+                                style={{ padding: '4px 7px', color: '#DC2626' }}
+                                title="Eliminar este lote definitivamente"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+
+                            {/* Radio selector con animación suave */}
+                            <div style={{
+                              width: '18px',
+                              height: '18px',
+                              borderRadius: '50%',
+                              border: isSelected ? 'none' : '1.5px solid var(--border-color)',
+                              backgroundColor: isSelected ? 'var(--color-blue-inst)' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#fff',
+                              transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                              flexShrink: 0
+                            }}>
+                              {isSelected && <Check size={11} strokeWidth={2.5} />}
+                            </div>
                           </div>
                         </div>
                       );
@@ -2334,6 +2470,33 @@ export function ViewLotesBatch() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <Btn
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const cur = lotes.find(l => l.id === selectedLote);
+                      if (cur) handleAbrirEditarLote(cur);
+                      else handleAbrirEditarLote({ id: selectedLote } as any);
+                    }}
+                    disabled={running || !selectedLote}
+                    title="Editar nombre y datos comunes del lote"
+                  >
+                    <Pencil size={13} />
+                    <span>Editar Lote</span>
+                  </Btn>
+
+                  <Btn
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { if (selectedLote) handleEliminarLote(selectedLote); }}
+                    disabled={running || !selectedLote}
+                    style={{ color: '#DC2626', borderColor: '#FECACA' }}
+                    title="Eliminar este lote definitivamente"
+                  >
+                    <Trash2 size={13} />
+                    <span>Eliminar</span>
+                  </Btn>
+
                   <Btn
                     variant="outline"
                     size="sm"
@@ -3394,6 +3557,233 @@ export function ViewLotesBatch() {
                 />
               </object>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: EDITAR LOTE Y DATOS COMUNES DE PROYECTO                            */}
+      {/* ========================================================================= */}
+      {modalEditarLoteOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => !guardandoEdicionLote && setModalEditarLoteOpen(false)}
+        >
+          <div 
+            className="panel"
+            style={{
+              width: '100%',
+              maxWidth: '680px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '1.75rem',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-xl)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'var(--bg-blue-soft)', color: 'var(--color-blue-inst)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Pencil size={16} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                    Editar Lote de Expedientes
+                  </h3>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    Identificador de carpeta y contexto común normativo
+                  </div>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setModalEditarLoteOpen(false)}
+                className="uex-theme-btn"
+                disabled={guardandoEdicionLote}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <form onSubmit={handleGuardarEditarLote} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  Nombre / Identificador de Carpeta en Servidor
+                </label>
+                <input
+                  type="text"
+                  value={editNuevoNombre}
+                  onChange={e => setEditNuevoNombre(e.target.value)}
+                  required
+                  className="input-field"
+                  style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: '13px' }}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                  Si cambias el nombre, la carpeta física en disco se renombrará de forma segura.
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Investigador Principal (IP)
+                  </label>
+                  <input
+                    type="text"
+                    value={editInvestigador}
+                    onChange={e => setEditInvestigador(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Orgánica Presupuestaria UEx
+                  </label>
+                  <input
+                    type="text"
+                    value={editOrganica}
+                    onChange={e => setEditOrganica(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: '12.5px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Referencia del Proyecto / Contrato
+                  </label>
+                  <input
+                    type="text"
+                    value={editReferencia}
+                    onChange={e => setEditReferencia(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Tipo de Financiación
+                  </label>
+                  <select
+                    value={editTipoFinanciacion}
+                    onChange={e => setEditTipoFinanciacion(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  >
+                    <option value="UEX">UEx - Fondos Propios / Art. 60 LOSU</option>
+                    <option value="FEDER">FEDER / Fondos Estructurales UE</option>
+                    <option value="ESTATAL">Plan Estatal / Ministerio (MICIU)</option>
+                    <option value="AUTONOMICO">Junta de Extremadura (Decreto 42/2025)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Centro de Gasto
+                  </label>
+                  <input
+                    type="text"
+                    value={editCentro}
+                    onChange={e => setEditCentro(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Campus
+                  </label>
+                  <input
+                    type="text"
+                    value={editCampus}
+                    onChange={e => setEditCampus(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Forma de Pago Habitual
+                  </label>
+                  <select
+                    value={editFormaPago}
+                    onChange={e => setEditFormaPago(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  >
+                    <option value="tarjeta">Tarjeta Institucional de Investigación</option>
+                    <option value="transferencia">Transferencia Bancaria Directa</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                    Finalidad del Gasto / Actividad
+                  </label>
+                  <input
+                    type="text"
+                    value={editFinalidad}
+                    onChange={e => setEditFinalidad(e.target.value)}
+                    className="input-field"
+                    style={{ width: '100%', fontSize: '12.5px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                <Btn
+                  variant="outline"
+                  size="md"
+                  type="button"
+                  onClick={() => setModalEditarLoteOpen(false)}
+                  disabled={guardandoEdicionLote}
+                >
+                  Cancelar
+                </Btn>
+                <Btn
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  disabled={guardandoEdicionLote || !editNuevoNombre.trim()}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {guardandoEdicionLote ? (
+                    <>
+                      <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                      <span>Guardando cambios...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} />
+                      <span>Guardar Cambios</span>
+                    </>
+                  )}
+                </Btn>
+              </div>
+            </form>
           </div>
         </div>
       )}

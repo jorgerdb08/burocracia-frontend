@@ -1,3 +1,15 @@
+/**
+ * UNIVERSIDAD DE EXTREMADURA (UEx) - SGTRI
+ * Widget de Asistencia Virtual Inteligente (BurocracIA Chat)
+ *
+ * Proporciona un panel interactivo flotante para resolver dudas normativas
+ * sobre dietas, kilometraje, convenios y contratos de investigación:
+ * - Soporte multisesión con persistencia en localStorage.
+ * - Selección de motor de inferencia: Google Gemini 2.5 Flash o Groq LPU (GPT-OSS 120B).
+ * - Renderizado en streaming con Markdown y tablas conformes a GitHub Flavored Markdown (remark-gfm).
+ * - Detección automática del contexto de pantalla actual del usuario.
+ */
+
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

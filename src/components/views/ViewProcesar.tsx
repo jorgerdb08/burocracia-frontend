@@ -1,3 +1,15 @@
+/**
+ * UNIVERSIDAD DE EXTREMADURA (UEx) - SGTRI
+ * Asistente de Tramitación y Liquidación Económica (Dietas y Desplazamientos)
+ *
+ * Implementa el flujo guiado en 5 pasos:
+ * 1. Selección del expediente o procedimiento administrativo.
+ * 2. Inspección y carga de justificantes (hoja de ruta, billetes, facturas de hotel).
+ * 3. Asignación de proyecto, orgánica presupuestaria y fuente de financiación.
+ * 4. Procesamiento agéntico mediante LangGraph con visualización de nodos en directo.
+ * 5. Liquidación económica, desglose de dietas y generación del modelo oficial PDF.
+ */
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 

@@ -1,3 +1,14 @@
+/**
+ * UNIVERSIDAD DE EXTREMADURA (UEx) - SGTRI
+ * Generador Inteligente de Abono de Honorarios y Actividades Docentes
+ *
+ * Automatiza la tramitación de colaboraciones extraordinarias, conferencias, seminarios y cursos:
+ * - Ingestión de expedientes con múltiples perceptores o análisis de hojas Excel (.xlsx).
+ * - Validación fiscal según IRPF y límite máximo de 300 €/hora (Art. 19.4 Presupuestos UEx 2026).
+ * - Acreditación de alta de terceros y titularidad de cuenta bancaria (IBAN).
+ * - Generación del pack documental: Propuesta de pago (Anexo I), Certificación y Memoria.
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {

@@ -1,3 +1,15 @@
+/**
+ * UNIVERSIDAD DE EXTREMADURA (UEx) - SGTRI
+ * Tipos e interfaces comunes del frontend de BurocracIA.
+ *
+ * Define las estructuras de datos para resultados de evaluación,
+ * categorización de archivos adjuntos, requisitos documentales de tramitación
+ * y detalles completos de expedientes administrativos.
+ */
+
+/**
+ * Resultado devuelto por el motor de evaluación comparativa de expedientes.
+ */
 export interface CasoResult {
   caso_id: string
   ok: boolean
@@ -12,6 +24,9 @@ export interface CasoResult {
   memoria_fiscalizacion?: string
 }
 
+/**
+ * Representación de un archivo adjunto dentro de un expediente.
+ */
 export interface ArchivoCaso {
   name: string
   path: string
@@ -20,6 +35,9 @@ export interface ArchivoCaso {
   categoria: string
 }
 
+/**
+ * Requisito documental evaluado por el sistema de inspección previa.
+ */
 export interface RequisitoCaso {
   id: string
   label: string
@@ -27,6 +45,9 @@ export interface RequisitoCaso {
   cumplido: boolean
 }
 
+/**
+ * Ficha detallada de un expediente administrativo con metadatos y estado de validación.
+ */
 export interface DetalleCaso {
   id: string
   codigo?: string
